@@ -2,13 +2,35 @@
 name = "l3"
 version = "0.0.1"
 edition = "2021"
+license = "MIT"
+description = "Versioned CQL migrations for Cassandra and ScyllaDB"
+keywords = ["api", "aws", "lambda", "serverless", "devops"]
+authors = ["Adam McKee Bennett <adam.be.g84d@gmail.com>"]
+homepage = "https://github.com/eighty4/cquill"
+repository = "https://github.com/eighty4/cquill"
+exclude = [".*", "Dockerfile", "docker-compose.yml"]
+build = false
+
+[profile.release]
+lto = "fat"
+opt-level = 3
+strip = "symbols"
+
+[lib]
+name = "cquill"
+path = "src/lib.rs"
+
+[[bin]]
+name = "cquill"
+path = "src/bin.rs"
 
 [dependencies]
 anyhow = "1.0.70"
 aws-config = "0.55.1"
-aws-sdk-lambda = "0.26.0"
+aws-sdk-lambda = "0.28.0"
 base64 = "0.21.0"
 clap = { version = "4.1.14", features = ["derive"] }
+notify = "6.0.1"
 sha2 = "0.10.6"
 tokio = { version = "1.27.0", features = ["full"] }
 toml = "0.7.3"
