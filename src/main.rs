@@ -1,4 +1,4 @@
-use std::{fs, io, path::PathBuf};
+use std::{fs, io, path::PathBuf, process};
 
 use anyhow::Error;
 use base64::Engine;
@@ -28,8 +28,15 @@ enum LambdaX3Command {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), Error> {
-    match LambdaX3Cli::parse().command {
+async fn main() {
+    if let Err(err) = exec_cmd(LambdaX3Cli::parse().command).await {
+        println!("error: {err}");
+        process::exit(1);
+    }
+}
+
+async fn exec_cmd(cmd: LambdaX3Command) -> Result<(), Error> {
+    match cmd {
         LambdaX3Command::Init => init_project(),
         LambdaX3Command::Sync => sync_project().await,
     }
