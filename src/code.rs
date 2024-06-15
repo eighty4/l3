@@ -1,24 +1,27 @@
 use std::fs::File;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
+use std::process::exit;
 use std::{env, fs, io};
 
 use zip::write::FileOptions;
 use zip::ZipWriter;
 
+const CODE_ARCHIVE_PATH: &str = ".l3/code.zip";
+const CONFIG_FILE_PATH: &str = "l3.yml";
+const DATA_DIR_PATH: &str = ".l3";
+
 pub fn create_archive() -> Result<PathBuf, anyhow::Error> {
-    match fs::metadata(".l3") {
+    match fs::metadata(DATA_DIR_PATH) {
         Ok(metadata) => {
             if !metadata.is_dir() {
-                fs::remove_file(".l3")?;
-                fs::create_dir(".l3")?;
+                println!("error: .l3 exists as a file and not a directory");
+                exit(1);
             }
         }
-        Err(_) => {
-            fs::create_dir(".l3")?;
-        }
+        Err(_) => fs::create_dir(DATA_DIR_PATH)?,
     }
-    let zip_file = File::create(".l3/code.zip")?;
+    let zip_file = File::create(CODE_ARCHIVE_PATH)?;
     let mut zip_writer = ZipWriter::new(zip_file);
     let canonicalized = env::current_dir()?.canonicalize()?;
     let mut paths: Vec<PathBuf> = Vec::new();
@@ -42,11 +45,11 @@ pub fn create_archive() -> Result<PathBuf, anyhow::Error> {
         }
     }
     zip_writer.finish()?;
-    Ok(PathBuf::from(".l3/code.zip"))
+    Ok(PathBuf::from(CODE_ARCHIVE_PATH))
 }
 
 fn is_exclude_path(p: &str) -> bool {
-    matches!(p, ".l3" | "l3.yml")
+    matches!(p, DATA_DIR_PATH | CONFIG_FILE_PATH)
 }
 
 fn collect_paths(dir: &Path, paths: &mut Vec<PathBuf>) -> io::Result<()> {
