@@ -6,6 +6,7 @@ use crate::aws::lambda::{create_fn, does_fn_exist, update_fn};
 use crate::aws::load_sdk_config;
 use crate::code::create_archive;
 use crate::config;
+use crate::lambda::{HttpMethod, LambdaFn};
 
 pub(crate) async fn sync_project() -> Result<(), anyhow::Error> {
     let project_name = match config::project_name()? {
@@ -52,15 +53,15 @@ pub(crate) async fn sync_project() -> Result<(), anyhow::Error> {
     Ok(())
 }
 
-fn read_lambdas_from_current_dir(project_name: &String) -> Result<Vec<LocalLambda>, anyhow::Error> {
+fn read_lambdas_from_current_dir(project_name: &String) -> Result<Vec<LambdaFn>, anyhow::Error> {
     read_lambdas_from_dir(project_name, env::current_dir()?)
 }
 
 fn read_lambdas_from_dir(
     project_name: &String,
     dir_path: PathBuf,
-) -> Result<Vec<LocalLambda>, anyhow::Error> {
-    let mut lambdas: Vec<LocalLambda> = Vec::new();
+) -> Result<Vec<LambdaFn>, anyhow::Error> {
+    let mut lambdas: Vec<LambdaFn> = Vec::new();
     for dir_entry_result in fs::read_dir(dir_path)? {
         let dir_entry = dir_entry_result?;
         let path = dir_entry.path();
@@ -79,41 +80,9 @@ fn read_lambdas_from_dir(
                 _ => None,
             };
             if let Some(method) = maybe_lambda {
-                lambdas.push(LocalLambda::new(project_name, method, path));
+                lambdas.push(LambdaFn::new(project_name, method, path));
             }
         }
     }
     Ok(lambdas)
-}
-
-enum HttpMethod {
-    Delete,
-    Get,
-    Patch,
-    Post,
-    Put,
-}
-
-struct LocalLambda {
-    name: String,
-    #[allow(unused)]
-    method: HttpMethod,
-    #[allow(unused)]
-    path: PathBuf,
-}
-
-impl LocalLambda {
-    pub fn new(project_name: &String, method: HttpMethod, path: PathBuf) -> Self {
-        let fn_label = path
-            .strip_prefix(env::current_dir().unwrap())
-            .unwrap()
-            .to_string_lossy()
-            .to_string()
-            .replace(['/', '\\'], "-")
-            .trim_end_matches(".js")
-            .trim_end_matches(".mjs")
-            .to_string();
-        let name = format!("l3-{}-{}-fn", project_name, fn_label);
-        Self { name, method, path }
-    }
 }

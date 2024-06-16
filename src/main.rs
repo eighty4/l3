@@ -12,6 +12,7 @@ mod aws;
 mod code;
 mod config;
 mod init;
+mod lambda;
 mod sync;
 
 #[derive(Parser)]
