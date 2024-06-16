@@ -3,13 +3,26 @@ set -e
 
 # run through all the checks done for ci
 
-if [ -n "$(git status --porcelain)" ]; then
-  echo "error: run \`ci_verify.sh\` with a clean working directory"
-  exit 1
+_git_status_output=$(git status --porcelain)
+
+echo '\n*** cargo fmt -v ***'
+cargo fmt -v
+if [ -z "$_git_status_output" ]; then
+  git diff --exit-code
 fi
 
-cargo fmt -v
-git diff --exit-code
+echo '\n*** cargo clippy -- -D warnings ***'
 cargo clippy -- -D warnings
+
+echo '\n*** cargo build ***'
 cargo build
+
+echo '\n*** cargo test ***'
 cargo test
+
+if [ -n "$_git_status_output" ]; then
+  echo
+  echo "all ci verifications passed"
+  echo "however, working directory had uncommited changes before running cargo fmt"
+  exit 1
+fi
