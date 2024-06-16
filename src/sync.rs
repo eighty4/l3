@@ -1,21 +1,29 @@
 use std::path::PathBuf;
 use std::{env, fs};
 
+use crate::aws::iam::create_lambda_role;
 use crate::aws::lambda::{create_fn, does_fn_exist, update_fn};
 use crate::aws::load_sdk_config;
 use crate::code::create_archive;
 use crate::config;
 
 pub(crate) async fn sync_project() -> Result<(), anyhow::Error> {
-    let sdk_config = load_sdk_config().await;
     let project_name = match config::project_name()? {
         None => panic!("need a l3.yml file with a `project_name: ` string"),
         Some(project_name) => project_name,
     };
+    println!("syncing project {project_name}");
+    let sdk_config = load_sdk_config().await;
+    println!(
+        "aws sdk configured for region {}",
+        sdk_config.region().unwrap()
+    );
     let iam = aws_sdk_iam::Client::new(&sdk_config);
     let lambda = aws_sdk_lambda::Client::new(&sdk_config);
 
+    let lambda_role = create_lambda_role(&iam, &project_name).await?;
     let lambda_fns = read_lambdas_from_current_dir(&project_name)?;
+
     if lambda_fns.is_empty() {
         println!("no lambdas found");
         return Ok(());
@@ -23,7 +31,7 @@ pub(crate) async fn sync_project() -> Result<(), anyhow::Error> {
 
     let code_path = create_archive()?;
 
-    for lambda_fn in lambda_fns {
+    for lambda_fn in &lambda_fns {
         println!(
             "{} found in {}",
             lambda_fn.name,
@@ -36,7 +44,7 @@ pub(crate) async fn sync_project() -> Result<(), anyhow::Error> {
             update_fn(&lambda, lambda_fn.name.as_str(), &code_path).await?;
             println!("✔ updated");
         } else {
-            create_fn(&iam, &lambda, lambda_fn.name.as_str(), &code_path).await?;
+            create_fn(&lambda, lambda_fn.name.as_str(), &code_path, &lambda_role).await?;
             println!("✔ created");
         }
     }
