@@ -5,7 +5,7 @@ use base64::Engine;
 use clap::{Parser, Subcommand};
 use sha2::{Digest, Sha256};
 
-use crate::init::init_project;
+use crate::init::{init_project, InitOptions};
 use crate::sync::sync_project;
 
 mod aws;
@@ -24,8 +24,26 @@ struct LambdaX3Cli {
 
 #[derive(Subcommand)]
 enum LambdaX3Command {
-    Init,
+    Init(InitArgs),
     Sync,
+}
+
+#[derive(Parser, Debug)]
+struct InitArgs {
+    #[clap(
+        long,
+        value_name = "PROJECT_NAME",
+        help = "Defaults to current directory name"
+    )]
+    project_name: Option<String>,
+}
+
+impl From<InitArgs> for InitOptions {
+    fn from(args: InitArgs) -> Self {
+        InitOptions {
+            project_name: args.project_name,
+        }
+    }
 }
 
 #[tokio::main]
@@ -38,7 +56,7 @@ async fn main() {
 
 async fn exec_cmd(cmd: LambdaX3Command) -> Result<(), Error> {
     match cmd {
-        LambdaX3Command::Init => init_project(),
+        LambdaX3Command::Init(args) => init_project(InitOptions::from(args)),
         LambdaX3Command::Sync => sync_project().await,
     }
 }
