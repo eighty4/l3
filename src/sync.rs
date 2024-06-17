@@ -1,8 +1,9 @@
 use std::path::PathBuf;
 use std::{env, fs};
 
-use crate::aws::iam::create_lambda_role;
-use crate::aws::lambda::{create_fn, does_fn_exist, update_fn};
+use crate::aws::api_gateway::{add_fn_to_api, create_api};
+use crate::aws::iam::{create_lambda_role, get_account_id};
+use crate::aws::lambda::{add_apigateway_permission, create_fn, does_fn_exist, update_fn};
 use crate::aws::load_sdk_config;
 use crate::code::create_archive;
 use crate::config;
@@ -19,6 +20,7 @@ pub(crate) async fn sync_project() -> Result<(), anyhow::Error> {
         "aws sdk configured for region {}",
         sdk_config.region().unwrap()
     );
+    let api_gateway = aws_sdk_apigatewayv2::Client::new(&sdk_config);
     let iam = aws_sdk_iam::Client::new(&sdk_config);
     let lambda = aws_sdk_lambda::Client::new(&sdk_config);
 
@@ -30,24 +32,68 @@ pub(crate) async fn sync_project() -> Result<(), anyhow::Error> {
         return Ok(());
     }
 
+    let region = sdk_config.region().unwrap();
+    let account_id = get_account_id(&iam).await?;
+    let api_id = create_api(&api_gateway, &project_name).await?;
+
     let code_path = create_archive()?;
+
+    println!("\nDeploying {} lambdas\n---", lambda_fns.len());
 
     for lambda_fn in &lambda_fns {
         println!(
-            "{} found in {}",
-            lambda_fn.name,
-            lambda_fn
-                .path
-                .strip_prefix(env::current_dir()?)?
-                .to_string_lossy()
+            "{}\n   {} /{}",
+            lambda_fn.file_path(),
+            lambda_fn.api_method(),
+            lambda_fn.api_path(),
         );
-        if does_fn_exist(&lambda, lambda_fn.name.as_str()).await? {
-            update_fn(&lambda, lambda_fn.name.as_str(), &code_path).await?;
-            println!("✔ updated");
+        let fn_arn = if does_fn_exist(&lambda, lambda_fn.name.as_str()).await? {
+            let fn_arn = update_fn(&lambda, lambda_fn.name.as_str(), &code_path).await?;
+            println!("✔ updated {}", lambda_fn.name.as_str());
+            fn_arn
         } else {
-            create_fn(&lambda, lambda_fn.name.as_str(), &code_path, &lambda_role).await?;
-            println!("✔ created");
-        }
+            let fn_arn = create_fn(
+                &lambda,
+                lambda_fn.name.as_str(),
+                &code_path,
+                lambda_fn.file_path(),
+                &lambda_role,
+            )
+            .await?;
+            println!("✔ created {}", lambda_fn.name.as_str());
+            fn_arn
+        };
+
+        add_fn_to_api(
+            &api_gateway,
+            api_id.clone(),
+            fn_arn.clone(),
+            lambda_fn.api_method(),
+            lambda_fn.api_path(),
+        )
+        .await?;
+
+        add_apigateway_permission(
+            &lambda,
+            fn_arn.clone(),
+            region.to_string(),
+            account_id.clone(),
+            api_id.clone(),
+            lambda_fn.api_method(),
+            lambda_fn.api_path(),
+        )
+        .await?;
+    }
+
+    println!("\nLambdas deployed to API Gateway\n---");
+
+    for lambda_fn in &lambda_fns {
+        println!(
+            "{} https://{api_id}.execute-api.{}.amazonaws.com/development/{}",
+            lambda_fn.api_method(),
+            region,
+            lambda_fn.api_path()
+        );
     }
 
     Ok(())

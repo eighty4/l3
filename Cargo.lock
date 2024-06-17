@@ -166,6 +166,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "aws-sdk-apigatewayv2"
+version = "1.28.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0267453994d3353cc62615d8a7a4063c5011804521fb7969cec70f0731d74de2"
+dependencies = [
+ "aws-credential-types",
+ "aws-runtime",
+ "aws-smithy-async",
+ "aws-smithy-http",
+ "aws-smithy-json",
+ "aws-smithy-runtime",
+ "aws-smithy-runtime-api",
+ "aws-smithy-types",
+ "aws-types",
+ "bytes",
+ "http 0.2.12",
+ "once_cell",
+ "regex-lite",
+ "tracing",
+]
+
+[[package]]
 name = "aws-sdk-iam"
 version = "1.29.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1075,6 +1097,7 @@ version = "0.0.1"
 dependencies = [
  "anyhow",
  "aws-config",
+ "aws-sdk-apigatewayv2",
  "aws-sdk-iam",
  "aws-sdk-lambda",
  "base64 0.22.1",

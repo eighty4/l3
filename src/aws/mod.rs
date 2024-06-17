@@ -1,6 +1,7 @@
 use aws_config::meta::region::RegionProviderChain;
 use aws_config::{BehaviorVersion, SdkConfig};
 
+pub(crate) mod api_gateway;
 pub(crate) mod iam;
 pub(crate) mod lambda;
 
