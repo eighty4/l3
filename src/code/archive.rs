@@ -7,7 +7,7 @@ use std::{env, fs, io};
 use zip::write::FileOptions;
 use zip::ZipWriter;
 
-const CODE_ARCHIVE_PATH: &str = ".l3/code.zip";
+pub const CODE_ARCHIVE_PATH: &str = ".l3/code.zip";
 const CONFIG_FILE_PATH: &str = "l3.yml";
 const DATA_DIR_PATH: &str = ".l3";
 

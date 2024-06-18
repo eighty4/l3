@@ -1,17 +1,13 @@
+use std::fs;
 use std::io::Write;
 use std::path::PathBuf;
 use std::process::exit;
-use std::{env, fs};
 
 pub struct InitOptions {
-    pub project_name: Option<String>,
+    pub project_name: String,
 }
 
-pub(crate) fn init_project(opts: InitOptions) -> Result<(), anyhow::Error> {
-    let project_name = match opts.project_name {
-        Some(project_name) => project_name,
-        None => project_name_from_current_dir()?,
-    };
+pub(crate) fn init_project(init_opts: InitOptions) -> Result<(), anyhow::Error> {
     let config_path = PathBuf::from("l3.yml");
     let data_dir = PathBuf::from(".l3");
     let routes_dir = PathBuf::from("routes");
@@ -19,7 +15,10 @@ pub(crate) fn init_project(opts: InitOptions) -> Result<(), anyhow::Error> {
         println!("error: current directory already contains an l3 project");
         exit(1);
     }
-    println!("creating project `{}` in current directory", project_name);
+    println!(
+        "creating project `{}` in current directory",
+        init_opts.project_name
+    );
 
     let gitignore = PathBuf::from(".gitignore");
     if gitignore.exists() {
@@ -31,7 +30,10 @@ pub(crate) fn init_project(opts: InitOptions) -> Result<(), anyhow::Error> {
         println!("✔ created .gitignore");
     }
 
-    fs::write(config_path, format!("project_name: {}\n", project_name))?;
+    fs::write(
+        config_path,
+        format!("project_name: {}\n", init_opts.project_name),
+    )?;
     println!("✔ created l3.yml config");
 
     fs::create_dir("routes")?;
@@ -41,12 +43,4 @@ pub(crate) fn init_project(opts: InitOptions) -> Result<(), anyhow::Error> {
     println!("✔ created routes/get.mjs");
 
     Ok(())
-}
-
-fn project_name_from_current_dir() -> Result<String, anyhow::Error> {
-    Ok(env::current_dir()?
-        .file_name()
-        .unwrap()
-        .to_string_lossy()
-        .to_string())
 }

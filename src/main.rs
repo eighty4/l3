@@ -1,12 +1,9 @@
-use std::{fs, io, path::PathBuf, process};
+use std::{env, process};
 
-use anyhow::Error;
-use base64::Engine;
 use clap::{Parser, Subcommand};
-use sha2::{Digest, Sha256};
 
 use crate::init::{init_project, InitOptions};
-use crate::sync::sync_project;
+use crate::sync::{sync_project, SyncOptions};
 
 mod aws;
 mod code;
@@ -24,8 +21,10 @@ struct LambdaX3Cli {
 
 #[derive(Subcommand)]
 enum LambdaX3Command {
+    #[clap(about = "Create a project in the current directory")]
     Init(InitArgs),
-    Sync,
+    #[clap(about = "")]
+    Sync(SyncArgs),
 }
 
 #[derive(Parser, Debug)]
@@ -40,9 +39,39 @@ struct InitArgs {
 
 impl From<InitArgs> for InitOptions {
     fn from(args: InitArgs) -> Self {
-        InitOptions {
-            project_name: args.project_name,
+        Self {
+            project_name: args.project_name.unwrap_or_else(|| {
+                env::current_dir()
+                    .unwrap()
+                    .file_stem()
+                    .unwrap()
+                    .to_string_lossy()
+                    .to_string()
+            }),
         }
+    }
+}
+
+#[derive(Parser, Debug)]
+struct SyncArgs {
+    #[clap(long, value_name = "API_ID")]
+    api_id: Option<String>,
+    #[clap(long, value_name = "STAGE_NAME", default_value = "development")]
+    stage_name: String,
+}
+
+impl TryFrom<SyncArgs> for SyncOptions {
+    type Error = anyhow::Error;
+
+    fn try_from(args: SyncArgs) -> Result<Self, Self::Error> {
+        Ok(Self {
+            api_id: args.api_id,
+            project_name: match config::project_name()? {
+                None => panic!("need a l3.yml file with a `project_name: ` string"),
+                Some(project_name) => project_name,
+            },
+            stage_name: args.stage_name,
+        })
     }
 }
 
@@ -54,47 +83,9 @@ async fn main() {
     }
 }
 
-async fn exec_cmd(cmd: LambdaX3Command) -> Result<(), Error> {
+async fn exec_cmd(cmd: LambdaX3Command) -> Result<(), anyhow::Error> {
     match cmd {
         LambdaX3Command::Init(args) => init_project(InitOptions::from(args)),
-        LambdaX3Command::Sync => sync_project().await,
-    }
-}
-
-#[allow(dead_code)]
-fn sha256_checksum(path: &PathBuf) -> Result<String, Error> {
-    let mut hasher = Sha256::new();
-    let mut file = fs::File::open(path)?;
-    io::copy(&mut file, &mut hasher)?;
-    let hash_bytes = hasher.finalize();
-    Ok(base64::engine::general_purpose::STANDARD.encode(hash_bytes))
-}
-
-#[cfg(test)]
-mod tests {
-    use io::Write;
-
-    use temp_dir::TempDir;
-
-    use super::*;
-
-    #[test]
-    fn test() {
-        let d = TempDir::new().expect("make temp dir");
-        let p = d.path().join("file");
-        let mut f = fs::OpenOptions::new()
-            .write(true)
-            .create(true)
-            .open(&p)
-            .expect("create file");
-        f.write_all("content".as_bytes())
-            .expect("write bytes to file");
-
-        let result = sha256_checksum(&p);
-        assert!(result.is_ok());
-        assert_eq!(
-            "7XACtDnprIRfIjV9giusFERzD722AW0+yUMil7nsn3M=",
-            result.unwrap()
-        );
+        LambdaX3Command::Sync(args) => sync_project(SyncOptions::try_from(args)?).await,
     }
 }
