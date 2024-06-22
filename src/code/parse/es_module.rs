@@ -1,14 +1,15 @@
 use std::path::Path;
 use std::sync::Arc;
 
+use anyhow::anyhow;
 use swc::config::IsModule;
 use swc::try_with_handler;
 use swc_common::{SourceMap, GLOBALS};
 use swc_ecma_ast::{Decl, EsVersion, ModuleDecl, ModuleItem, Program};
 use swc_ecma_parser::{EsConfig, Syntax};
 
-pub fn parse_module_for_exported_fns(path: &Path) -> Vec<String> {
-    let program = parse_module_for_ast(path);
+pub fn parse_module_for_exported_fns(path: &Path) -> Result<Vec<String>, anyhow::Error> {
+    let program = parse_module_for_ast(path)?;
     let mut exported_fns = Vec::new();
     match program {
         Program::Module(module) => {
@@ -32,15 +33,17 @@ pub fn parse_module_for_exported_fns(path: &Path) -> Vec<String> {
                 }
             }
         }
-        Program::Script(_) => panic!(
-            "{} should be an ES module",
-            path.file_name().unwrap().to_string_lossy()
-        ),
+        Program::Script(_) => {
+            return Err(anyhow!(
+                "unable to parse CJS format for source file {}",
+                path.to_string_lossy()
+            ))
+        }
     }
-    exported_fns
+    Ok(exported_fns)
 }
 
-fn parse_module_for_ast(path: &Path) -> Program {
+fn parse_module_for_ast(path: &Path) -> Result<Program, anyhow::Error> {
     let source_map = Arc::<SourceMap>::default();
     let compiler = swc::Compiler::new(source_map.clone());
     GLOBALS
@@ -56,5 +59,5 @@ fn parse_module_for_ast(path: &Path) -> Program {
                 )
             })
         })
-        .unwrap()
+        .map_err(|err| anyhow!("error from compiler parsing JS: {}", err.to_string()))
 }

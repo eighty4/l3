@@ -1,111 +1,120 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
-use aws_sdk_apigatewayv2::types::{ConnectionType, Integration, IntegrationType, Route};
+use aws_sdk_apigatewayv2::types::{Integration, Route};
+use aws_sdk_lambda::types::FunctionConfiguration;
 
 use crate::aws::clients::AwsClients;
-use crate::aws::lambda::FunctionName;
-use crate::lambda::{LambdaFn, RouteKey};
-
-pub type IntegrationId = String;
+use crate::aws::lambda::{FunctionArn, FunctionName, IntegrationId, RouteId};
+use crate::lambda::RouteKey;
 
 pub struct DeployedLambdaComponents {
     pub function: Option<FunctionName>,
     pub integration: Option<IntegrationId>,
-    pub route: Option<RouteKey>,
+    pub route: Option<RouteId>,
 }
 
+// todo diffing deployed components mutably, to remove dangling resources after sync
 pub struct DeployedProjectState {
-    pub functions: HashSet<FunctionName>,
-    pub integrations: Vec<Integration>,
+    pub functions: HashMap<FunctionArn, FunctionConfiguration>,
+    pub integrations: HashMap<IntegrationId, Integration>,
     pub routes: HashMap<RouteKey, Route>,
 }
 
 impl DeployedProjectState {
-    pub async fn fetch_state(
-        sdk_clients: &AwsClients,
-        api_id: &String,
-    ) -> Result<Self, anyhow::Error> {
-        let list_functions_output = sdk_clients.lambda.list_functions().send().await?;
-
-        let mut functions = HashSet::new();
-        if let Some(fetched_functions) = list_functions_output.functions {
-            for function in fetched_functions {
-                functions.insert(function.function_name.unwrap());
+    pub fn new(
+        project_name: &String,
+        fetched_functions: Vec<FunctionConfiguration>,
+        fetched_integrations: Vec<Integration>,
+        fetched_routes: Vec<Route>,
+    ) -> Self {
+        let fn_prefix = format!("l3-{project_name}-");
+        let mut functions = HashMap::new();
+        for function in fetched_functions {
+            if function
+                .function_name
+                .as_ref()
+                .map_or(false, |fn_name| fn_name.starts_with(fn_prefix.as_str()))
+            {
+                functions.insert(function.function_arn.clone().unwrap(), function);
             }
         }
+        let mut routes = HashMap::new();
+        for route in fetched_routes {
+            let route_key = RouteKey::try_from(route.route_key.clone().unwrap()).unwrap();
+            routes.insert(route_key, route);
+        }
+        let mut integrations = HashMap::new();
+        for integration in fetched_integrations {
+            integrations.insert(integration.integration_id.clone().unwrap(), integration);
+        }
+        Self {
+            functions,
+            integrations,
+            routes,
+        }
+    }
 
-        let get_routes_output = sdk_clients
+    // todo handle pagination across multiple requests for functions, integrations and routes
+    pub async fn fetch_state_from_aws(
+        sdk_clients: &AwsClients,
+        project_name: &String,
+        api_id: &String,
+    ) -> Result<Self, anyhow::Error> {
+        let functions = sdk_clients
+            .lambda
+            .list_functions()
+            .send()
+            .await?
+            .functions
+            .unwrap();
+        let routes = sdk_clients
             .api_gateway
             .get_routes()
             .api_id(api_id)
             .send()
-            .await?;
-
-        let mut routes = HashMap::new();
-        if let Some(fetched_routes) = get_routes_output.items {
-            for route in fetched_routes {
-                let route_key = RouteKey::try_from(route.route_key.clone().unwrap())?;
-                routes.insert(route_key, route);
-            }
-        }
-
-        let get_integrations_output = sdk_clients
+            .await?
+            .items
+            .unwrap();
+        let integrations = sdk_clients
             .api_gateway
             .get_integrations()
             .api_id(api_id)
             .send()
-            .await?;
-
-        let mut integrations = Vec::new();
-        if let Some(fetched_integrations) = get_integrations_output.items {
-            for integration in fetched_integrations {
-                if is_valid_integration(&integration) {
-                    integrations.push(integration);
-                }
-            }
-        }
-
-        Ok(Self {
+            .await?
+            .items
+            .unwrap();
+        Ok(DeployedProjectState::new(
+            project_name,
             functions,
             integrations,
             routes,
-        })
+        ))
     }
 
-    pub fn get_deployed_components(&self, lambda_fn: &LambdaFn) -> DeployedLambdaComponents {
-        DeployedLambdaComponents {
-            function: self.functions.get(&lambda_fn.fn_name).cloned(),
-            integration: self.get_integration_id_by_fn_name(&lambda_fn.fn_name),
-            route: self.get_route_by_route_key(&lambda_fn.route_key),
-        }
-    }
-
-    fn get_integration_id_by_fn_name(&self, fn_name: &FunctionName) -> Option<IntegrationId> {
-        for integration in self.integrations.iter() {
-            let arn = integration.integration_uri.clone().unwrap();
-            if arn.starts_with("arn:aws:lambda") && arn.ends_with(fn_name.as_str()) {
-                return Some(integration.integration_id.clone().unwrap());
+    pub fn get_deployed_components(&self, route_key: &RouteKey) -> DeployedLambdaComponents {
+        let route = self.routes.get(route_key);
+        let integration = match route {
+            None => None,
+            Some(route) => {
+                let integration_id = route
+                    .target
+                    .as_ref()
+                    .and_then(|target| target.strip_prefix("integrations/"));
+                integration_id.and_then(|integration_id| self.integrations.get(integration_id))
             }
-        }
-        None
-    }
-
-    fn get_route_by_route_key(&self, route_key: &RouteKey) -> Option<RouteKey> {
-        self.routes
-            .get(route_key)
-            .map(|r| RouteKey::try_from(r.route_key.clone().unwrap()).unwrap())
-    }
-}
-
-fn is_valid_integration(integration: &Integration) -> bool {
-    let mut valid = true;
-    if integration.connection_type.is_none() || integration.integration_type.is_none() {
-        valid = false;
-    } else if let Some(ct) = &integration.connection_type {
-        valid = valid && matches!(ct, ConnectionType::Internet);
-        if let Some(it) = &integration.integration_type {
-            valid = valid && matches!(it, IntegrationType::AwsProxy);
+        };
+        let function = match integration {
+            None => None,
+            Some(integration) => integration
+                .integration_uri
+                .as_ref()
+                .and_then(|fn_arn| self.functions.get(fn_arn)),
+        };
+        // todo resolve function iterating over functions
+        DeployedLambdaComponents {
+            function: function.and_then(|f| f.function_name.clone()),
+            integration: integration.and_then(|i| i.integration_id.clone()),
+            route: route.and_then(|r| r.route_id.clone()),
         }
     }
-    valid
 }

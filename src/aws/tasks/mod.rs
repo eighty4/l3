@@ -17,10 +17,11 @@ pub struct DeployFnParams {
     pub lambda_role_arn: String,
     pub region: String,
     pub stage_name: String,
+    pub sync_id: String,
 }
 
 pub enum SyncTask {
-    DeployFn(DeployFnParams),
+    DeployFn(Box<DeployFnParams>),
     #[allow(unused)]
     RemoveFn(DeployedLambdaComponents),
     #[allow(unused)]
@@ -31,7 +32,7 @@ pub enum SyncTask {
 
 pub async fn exec(sdk_clients: &AwsClients, task: SyncTask) -> Result<(), anyhow::Error> {
     if let SyncTask::DeployFn(params) = task {
-        perform_deploy_fn(sdk_clients, params).await?;
+        perform_deploy_fn(sdk_clients, params.as_ref()).await?;
     }
     Ok(())
 }

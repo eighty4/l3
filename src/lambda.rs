@@ -3,7 +3,8 @@ use std::path::PathBuf;
 
 use anyhow::anyhow;
 
-use crate::code::sha256::make_checksum;
+use crate::code::env::EnvVarSources;
+use crate::code::source::SourceFile;
 
 #[derive(Clone, Eq, Hash, PartialEq)]
 pub struct RouteKey {
@@ -15,12 +16,20 @@ impl RouteKey {
     pub fn new(http_method: HttpMethod, http_path: String) -> Self {
         Self {
             http_method,
-            http_path,
+            http_path: if let Some(s) = http_path.strip_prefix('/') {
+                s.to_string()
+            } else {
+                http_path
+            },
         }
     }
 
     pub fn to_route_key_string(&self) -> String {
         format!("{} /{}", self.http_method, self.http_path)
+    }
+
+    pub fn to_route_dir_path(&self) -> PathBuf {
+        PathBuf::from("routes").join(&self.http_path)
     }
 }
 
@@ -35,7 +44,7 @@ impl TryFrom<String> for RouteKey {
     }
 }
 
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum HttpMethod {
     Delete,
     Get,
@@ -75,65 +84,38 @@ impl<'a> TryFrom<&'a str> for HttpMethod {
 }
 
 #[derive(Clone)]
-pub struct SourceFile {
-    #[allow(unused)]
-    pub extension: String,
-    pub file_name: String,
-    #[allow(unused)]
-    pub hash: String,
-    #[allow(unused)]
-    pub path: PathBuf,
-}
-
-impl TryFrom<PathBuf> for SourceFile {
-    type Error = anyhow::Error;
-
-    fn try_from(path: PathBuf) -> Result<Self, Self::Error> {
-        let file_name = path.file_name().unwrap().to_string_lossy().to_string();
-        let extension = path.extension().unwrap().to_string_lossy().to_string();
-        Ok(Self {
-            extension,
-            file_name,
-            hash: make_checksum(&path)?,
-            path,
-        })
-    }
-}
-
-pub fn create_fn_name(project_name: &String, route_key: &RouteKey) -> String {
-    format!(
-        "l3-{}-{}-{}-fn",
-        project_name,
-        route_key.http_path.replace('/', "-"),
-        route_key.http_method.to_string().to_lowercase(),
-    )
-}
-
-#[derive(Clone)]
 pub struct LambdaFn {
-    #[allow(unused)]
-    pub env_paths: Vec<SourceFile>,
-    pub fn_name: String,
+    pub env_var_sources: EnvVarSources,
+    fn_name: String,
     pub handler_fn: String,
     pub route_key: RouteKey,
-    #[allow(unused)]
     pub source_file: SourceFile,
 }
 
 impl LambdaFn {
     pub fn new(
+        env_var_sources: EnvVarSources,
         handler_fn: String,
         project_name: &String,
         route_key: RouteKey,
         source_file: SourceFile,
     ) -> Self {
         Self {
-            env_paths: Vec::new(),
-            fn_name: create_fn_name(project_name, &route_key),
+            env_var_sources,
+            fn_name: format!(
+                "l3-{}-{}-{}",
+                project_name,
+                route_key.http_path.replace('/', "-"),
+                route_key.http_method.to_string().to_lowercase(),
+            ),
             handler_fn,
             route_key,
             source_file,
         }
+    }
+
+    pub fn fn_name(&self, deploy_id: &String) -> String {
+        format!("{}-{}", self.fn_name, deploy_id)
     }
 
     pub fn handler_path(&self) -> String {

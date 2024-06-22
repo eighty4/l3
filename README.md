@@ -18,7 +18,7 @@ l3 init
 
 ## Sync to AWS
 
-`l3` will deploy any `delete.js`, `get.js`, `patch.js`, `post.js` and `put.js` JavaScript or `mjs` modules as lambdas.
+`l3` will deploy any `lambda.js` or `lambda.mjs` modules in the project's `./routes` directory with functions `DELETE`, `GET`, `PATCH`, `POST` or `PUT` as HTTP APIs via AWS API Gateway and Lambda services.
 
 ```shell
 l3 sync

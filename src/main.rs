@@ -12,6 +12,9 @@ mod init;
 mod lambda;
 mod sync;
 
+#[cfg(test)]
+mod lambda_test;
+
 #[derive(Parser)]
 #[command(author, version, about)]
 struct LambdaX3Cli {
@@ -43,7 +46,7 @@ impl From<InitArgs> for InitOptions {
             project_name: args.project_name.unwrap_or_else(|| {
                 env::current_dir()
                     .unwrap()
-                    .file_stem()
+                    .file_name()
                     .unwrap()
                     .to_string_lossy()
                     .to_string()
@@ -66,6 +69,7 @@ impl TryFrom<SyncArgs> for SyncOptions {
     fn try_from(args: SyncArgs) -> Result<Self, Self::Error> {
         Ok(Self {
             api_id: args.api_id,
+            project_dir: env::current_dir()?,
             project_name: match config::project_name()? {
                 None => panic!("need a l3.yml file with a `project_name: ` string"),
                 Some(project_name) => project_name,

@@ -1,4 +1,14 @@
 pub(crate) mod archive;
-pub(crate) mod parse;
+mod checksum;
+pub(crate) mod env;
+mod parse;
 pub(crate) mod read;
-pub(crate) mod sha256;
+mod sha256;
+pub(crate) mod source;
+
+#[cfg(test)]
+mod env_test;
+#[cfg(test)]
+mod sha256_test;
+#[cfg(test)]
+mod source_test;

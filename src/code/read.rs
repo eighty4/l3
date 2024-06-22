@@ -2,10 +2,13 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use crate::code::env::{is_valid_env_file_name, EnvFile, EnvVarSources};
 use crate::code::parse::parse_module_for_lambda_handlers;
-use crate::lambda::{LambdaFn, RouteKey, SourceFile};
+use crate::code::source::SourceFile;
+use crate::lambda::{LambdaFn, RouteKey};
 
 pub fn read_route_dir_for_lambdas(
+    project_dir: &Path,
     project_name: &String,
 ) -> Result<HashMap<RouteKey, LambdaFn>, anyhow::Error> {
     let mut lambdas = HashMap::new();
@@ -13,15 +16,36 @@ pub fn read_route_dir_for_lambdas(
         for source_path in route_dir.lambda_files {
             let lambda_fns = parse_module_for_lambda_handlers(&source_path)?;
             if lambda_fns.is_empty() {
+                // todo warning if env files without any lambdas in a route dir
                 continue;
             }
+            let mut route_env_files = Vec::new();
+            for env_file_path in &route_dir.env_files {
+                route_env_files.push(EnvFile::create(
+                    env_file_path.clone(),
+                    project_dir.to_path_buf(),
+                )?);
+            }
             let http_path = create_http_path_from_source_path(&source_path);
-            let source_file = SourceFile::try_from(source_path)?;
+            let source_file = SourceFile::create(source_path, project_dir.to_path_buf())?;
             for (http_method, handler_fn) in lambda_fns {
+                let mut lambda_env_files = Vec::new();
+                for env_file in &route_env_files {
+                    if env_file.is_for_http_method(&http_method) {
+                        lambda_env_files.push(env_file.clone())
+                    }
+                }
                 let route_key = RouteKey::new(http_method, http_path.clone());
+                let env_var_sources = EnvVarSources::new(lambda_env_files, route_key.clone())?;
                 lambdas.insert(
                     route_key.clone(),
-                    LambdaFn::new(handler_fn, project_name, route_key, source_file.clone()),
+                    LambdaFn::new(
+                        env_var_sources,
+                        handler_fn,
+                        project_name,
+                        route_key,
+                        source_file.clone(),
+                    ),
                 );
             }
         }
@@ -45,7 +69,6 @@ fn create_http_path_from_source_path(source_path: &Path) -> String {
 struct RouteDir {
     #[allow(unused)]
     dir_path: PathBuf,
-    #[allow(unused)]
     env_files: Vec<PathBuf>,
     lambda_files: Vec<PathBuf>,
 }
@@ -64,8 +87,12 @@ fn recursively_read_route_dir(dir_path: PathBuf) -> Result<Vec<RouteDir>, anyhow
             match file_name.as_ref() {
                 "lambda.ts" | "lambda.js" | "lambda.mjs" => lambda_files.push(path),
                 _ => {
-                    if file_name.contains(".env") {
-                        env_files.push(path)
+                    if file_name.ends_with(".env") {
+                        if is_valid_env_file_name(&file_name) {
+                            env_files.push(path)
+                        } else {
+                            // todo warning about unresolvable env file
+                        }
                     }
                 }
             }

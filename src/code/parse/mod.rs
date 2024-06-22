@@ -7,12 +7,33 @@ use crate::lambda::HttpMethod;
 
 mod es_module;
 
+#[cfg(test)]
+mod es_module_test;
+#[cfg(test)]
+mod parse_test;
+#[cfg(test)]
+mod ts_module_test;
+
 pub fn parse_module_for_lambda_handlers(
     path: &Path,
 ) -> Result<HashMap<HttpMethod, String>, anyhow::Error> {
-    let file_extension = path.extension().unwrap().to_string_lossy().to_string();
+    if !path.is_file() {
+        return Err(anyhow!(
+            "source file does not exist at {}",
+            path.to_string_lossy()
+        ));
+    }
+    let file_extension = match path.extension() {
+        None => {
+            return Err(anyhow!(
+                "file extension missing for source file {}",
+                path.to_string_lossy()
+            ))
+        }
+        Some(ext) => ext.to_string_lossy().to_string(),
+    };
     let exported_fns = if file_extension == "js" || file_extension == "mjs" {
-        es_module::parse_module_for_exported_fns(path)
+        es_module::parse_module_for_exported_fns(path)?
     } else {
         return Err(anyhow!(
             "{file_extension} is not a supported file type for source file {}",
