@@ -41,12 +41,14 @@ fn test_deployed_state_resolves_lambda_components_by_route_key() {
                 .build(),
         ],
     );
-    let components =
-        state.get_deployed_components(&RouteKey::new(HttpMethod::Get, "BINGO".to_string()));
+    let components = state.get_deployed_components(
+        &String::from("l3-this_project-some-function"),
+        &RouteKey::new(HttpMethod::Get, "BINGO".to_string()),
+    );
     assert_eq!(components.route.unwrap(), "route id");
     assert_eq!(components.integration.unwrap(), "integration id");
     assert_eq!(
         components.function.unwrap(),
-        "l3-this_project-some-function"
+        "arn:aws:lambda:region:account:l3-this_project-some-function"
     );
 }

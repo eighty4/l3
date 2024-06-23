@@ -60,19 +60,20 @@ fn test_lambda_fn_fn_name() {
     let project_dir = TempDir::new().unwrap();
     fs::create_dir_all(project_dir.path().join("routes/data")).unwrap();
     let source_file_path = PathBuf::from("routes/data/lambda.js");
-    fs::write(project_dir.path().join(&source_file_path), "").unwrap();
-    let route_key = RouteKey::new(HttpMethod::Get, "data".to_string());
+    fs::write(
+        project_dir.path().join(&source_file_path),
+        "export function DELETE(){}",
+    )
+    .unwrap();
+    let route_key = RouteKey::new(HttpMethod::Delete, "data".to_string());
     let lambda_fn = LambdaFn::new(
         EnvVarSources::new(Vec::new(), route_key.clone()).unwrap(),
-        "GET".to_string(),
+        "DELETE".to_string(),
         &"my_proj".to_string(),
         route_key,
         SourceFile::create(source_file_path, project_dir.path().to_path_buf()).unwrap(),
     );
-    assert_eq!(
-        lambda_fn.fn_name(&"DEPLOY".to_string()),
-        "l3-my_proj-data-get-DEPLOY".to_string()
-    );
+    assert_eq!(lambda_fn.fn_name, "l3-my_proj-data-delete");
 }
 
 #[test]
@@ -80,7 +81,11 @@ fn test_lambda_fn_handler_path() {
     let project_dir = TempDir::new().unwrap();
     fs::create_dir_all(project_dir.path().join("routes/data")).unwrap();
     let source_file_path = PathBuf::from("routes/data/lambda.js");
-    fs::write(project_dir.path().join(&source_file_path), "").unwrap();
+    fs::write(
+        project_dir.path().join(&source_file_path),
+        "export function GET(){}",
+    )
+    .unwrap();
     let route_key = RouteKey::new(HttpMethod::Get, "data".to_string());
     let lambda_fn = LambdaFn::new(
         EnvVarSources::new(Vec::new(), route_key.clone()).unwrap(),

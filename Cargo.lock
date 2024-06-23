@@ -1433,7 +1433,6 @@ dependencies = [
  "base64 0.22.1",
  "clap",
  "lazy_static",
- "rand",
  "regex",
  "sha2",
  "swc",

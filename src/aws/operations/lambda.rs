@@ -4,10 +4,12 @@ use std::path::PathBuf;
 use std::process::exit;
 use std::time::Duration;
 
-use anyhow::{anyhow, Error};
+use anyhow::anyhow;
 use aws_sdk_lambda::operation::create_function::CreateFunctionError;
 use aws_sdk_lambda::primitives::Blob;
-use aws_sdk_lambda::types::{Environment, FunctionCode, Runtime};
+use aws_sdk_lambda::types::{
+    Environment, FunctionCode, FunctionConfiguration, LastUpdateStatus, Runtime, State,
+};
 
 use crate::aws::lambda::FunctionArn;
 
@@ -20,7 +22,10 @@ pub async fn create_fn(
     handler_path: &String,
     role_arn: &String,
     env_vars: Option<HashMap<String, String>>,
-) -> Result<FunctionArn, Error> {
+) -> Result<FunctionArn, anyhow::Error> {
+    // todo fix uploading zip file blob in a loop when waiting for lambda role creation
+    //  use s3 to only upload code archive once
+    //  check for role active state
     let start = std::time::Instant::now();
     loop {
         let result = lambda
@@ -70,11 +75,74 @@ pub async fn create_fn(
     }
 }
 
+pub async fn wait_for_fn_state_active(
+    lambda: &aws_sdk_lambda::Client,
+    fn_name: &String,
+) -> Result<bool, anyhow::Error> {
+    let start = std::time::Instant::now();
+    loop {
+        if std::time::Instant::now() - start > Duration::from_secs(5) {
+            panic!("fn update timed out for fn {fn_name}");
+        }
+        tokio::time::sleep(Duration::from_millis(100)).await;
+        let result = match get_function(lambda, fn_name).await?.state.unwrap() {
+            State::Active => true,
+            State::Failed => false,
+            State::Inactive => false,
+            State::Pending => continue,
+            _ => panic!("unknown fn state for fn {fn_name}"),
+        };
+        let duration = (std::time::Instant::now() - start).as_millis();
+        println!("debug: wait for state active {duration}ms");
+        return Ok(result);
+    }
+}
+
+pub async fn wait_for_fn_update_successful(
+    lambda: &aws_sdk_lambda::Client,
+    fn_name: &String,
+) -> Result<bool, anyhow::Error> {
+    let start = std::time::Instant::now();
+    loop {
+        if std::time::Instant::now() - start > Duration::from_secs(5) {
+            panic!("fn update timed out for fn {fn_name}");
+        }
+        tokio::time::sleep(Duration::from_millis(100)).await;
+        let result = match get_function(lambda, fn_name)
+            .await?
+            .last_update_status
+            .unwrap()
+        {
+            LastUpdateStatus::Failed => false,
+            LastUpdateStatus::InProgress => continue,
+            LastUpdateStatus::Successful => true,
+            _ => panic!("unknown fn update status for fn {fn_name}"),
+        };
+        let duration = (std::time::Instant::now() - start).as_millis();
+        println!("debug: wait for update status {duration}ms");
+        return Ok(result);
+    }
+}
+
+pub async fn get_function(
+    lambda: &aws_sdk_lambda::Client,
+    fn_name: &String,
+) -> Result<FunctionConfiguration, anyhow::Error> {
+    Ok(lambda
+        .get_function()
+        .function_name(fn_name)
+        .send()
+        .await
+        .map_err(|err| anyhow!("{}", err.into_service_error().to_string()))?
+        .configuration
+        .unwrap())
+}
+
 #[allow(unused)]
 pub async fn does_fn_exist(
     lambda: &aws_sdk_lambda::Client,
     function_name: &str,
-) -> Result<bool, Error> {
+) -> Result<bool, anyhow::Error> {
     match lambda
         .get_function()
         .function_name(function_name)

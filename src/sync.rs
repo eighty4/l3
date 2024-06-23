@@ -1,11 +1,11 @@
 use std::fs;
 use std::path::PathBuf;
 
-use rand::Rng;
+use anyhow::anyhow;
 
 use crate::aws::clients::AwsClients;
 use crate::aws::config::load_sdk_config;
-use crate::aws::operations::api_gateway::create_api;
+use crate::aws::operations::api_gateway::{create_api, does_api_exist};
 use crate::aws::operations::iam::{create_lambda_role, get_account_id};
 use crate::aws::state::DeployedProjectState;
 use crate::aws::tasks::{DeployFnParams, SyncTask};
@@ -33,23 +33,7 @@ pub(crate) async fn sync_project(sync_options: SyncOptions) -> Result<(), anyhow
     println!("aws sdk configured for region {region}");
     let sdk_clients = AwsClients::from(sdk_config);
     let account_id = get_account_id(&sdk_clients.iam).await?;
-    let api_id = match sync_options.api_id {
-        None => {
-            let cached_api_id_path = PathBuf::from(".l3/api");
-            if cached_api_id_path.exists() {
-                fs::read_to_string(cached_api_id_path)?
-            } else {
-                println!("creating new api gateway");
-                create_api(
-                    &sdk_clients.api_gateway,
-                    &sync_options.project_name,
-                    &sync_options.stage_name,
-                )
-                .await?
-            }
-        }
-        Some(api_id) => api_id,
-    };
+    let api_id = validate_or_create_api(&sdk_clients, &sync_options).await?;
     println!("using api gateway {api_id}");
     fs::create_dir_all(format!(".l3/{api_id}"))?;
     fs::write(".l3/api", &api_id)?;
@@ -69,18 +53,18 @@ pub(crate) async fn sync_project(sync_options: SyncOptions) -> Result<(), anyhow
     .await?;
     let mut sync_tasks: Vec<SyncTask> = Vec::new();
 
-    let sync_id = create_sync_id();
     for lambda_fn in local_fns.values() {
-        let deployed_components = deployed_state.get_deployed_components(&lambda_fn.route_key);
+        let deployed_components =
+            deployed_state.get_deployed_components(&lambda_fn.fn_name, &lambda_fn.route_key);
         sync_tasks.push(SyncTask::DeployFn(Box::new(DeployFnParams {
             account_id: account_id.clone(),
             api_id: api_id.clone(),
             deployed_components,
             lambda_fn: lambda_fn.clone(),
             lambda_role_arn: lambda_role.arn.clone(),
+            publish_fn_updates: true,
             region: region.to_string(),
             stage_name: sync_options.stage_name.clone(),
-            sync_id: sync_id.clone(),
         })));
     }
 
@@ -100,10 +84,51 @@ pub(crate) async fn sync_project(sync_options: SyncOptions) -> Result<(), anyhow
     Ok(())
 }
 
-fn create_sync_id() -> String {
-    let mut rng = rand::thread_rng();
-    (0..3)
-        .map(|_| rng.sample(rand::distributions::Alphanumeric) as char)
-        .map(|c| c.to_ascii_lowercase())
-        .collect()
+async fn validate_or_create_api(
+    sdk_clients: &AwsClients,
+    sync_options: &SyncOptions,
+) -> Result<String, anyhow::Error> {
+    match sync_options.api_id.as_ref() {
+        None => {
+            let cached_api_id_path = PathBuf::from(".l3/api");
+            if cached_api_id_path.exists() {
+                let cached_api_id = fs::read_to_string(cached_api_id_path)?;
+                match does_api_exist(&sdk_clients.api_gateway, &cached_api_id).await {
+                    Ok(exists) => {
+                        if exists {
+                            Ok(cached_api_id)
+                        } else {
+                            println!("cached api {cached_api_id} does not exist");
+                            println!("creating new api gateway");
+                            create_api(
+                                &sdk_clients.api_gateway,
+                                &sync_options.project_name,
+                                &sync_options.stage_name,
+                            )
+                            .await
+                        }
+                    }
+                    Err(err) => Err(anyhow!("verifying --api_id {cached_api_id} error {err}")),
+                }
+            } else {
+                println!("creating new api gateway");
+                create_api(
+                    &sdk_clients.api_gateway,
+                    &sync_options.project_name,
+                    &sync_options.stage_name,
+                )
+                .await
+            }
+        }
+        Some(api_id) => match does_api_exist(&sdk_clients.api_gateway, api_id).await {
+            Ok(exists) => {
+                if exists {
+                    Ok(api_id.clone())
+                } else {
+                    panic!("--api_id {api_id} does not exist");
+                }
+            }
+            Err(err) => Err(anyhow!("verifying --api_id {api_id} error {err}")),
+        },
+    }
 }

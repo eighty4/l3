@@ -15,9 +15,9 @@ pub struct DeployFnParams {
     pub deployed_components: DeployedLambdaComponents,
     pub lambda_fn: LambdaFn,
     pub lambda_role_arn: String,
+    pub publish_fn_updates: bool,
     pub region: String,
     pub stage_name: String,
-    pub sync_id: String,
 }
 
 pub enum SyncTask {

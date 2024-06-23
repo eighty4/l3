@@ -1,13 +1,18 @@
+use std::fs;
 use std::path::PathBuf;
 
 use anyhow::anyhow;
 use aws_sdk_apigatewayv2::operation::update_integration::UpdateIntegrationOutput;
 use aws_sdk_apigatewayv2::operation::update_route::UpdateRouteOutput;
 use aws_sdk_apigatewayv2::types::IntegrationType;
+use aws_sdk_iam::primitives::Blob;
+use aws_sdk_lambda::types::Environment;
 
 use crate::aws::clients::AwsClients;
 use crate::aws::lambda::{IntegrationId, RouteId};
-use crate::aws::operations::lambda::create_fn;
+use crate::aws::operations::lambda::{
+    create_fn, wait_for_fn_state_active, wait_for_fn_update_successful,
+};
 use crate::aws::tasks::DeployFnParams;
 use crate::code::archive::CODE_ARCHIVE_PATH;
 use crate::lambda::RouteKey;
@@ -16,48 +21,92 @@ pub async fn perform_deploy_fn(
     sdk_clients: &AwsClients,
     params: &DeployFnParams,
 ) -> Result<(), anyhow::Error> {
-    let fn_name = params.lambda_fn.fn_name(&params.sync_id);
     let env_vars = params.lambda_fn.env_var_sources.read_env_variables()?;
-    let created_fn_arn = create_fn(
-        &sdk_clients.lambda,
-        &fn_name,
-        &PathBuf::from(CODE_ARCHIVE_PATH),
-        &params.lambda_fn.handler_path(),
-        &params.lambda_role_arn,
-        env_vars,
-    )
-    .await?;
-    params
-        .lambda_fn
-        .env_var_sources
-        .update_cached_checksums(&params.api_id)?;
+    let mut updated_env_vars = true;
+    let synced_fn_arn = match &params.deployed_components.function {
+        None => {
+            let created_fn_arn = create_fn(
+                &sdk_clients.lambda,
+                &params.lambda_fn.fn_name,
+                &PathBuf::from(CODE_ARCHIVE_PATH),
+                &params.lambda_fn.handler_path(),
+                &params.lambda_role_arn,
+                env_vars,
+            )
+            .await?;
+            wait_for_fn_state_active(&sdk_clients.lambda, &params.lambda_fn.fn_name).await?;
 
-    let source_arn = format!(
-        "arn:aws:execute-api:{}:{}:{}/{}/{}/{}",
-        params.region,
-        params.account_id,
-        params.api_id,
-        params.stage_name,
-        params.lambda_fn.route_key.http_method,
-        params.lambda_fn.route_key.http_path,
-    );
-    sdk_clients
-        .lambda
-        .add_permission()
-        .statement_id(format!("{}_{}", params.api_id, params.stage_name))
-        .function_name(&created_fn_arn)
-        .action("lambda:InvokeFunction")
-        .principal("apigateway.amazonaws.com")
-        .source_arn(source_arn)
-        .send()
-        .await
-        .map_err(|err| anyhow!("{}", err.into_service_error().to_string()))?;
+            let source_arn = format!(
+                "arn:aws:execute-api:{}:{}:{}/{}/{}/{}",
+                params.region,
+                params.account_id,
+                params.api_id,
+                params.stage_name,
+                params.lambda_fn.route_key.http_method,
+                params.lambda_fn.route_key.http_path,
+            );
+            sdk_clients
+                .lambda
+                .add_permission()
+                .statement_id(format!("{}_{}", params.api_id, params.stage_name))
+                .function_name(&created_fn_arn)
+                .action("lambda:InvokeFunction")
+                .principal("apigateway.amazonaws.com")
+                .source_arn(source_arn)
+                .send()
+                .await
+                .map_err(|err| anyhow!("{}", err.into_service_error().to_string()))?;
+            created_fn_arn
+        }
+        Some(updating_fn_arn) => {
+            if !params
+                .lambda_fn
+                .env_var_sources
+                .requires_update(&params.api_id)?
+            {
+                updated_env_vars = false;
+            } else {
+                sdk_clients
+                    .lambda
+                    .update_function_configuration()
+                    .function_name(&params.lambda_fn.fn_name)
+                    .environment(Environment::builder().set_variables(env_vars).build())
+                    .send()
+                    .await
+                    .map_err(|err| anyhow!("{}", err.into_service_error().to_string()))?;
+                wait_for_fn_update_successful(&sdk_clients.lambda, &params.lambda_fn.fn_name)
+                    .await?;
+            }
+            sdk_clients
+                .lambda
+                .update_function_code()
+                .function_name(&params.lambda_fn.fn_name)
+                .zip_file(Blob::new(fs::read(&PathBuf::from(CODE_ARCHIVE_PATH))?))
+                .send()
+                .await
+                .map_err(|err| anyhow!("{}", err.into_service_error().to_string()))?;
+            // todo update code
+            // todo wait for publish to finish
+            updating_fn_arn.clone()
+        }
+    };
+
+    // todo publish version and use fully qualified published version arn for api gateway
+    if params.publish_fn_updates {
+        println!("do not forget to aws lambda publish-version")
+    }
+
+    if updated_env_vars {
+        params
+            .lambda_fn
+            .env_var_sources
+            .update_cached_checksums(&params.api_id)?;
+    }
 
     match &params.deployed_components.route {
         None => {
-            // todo create route and integration
             let integration_id =
-                create_integration(sdk_clients, &params.api_id, &created_fn_arn).await?;
+                create_integration(sdk_clients, &params.api_id, &synced_fn_arn).await?;
             create_route(
                 sdk_clients,
                 &params.api_id,
@@ -69,28 +118,15 @@ pub async fn perform_deploy_fn(
         Some(route_id) => match &params.deployed_components.integration {
             None => {
                 let integration_id =
-                    create_integration(sdk_clients, &params.api_id, &created_fn_arn).await?;
+                    create_integration(sdk_clients, &params.api_id, &synced_fn_arn).await?;
                 update_route_target(sdk_clients, &params.api_id, route_id, &integration_id).await?;
             }
             Some(integration_id) => {
-                update_integration_uri(
-                    sdk_clients,
-                    &params.api_id,
-                    integration_id,
-                    &created_fn_arn,
-                )
-                .await?;
+                update_integration_uri(sdk_clients, &params.api_id, integration_id, &synced_fn_arn)
+                    .await?;
             }
         },
     };
-    if let Some(previous_fn_name) = &params.deployed_components.function {
-        sdk_clients
-            .lambda
-            .delete_function()
-            .function_name(previous_fn_name)
-            .send()
-            .await?;
-    }
     Ok(())
 }
 

@@ -86,7 +86,7 @@ impl<'a> TryFrom<&'a str> for HttpMethod {
 #[derive(Clone)]
 pub struct LambdaFn {
     pub env_var_sources: EnvVarSources,
-    fn_name: String,
+    pub fn_name: String,
     pub handler_fn: String,
     pub route_key: RouteKey,
     pub source_file: SourceFile,
@@ -112,10 +112,6 @@ impl LambdaFn {
             route_key,
             source_file,
         }
-    }
-
-    pub fn fn_name(&self, deploy_id: &String) -> String {
-        format!("{}-{}", self.fn_name, deploy_id)
     }
 
     pub fn handler_path(&self) -> String {
