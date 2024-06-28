@@ -3,6 +3,7 @@ use std::path::Path;
 
 use anyhow::anyhow;
 
+use crate::code::parse::es_module::EsModule;
 use crate::lambda::HttpMethod;
 
 mod es_module;
@@ -33,7 +34,7 @@ pub fn parse_module_for_lambda_handlers(
         Some(ext) => ext.to_string_lossy().to_string(),
     };
     let exported_fns = if file_extension == "js" || file_extension == "mjs" {
-        es_module::parse_module_for_exported_fns(path)?
+        EsModule::parse(path)?.exported_fns
     } else {
         return Err(anyhow!(
             "{file_extension} is not a supported file type for source file {}",

@@ -1,46 +1,73 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use anyhow::anyhow;
 use swc::config::IsModule;
 use swc::try_with_handler;
 use swc_common::{SourceMap, GLOBALS};
-use swc_ecma_ast::{Decl, EsVersion, ModuleDecl, ModuleItem, Program};
+use swc_ecma_ast::{Decl, EsVersion, ModuleDecl, Program};
 use swc_ecma_parser::{EsConfig, Syntax};
 
-pub fn parse_module_for_exported_fns(path: &Path) -> Result<Vec<String>, anyhow::Error> {
-    let program = parse_module_for_ast(path)?;
-    let mut exported_fns = Vec::new();
-    match program {
-        Program::Module(module) => {
-            for module_item in module.body {
-                match module_item {
-                    ModuleItem::ModuleDecl(module_decl) => {
-                        if let ModuleDecl::ExportDecl(export) = module_decl {
-                            if let Decl::Fn(func) = export.decl {
-                                exported_fns.push(
-                                    func.ident
-                                        .to_string()
-                                        .trim_end_matches(char::is_numeric)
-                                        .trim_end_matches(char::is_numeric)
-                                        .trim_end_matches('#')
-                                        .to_string(),
-                                )
+pub struct EsModule {
+    pub exported_fns: Vec<String>,
+    #[allow(unused)]
+    pub module_imports: Vec<PathBuf>,
+}
+
+impl EsModule {
+    pub fn parse(path: &Path) -> Result<Self, anyhow::Error> {
+        let program = parse_module_for_ast(path)?;
+        let mut exported_fns: Vec<String> = Vec::new();
+        let mut module_imports: Vec<PathBuf> = Vec::new();
+        match program {
+            Program::Module(module) => {
+                for module_item in module.body {
+                    if let Some(module_decl) = module_item.module_decl() {
+                        match module_decl {
+                            ModuleDecl::Import(import_decl) => {
+                                module_imports.push(PathBuf::from(import_decl.src.value.as_str()));
                             }
+                            ModuleDecl::ExportDecl(export_decl) => match export_decl.decl {
+                                Decl::Fn(func) => {
+                                    exported_fns.push(parse_identifier_name(func.ident.as_ref()))
+                                }
+                                Decl::Var(var_decl) => {
+                                    for var_declarator in var_decl.decls {
+                                        if let Some(expr) = var_declarator.init {
+                                            if expr.as_arrow().is_some() {
+                                                exported_fns.push(parse_identifier_name(
+                                                    var_declarator.name.ident().unwrap().as_ref(),
+                                                ))
+                                            }
+                                        }
+                                    }
+                                }
+                                _ => {}
+                            },
+                            _ => {}
                         }
-                    }
-                    ModuleItem::Stmt(_) => {}
+                    };
                 }
             }
+            Program::Script(_) => {
+                return Err(anyhow!(
+                    "unable to parse CJS format for source file {}",
+                    path.to_string_lossy()
+                ))
+            }
         }
-        Program::Script(_) => {
-            return Err(anyhow!(
-                "unable to parse CJS format for source file {}",
-                path.to_string_lossy()
-            ))
-        }
+        Ok(Self {
+            module_imports,
+            exported_fns,
+        })
     }
-    Ok(exported_fns)
+}
+
+fn parse_identifier_name(n: &str) -> String {
+    n.trim_end_matches(char::is_numeric)
+        .trim_end_matches(char::is_numeric)
+        .trim_end_matches('#')
+        .to_string()
 }
 
 fn parse_module_for_ast(path: &Path) -> Result<Program, anyhow::Error> {

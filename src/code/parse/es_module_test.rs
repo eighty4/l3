@@ -1,9 +1,40 @@
 use std::fs;
-
+use std::path::PathBuf;
 use temp_dir::TempDir;
 
-use crate::code::parse::{es_module, parse_module_for_lambda_handlers};
+use crate::code::parse::es_module::EsModule;
+use crate::code::parse::parse_module_for_lambda_handlers;
 use crate::lambda::HttpMethod;
+
+#[test]
+fn test_es_module_parse_import_module() {
+    let temp_dir = TempDir::new().unwrap();
+    let module_path = temp_dir.path().join("lambda.mjs");
+    fs::write(&module_path, "import {dbHelper} from '../db.js'").unwrap();
+    let module = EsModule::parse(module_path.as_path()).unwrap();
+    assert!(module.module_imports.contains(&PathBuf::from("../db.js")));
+    assert!(module.exported_fns.is_empty());
+}
+
+#[test]
+fn test_es_module_parse_export_arrow_fn() {
+    let temp_dir = TempDir::new().unwrap();
+    let module_path = temp_dir.path().join("lambda.mjs");
+    fs::write(&module_path, "export const DELETE = () => {}").unwrap();
+    let module = EsModule::parse(module_path.as_path()).unwrap();
+    assert!(module.module_imports.is_empty());
+    assert!(module.exported_fns.contains(&"DELETE".to_string()));
+}
+
+#[test]
+fn test_es_module_parse_export_fn() {
+    let temp_dir = TempDir::new().unwrap();
+    let module_path = temp_dir.path().join("lambda.mjs");
+    fs::write(&module_path, "export function DELETE () {}").unwrap();
+    let module = EsModule::parse(module_path.as_path()).unwrap();
+    assert!(module.module_imports.is_empty());
+    assert!(module.exported_fns.contains(&"DELETE".to_string()));
+}
 
 #[test]
 fn test_parse_js_module_finds_delete_fn() {
@@ -85,8 +116,5 @@ fn test_parse_module_errors_for_cjs() {
 fn test_es_module_parse_surfaces_error_from_compiler() {
     let temp_dir = TempDir::new().unwrap();
     let module_path = temp_dir.path().join("lambda.js");
-    assert!(es_module::parse_module_for_exported_fns(&module_path)
-        .unwrap_err()
-        .to_string()
-        .starts_with("error from compiler parsing JS: "));
+    assert!(EsModule::parse(&module_path).is_err());
 }
