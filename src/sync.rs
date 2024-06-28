@@ -43,23 +43,18 @@ pub(crate) async fn sync_project(sync_options: SyncOptions) -> Result<(), anyhow
     // todo deploy fn task build lambdas individually
     code::archive::create_archive()?;
 
-    let local_fns =
+    let lambdas =
         read_route_dir_for_lambdas(&sync_options.project_dir, &sync_options.project_name)?;
-    let deployed_state = DeployedProjectState::fetch_state_from_aws(
-        &sdk_clients,
-        &sync_options.project_name,
-        &api_id,
-    )
-    .await?;
+    let deployed_state =
+        DeployedProjectState::fetch_from_aws(&sdk_clients, &sync_options.project_name, &api_id)
+            .await?;
     let mut sync_tasks: Vec<SyncTask> = Vec::new();
 
-    for lambda_fn in local_fns.values() {
-        let deployed_components =
-            deployed_state.get_deployed_components(&lambda_fn.fn_name, &lambda_fn.route_key);
+    for lambda_fn in &lambdas {
         sync_tasks.push(SyncTask::DeployFn(Box::new(DeployFnParams {
             account_id: account_id.clone(),
             api_id: api_id.clone(),
-            deployed_components,
+            components: deployed_state.get_deployed_components(lambda_fn),
             lambda_fn: lambda_fn.clone(),
             lambda_role_arn: lambda_role.arn.clone(),
             publish_fn_updates: true,
@@ -68,13 +63,13 @@ pub(crate) async fn sync_project(sync_options: SyncOptions) -> Result<(), anyhow
         })));
     }
 
-    for task in sync_tasks {
-        aws::tasks::exec(&sdk_clients, task).await?;
+    for sync_task in sync_tasks {
+        aws::tasks::exec(&sdk_clients, sync_task).await?;
     }
 
     println!("\nLambdas deployed to API Gateway\n---");
 
-    for (_, lambda_fn) in local_fns {
+    for lambda_fn in lambdas {
         println!(
             "{} https://{}.execute-api.{}.amazonaws.com/development/{}",
             lambda_fn.route_key.http_method, api_id, region, lambda_fn.route_key.http_path,

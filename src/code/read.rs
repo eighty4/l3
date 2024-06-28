@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -10,8 +9,8 @@ use crate::lambda::{LambdaFn, RouteKey};
 pub fn read_route_dir_for_lambdas(
     project_dir: &Path,
     project_name: &String,
-) -> Result<HashMap<RouteKey, LambdaFn>, anyhow::Error> {
-    let mut lambdas = HashMap::new();
+) -> Result<Vec<LambdaFn>, anyhow::Error> {
+    let mut lambdas = Vec::new();
     for route_dir in recursively_read_route_dir(PathBuf::from("routes"))? {
         for source_path in route_dir.lambda_files {
             let lambda_fns = parse_module_for_lambda_handlers(&source_path)?;
@@ -37,16 +36,13 @@ pub fn read_route_dir_for_lambdas(
                 }
                 let route_key = RouteKey::new(http_method, http_path.clone());
                 let env_var_sources = EnvVarSources::new(lambda_env_files, route_key.clone())?;
-                lambdas.insert(
-                    route_key.clone(),
-                    LambdaFn::new(
-                        env_var_sources,
-                        handler_fn,
-                        project_name,
-                        route_key,
-                        source_file.clone(),
-                    ),
-                );
+                lambdas.push(LambdaFn::new(
+                    env_var_sources,
+                    handler_fn,
+                    project_name,
+                    route_key,
+                    source_file.clone(),
+                ));
             }
         }
     }

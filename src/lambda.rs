@@ -6,6 +6,15 @@ use anyhow::anyhow;
 use crate::code::env::EnvVarSources;
 use crate::code::source::SourceFile;
 
+fn create_fn_name(project_name: &String, route_key: &RouteKey) -> String {
+    format!(
+        "l3-{}-{}-{}",
+        project_name,
+        route_key.http_path.replace('/', "-"),
+        route_key.http_method.to_string().to_lowercase(),
+    )
+}
+
 #[derive(Clone, Eq, Hash, PartialEq)]
 pub struct RouteKey {
     pub http_method: HttpMethod,
@@ -102,12 +111,7 @@ impl LambdaFn {
     ) -> Self {
         Self {
             env_var_sources,
-            fn_name: format!(
-                "l3-{}-{}-{}",
-                project_name,
-                route_key.http_path.replace('/', "-"),
-                route_key.http_method.to_string().to_lowercase(),
-            ),
+            fn_name: create_fn_name(project_name, &route_key),
             handler_fn,
             route_key,
             source_file,

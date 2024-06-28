@@ -12,7 +12,7 @@ mod update_env;
 pub struct DeployFnParams {
     pub account_id: String,
     pub api_id: String,
-    pub deployed_components: DeployedLambdaComponents,
+    pub components: DeployedLambdaComponents,
     pub lambda_fn: LambdaFn,
     pub lambda_role_arn: String,
     pub publish_fn_updates: bool,

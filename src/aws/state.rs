@@ -1,15 +1,15 @@
-use anyhow::anyhow;
 use std::collections::HashMap;
 
+use anyhow::anyhow;
 use aws_sdk_apigatewayv2::types::{Integration, Route};
 use aws_sdk_lambda::types::FunctionConfiguration;
 
 use crate::aws::clients::AwsClients;
 use crate::aws::lambda::{FunctionArn, FunctionName, IntegrationId, RouteId};
-use crate::lambda::RouteKey;
+use crate::lambda::{LambdaFn, RouteKey};
 
 pub struct DeployedLambdaComponents {
-    pub function: Option<FunctionArn>,
+    pub function_arn: Option<FunctionArn>,
     pub integration: Option<IntegrationId>,
     pub route: Option<RouteId>,
 }
@@ -56,7 +56,7 @@ impl DeployedProjectState {
     }
 
     // todo handle pagination across multiple requests for functions, integrations and routes
-    pub async fn fetch_state_from_aws(
+    pub async fn fetch_from_aws(
         sdk_clients: &AwsClients,
         project_name: &String,
         api_id: &String,
@@ -95,12 +95,8 @@ impl DeployedProjectState {
         ))
     }
 
-    pub fn get_deployed_components(
-        &self,
-        fn_name: &String,
-        route_key: &RouteKey,
-    ) -> DeployedLambdaComponents {
-        let route = self.routes.get(route_key);
+    pub fn get_deployed_components(&self, lambda_fn: &LambdaFn) -> DeployedLambdaComponents {
+        let route = self.routes.get(&lambda_fn.route_key);
         let integration = match route {
             None => None,
             Some(route) => {
@@ -111,9 +107,9 @@ impl DeployedProjectState {
                 integration_id.and_then(|integration_id| self.integrations.get(integration_id))
             }
         };
-        let function = self.functions.get(fn_name);
+        let function = self.functions.get(&lambda_fn.fn_name);
         DeployedLambdaComponents {
-            function: function.and_then(|f| f.function_arn.clone()),
+            function_arn: function.and_then(|f| f.function_arn.clone()),
             integration: integration.and_then(|i| i.integration_id.clone()),
             route: route.and_then(|r| r.route_id.clone()),
         }

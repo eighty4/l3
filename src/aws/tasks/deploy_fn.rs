@@ -23,7 +23,7 @@ pub async fn perform_deploy_fn(
 ) -> Result<(), anyhow::Error> {
     let env_vars = params.lambda_fn.env_var_sources.read_env_variables()?;
     let mut updated_env_vars = true;
-    let synced_fn_arn = match &params.deployed_components.function {
+    let synced_fn_arn = match &params.components.function_arn {
         None => {
             let created_fn_arn = create_fn(
                 &sdk_clients.lambda,
@@ -103,7 +103,7 @@ pub async fn perform_deploy_fn(
             .update_cached_checksums(&params.api_id)?;
     }
 
-    match &params.deployed_components.route {
+    match &params.components.route {
         None => {
             let integration_id =
                 create_integration(sdk_clients, &params.api_id, &synced_fn_arn).await?;
@@ -115,7 +115,7 @@ pub async fn perform_deploy_fn(
             )
             .await?;
         }
-        Some(route_id) => match &params.deployed_components.integration {
+        Some(route_id) => match &params.components.integration {
             None => {
                 let integration_id =
                     create_integration(sdk_clients, &params.api_id, &synced_fn_arn).await?;
