@@ -34,6 +34,7 @@ pub async fn perform_deploy_fn(
                 env_vars,
             )
             .await?;
+            println!("  ✔ Created Lambda Function {}", &params.lambda_fn.fn_name);
             wait_for_fn_state_active(&sdk_clients.lambda, &params.lambda_fn.fn_name).await?;
 
             let source_arn = format!(
@@ -76,6 +77,10 @@ pub async fn perform_deploy_fn(
                     .map_err(|err| anyhow!("{}", err.into_service_error().to_string()))?;
                 wait_for_fn_update_successful(&sdk_clients.lambda, &params.lambda_fn.fn_name)
                     .await?;
+                println!(
+                    "  ✔ Updated env vars for Lambda Function {}",
+                    &params.lambda_fn.fn_name
+                );
             }
             sdk_clients
                 .lambda
@@ -87,13 +92,17 @@ pub async fn perform_deploy_fn(
                 .map_err(|err| anyhow!("{}", err.into_service_error().to_string()))?;
             // todo update code
             // todo wait for publish to finish
+            println!(
+                "  ✔ Updated code for Lambda Function {}",
+                &params.lambda_fn.fn_name
+            );
             updating_fn_arn.clone()
         }
     };
 
     // todo publish version and use fully qualified published version arn for api gateway
     if params.publish_fn_updates {
-        println!("do not forget to aws lambda publish-version")
+        println!("todo: do not forget to `aws lambda publish-version`")
     }
 
     if updated_env_vars {
@@ -107,6 +116,10 @@ pub async fn perform_deploy_fn(
         None => {
             let integration_id =
                 create_integration(sdk_clients, &params.api_id, &synced_fn_arn).await?;
+            println!(
+                "  ✔ Created API Gateway Integration for {}",
+                &params.lambda_fn.fn_name
+            );
             create_route(
                 sdk_clients,
                 &params.api_id,
@@ -114,16 +127,42 @@ pub async fn perform_deploy_fn(
                 &integration_id,
             )
             .await?;
+            println!(
+                "  ✔ Created API Gateway Route for {} to call {}",
+                &params.lambda_fn.route_key.to_route_key_string(),
+                &params.lambda_fn.fn_name
+            );
         }
         Some(route_id) => match &params.components.integration {
             None => {
                 let integration_id =
                     create_integration(sdk_clients, &params.api_id, &synced_fn_arn).await?;
+                println!(
+                    "  ✔ Created API Gateway Integration for {}",
+                    &params.lambda_fn.fn_name
+                );
                 update_route_target(sdk_clients, &params.api_id, route_id, &integration_id).await?;
+                println!(
+                    "  ✔ Updated API Gateway Route for {} to call {}",
+                    &params.lambda_fn.route_key.to_route_key_string(),
+                    &params.lambda_fn.fn_name
+                );
             }
-            Some(integration_id) => {
-                update_integration_uri(sdk_clients, &params.api_id, integration_id, &synced_fn_arn)
+            Some((integration_id, integration_uri)) => {
+                if integration_uri.as_str() != synced_fn_arn.as_str() {
+                    update_integration_uri(
+                        sdk_clients,
+                        &params.api_id,
+                        integration_id,
+                        &synced_fn_arn,
+                    )
                     .await?;
+                    println!(
+                        "  ✔ Updated API Gateway Integration for {} to call {}",
+                        &params.lambda_fn.route_key.to_route_key_string(),
+                        &params.lambda_fn.fn_name
+                    );
+                }
             }
         },
     };

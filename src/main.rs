@@ -11,6 +11,7 @@ mod config;
 mod init;
 mod lambda;
 mod sync;
+mod ui;
 
 #[cfg(test)]
 mod lambda_test;
@@ -26,7 +27,7 @@ struct LambdaX3Cli {
 enum LambdaX3Command {
     #[clap(about = "Create a project in the current directory")]
     Init(InitArgs),
-    #[clap(about = "")]
+    #[clap(about = "Deploy project resources to Lambda and API Gateway")]
     Sync(SyncArgs),
 }
 
@@ -59,6 +60,8 @@ impl From<InitArgs> for InitOptions {
 struct SyncArgs {
     #[clap(long, value_name = "API_ID")]
     api_id: Option<String>,
+    #[clap(long, default_value = "false")]
+    confirm: bool,
     #[clap(long, value_name = "STAGE_NAME", default_value = "development")]
     stage_name: String,
 }
@@ -69,6 +72,7 @@ impl TryFrom<SyncArgs> for SyncOptions {
     fn try_from(args: SyncArgs) -> Result<Self, Self::Error> {
         Ok(Self {
             api_id: args.api_id,
+            auto_confirm: args.confirm,
             project_dir: env::current_dir()?,
             project_name: match config::project_name()? {
                 None => panic!("need a l3.yml file with a `project_name: ` string"),

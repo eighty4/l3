@@ -33,12 +33,17 @@ impl RouteKey {
         }
     }
 
-    pub fn to_route_key_string(&self) -> String {
-        format!("{} /{}", self.http_method, self.http_path)
+    #[allow(unused)]
+    pub fn to_fn_name(&self, project_name: &String) -> String {
+        create_fn_name(project_name, self)
     }
 
     pub fn to_route_dir_path(&self) -> PathBuf {
         PathBuf::from("routes").join(&self.http_path)
+    }
+
+    pub fn to_route_key_string(&self) -> String {
+        format!("{} /{}", self.http_method, self.http_path)
     }
 }
 

@@ -64,9 +64,18 @@ fn test_deployed_state_resolves_lambda_components_by_route_key() {
     );
     let components = state.get_deployed_components(&lambda_fn);
     assert_eq!(components.route.unwrap(), "route id");
-    assert_eq!(components.integration.unwrap(), "integration id");
+    let (integration_id, integration_uri) = components.integration.unwrap();
+    assert_eq!(integration_id, "integration id");
+    assert_eq!(
+        integration_uri,
+        "arn:aws:lambda:region:account:l3-this_project-some-function-get"
+    );
     assert_eq!(
         components.function_arn.unwrap(),
         "arn:aws:lambda:region:account:l3-this_project-some-function-get"
+    );
+    assert_eq!(
+        components.function_name.unwrap(),
+        "l3-this_project-some-function-get"
     );
 }

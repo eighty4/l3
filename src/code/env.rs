@@ -73,18 +73,25 @@ impl EnvVarSources {
         }
     }
 
-    #[allow(unused)]
+    // todo syncing env vars is buggy af
     pub fn requires_update(&self, api_id: &String) -> Result<bool, anyhow::Error> {
-        let mut clean = match &self.method_env_file {
+        Ok(self.method_env_requires_update(api_id)? || self.path_env_requires_update(api_id)?)
+    }
+
+    fn method_env_requires_update(&self, api_id: &String) -> Result<bool, anyhow::Error> {
+        let requires_update = match &self.method_env_file {
             None => self.method_env_file_path().is_file(),
-            Some(env_file) => env_file.source_file.do_checksums_match(api_id)?,
+            Some(env_file) => !env_file.source_file.do_checksums_match(api_id)?,
         };
-        clean = clean
-            && match &self.path_env_file {
-                None => self.path_env_file_path().is_file(),
-                Some(env_file) => env_file.source_file.do_checksums_match(api_id)?,
-            };
-        Ok(!clean)
+        Ok(requires_update)
+    }
+
+    fn path_env_requires_update(&self, api_id: &String) -> Result<bool, anyhow::Error> {
+        let requires_update = match &self.path_env_file {
+            None => self.path_env_file_path().is_file(),
+            Some(env_file) => !env_file.source_file.do_checksums_match(api_id)?,
+        };
+        Ok(requires_update)
     }
 
     fn method_env_file_path(&self) -> PathBuf {

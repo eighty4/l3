@@ -11,6 +11,7 @@ aws-sdk-iam = "1.29.0"
 aws-sdk-lambda = "1.29.0"
 base64 = "0.22.1"
 clap = { version = "4.5.4", features = ["derive"] }
+crossterm = "0.27.0"
 lazy_static = "1.4.0"
 regex = "1.10.5"
 sha2 = "0.10.8"

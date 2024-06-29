@@ -93,7 +93,7 @@ pub async fn wait_for_fn_state_active(
             _ => panic!("unknown fn state for fn {fn_name}"),
         };
         let duration = (std::time::Instant::now() - start).as_millis();
-        println!("debug: wait for state active {duration}ms");
+        println!("debug: wait for {fn_name} state active {duration}ms");
         return Ok(result);
     }
 }
@@ -119,7 +119,7 @@ pub async fn wait_for_fn_update_successful(
             _ => panic!("unknown fn update status for fn {fn_name}"),
         };
         let duration = (std::time::Instant::now() - start).as_millis();
-        println!("debug: wait for update status {duration}ms");
+        println!("debug: wait for {fn_name} update successful {duration}ms");
         return Ok(result);
     }
 }

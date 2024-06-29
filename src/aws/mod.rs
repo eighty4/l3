@@ -6,4 +6,7 @@ pub(crate) mod state;
 pub(crate) mod tasks;
 
 #[cfg(test)]
+mod lambda_test;
+
+#[cfg(test)]
 mod state_test;
