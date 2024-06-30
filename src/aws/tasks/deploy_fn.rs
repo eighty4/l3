@@ -14,13 +14,35 @@ use crate::aws::operations::lambda::{
     create_fn, wait_for_fn_state_active, wait_for_fn_update_successful,
 };
 use crate::aws::tasks::DeployFnParams;
-use crate::code::archive::CODE_ARCHIVE_PATH;
+use crate::code::archiver::Archiver;
 use crate::lambda::RouteKey;
 
 pub async fn perform_deploy_fn(
     sdk_clients: &AwsClients,
     params: &DeployFnParams,
 ) -> Result<(), anyhow::Error> {
+    // todo updating code should upload to s3
+    // todo include imported deps in archive
+    // todo skip update code if checksums are clean
+    fs::create_dir_all(
+        PathBuf::from(".l3")
+            .join(&params.api_id)
+            .join(&params.lambda_fn.fn_name),
+    )?;
+    let archiver = Archiver::new(
+        params.project_dir.clone(),
+        PathBuf::from(".l3")
+            .join(&params.api_id)
+            .join(&params.lambda_fn.fn_name)
+            .join("archive.zip")
+            .to_path_buf(),
+        vec![params.lambda_fn.source_file.path.clone()],
+    );
+    let archive_path = archiver.write()?;
+    println!(
+        "  ✔ Built code archive for Lambda Function {}",
+        &params.lambda_fn.fn_name
+    );
     let env_vars = params.lambda_fn.env_var_sources.read_env_variables()?;
     let mut updated_env_vars = true;
     let synced_fn_arn = match &params.components.function_arn {
@@ -28,7 +50,7 @@ pub async fn perform_deploy_fn(
             let created_fn_arn = create_fn(
                 &sdk_clients.lambda,
                 &params.lambda_fn.fn_name,
-                &PathBuf::from(CODE_ARCHIVE_PATH),
+                &archive_path,
                 &params.lambda_fn.handler_path(),
                 &params.lambda_role_arn,
                 env_vars,
@@ -86,7 +108,7 @@ pub async fn perform_deploy_fn(
                 .lambda
                 .update_function_code()
                 .function_name(&params.lambda_fn.fn_name)
-                .zip_file(Blob::new(fs::read(&PathBuf::from(CODE_ARCHIVE_PATH))?))
+                .zip_file(Blob::new(fs::read(&archive_path)?))
                 .send()
                 .await
                 .map_err(|err| anyhow!("{}", err.into_service_error().to_string()))?;

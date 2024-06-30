@@ -12,7 +12,7 @@ use crate::aws::tasks::SyncTask::RemoveFn;
 use crate::aws::tasks::{DeployFnParams, RemoveFnParams, SyncTask};
 use crate::code::read::read_route_dir_for_lambdas;
 use crate::config::{read_api_id_from_data_dir, write_api_id_to_data_dir};
-use crate::{aws, code, ui};
+use crate::{aws, ui};
 
 pub struct SyncOptions {
     pub api_id: Option<String>,
@@ -48,9 +48,6 @@ pub(crate) async fn sync_project(sync_options: SyncOptions) -> Result<(), anyhow
     let account_id = get_account_id(&sdk_clients.iam).await?;
     let lambda_role = create_lambda_role(&sdk_clients.iam, &sync_options.project_name).await?;
 
-    // todo deploy fn task build lambdas individually
-    code::archive::create_archive()?;
-
     let lambdas =
         read_route_dir_for_lambdas(&sync_options.project_dir, &sync_options.project_name)?;
     let mut deployed_state =
@@ -67,6 +64,7 @@ pub(crate) async fn sync_project(sync_options: SyncOptions) -> Result<(), anyhow
                 .rm_deployed_components(&lambda_fn.route_key, &lambda_fn.fn_name),
             lambda_fn: lambda_fn.clone(),
             lambda_role_arn: lambda_role.arn.clone(),
+            project_dir: sync_options.project_dir.clone(),
             publish_fn_updates: false,
             region: region.to_string(),
             stage_name: sync_options.stage_name.clone(),

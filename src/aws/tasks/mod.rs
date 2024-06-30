@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use tokio::task::JoinSet;
 
 use deploy_fn::perform_deploy_fn;
@@ -18,6 +19,7 @@ pub struct DeployFnParams {
     pub components: DeployedLambdaComponents,
     pub lambda_fn: LambdaFn,
     pub lambda_role_arn: String,
+    pub project_dir: PathBuf,
     pub publish_fn_updates: bool,
     pub region: String,
     pub stage_name: String,
