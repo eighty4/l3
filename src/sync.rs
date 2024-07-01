@@ -55,7 +55,7 @@ pub(crate) async fn sync_project(sync_options: SyncOptions) -> Result<(), anyhow
             .await?;
     let mut sync_tasks: Vec<SyncTask> = Vec::new();
 
-    println!("Syncing {} lambdas", lambdas.len());
+    println!("\nSyncing {} lambdas", lambdas.len());
     for lambda_fn in &lambdas {
         sync_tasks.push(SyncTask::DeployFn(Box::new(DeployFnParams {
             account_id: account_id.clone(),

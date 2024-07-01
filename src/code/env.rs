@@ -1,17 +1,16 @@
 use std::collections::HashMap;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use lazy_static::lazy_static;
 use regex::Regex;
 
-use crate::code::checksum::ChecksumCached;
 use crate::code::source::SourceFile;
 use crate::lambda::{HttpMethod, RouteKey};
 
 lazy_static! {
     static ref ENV_FILENAME_REGEX: Regex =
-        Regex::new(r"^(?<http_method>delete|get|patch|post|put)?\.env$")
+        Regex::new(r"^lambda((?:\.)(?<http_method>delete|get|patch|post|put))?\.env$")
             .expect("env filename regex");
 }
 
@@ -30,27 +29,43 @@ pub fn parse_env_file_name_for_http_method(file_name: &str) -> Option<HttpMethod
 
 #[derive(Clone)]
 pub struct EnvVarSources {
-    method_env_file: Option<EnvFile>,
-    path_env_file: Option<EnvFile>,
-    route_key: RouteKey,
+    pub method_env_file: Option<EnvFile>,
+    /// Relative path
+    pub method_env_file_path: PathBuf,
+    pub path_env_file: Option<EnvFile>,
+    /// Relative path
+    pub path_env_file_path: PathBuf,
 }
 
 impl EnvVarSources {
-    pub fn new(env_files: Vec<EnvFile>, route_key: RouteKey) -> Result<Self, anyhow::Error> {
-        debug_assert!(env_files.len() <= 3);
-        let mut method_env_file: Option<EnvFile> = None;
-        let mut path_env_file: Option<EnvFile> = None;
-        for env_file in env_files {
-            if env_file.http_method.is_some() {
-                method_env_file = Some(env_file);
-            } else {
-                path_env_file = Some(env_file);
-            }
-        }
+    pub fn new(project_dir: &Path, route_key: &RouteKey) -> Result<Self, anyhow::Error> {
+        let lambda_dir_path = route_key.to_route_dir_path();
+        let method_env_file_path = lambda_dir_path.join(format!(
+            "lambda.{}.env",
+            route_key.http_method.to_string().to_lowercase()
+        ));
+        let method_env_file = if project_dir.join(&method_env_file_path).exists() {
+            Some(EnvFile::create(
+                method_env_file_path.clone(),
+                project_dir.to_path_buf(),
+            )?)
+        } else {
+            None
+        };
+        let path_env_file_path = lambda_dir_path.join("lambda.env");
+        let path_env_file = if project_dir.join(&path_env_file_path).exists() {
+            Some(EnvFile::create(
+                path_env_file_path.clone(),
+                project_dir.to_path_buf(),
+            )?)
+        } else {
+            None
+        };
         Ok(Self {
             method_env_file,
+            method_env_file_path,
             path_env_file,
-            route_key,
+            path_env_file_path,
         })
     }
 
@@ -73,65 +88,23 @@ impl EnvVarSources {
         }
     }
 
-    // todo syncing env vars is buggy af
-    pub fn requires_update(&self, api_id: &String) -> Result<bool, anyhow::Error> {
-        Ok(self.method_env_requires_update(api_id)? || self.path_env_requires_update(api_id)?)
-    }
-
-    fn method_env_requires_update(&self, api_id: &String) -> Result<bool, anyhow::Error> {
-        let requires_update = match &self.method_env_file {
-            None => self.method_env_file_path().is_file(),
-            Some(env_file) => !env_file.source_file.do_checksums_match(api_id)?,
-        };
-        Ok(requires_update)
-    }
-
-    fn path_env_requires_update(&self, api_id: &String) -> Result<bool, anyhow::Error> {
-        let requires_update = match &self.path_env_file {
-            None => self.path_env_file_path().is_file(),
-            Some(env_file) => !env_file.source_file.do_checksums_match(api_id)?,
-        };
-        Ok(requires_update)
-    }
-
-    fn method_env_file_path(&self) -> PathBuf {
-        self.path_env_file_path()
-            .join(format!("{}.env", self.route_key.http_method))
-    }
-
-    fn path_env_file_path(&self) -> PathBuf {
-        self.route_key.to_route_dir_path().join(".env")
-    }
-
-    pub fn update_cached_checksums(&self, api_id: &String) -> Result<(), anyhow::Error> {
-        let api_data_dir = PathBuf::from(".l3").join(api_id);
-        for (checksum_path, env_file) in &[
-            (
-                api_data_dir.join(self.method_env_file_path()),
-                &self.method_env_file,
-            ),
-            (
-                api_data_dir.join(self.path_env_file_path()),
-                &self.path_env_file,
-            ),
-        ] {
-            match env_file {
-                None => {
-                    if checksum_path.is_file() {
-                        let _ = fs::remove_file(checksum_path);
-                    }
-                }
-                Some(env_file) => {
-                    let _ = env_file.source_file.update_checksum_cache(api_id);
-                }
-            };
-        }
-        Ok(())
+    #[allow(unused)]
+    pub fn source_paths(&self) -> Vec<PathBuf> {
+        [&self.method_env_file, &self.path_env_file]
+            .iter()
+            .filter(|opt| opt.is_some())
+            .map(|opt| {
+                opt.as_ref()
+                    .map(|env_file| env_file.source_file.path.clone())
+                    .unwrap()
+            })
+            .collect()
     }
 }
 
 #[derive(Clone)]
 pub struct EnvFile {
+    #[allow(unused)]
     pub http_method: Option<HttpMethod>,
     pub source_file: SourceFile,
 }
@@ -149,6 +122,7 @@ impl EnvFile {
 }
 
 impl EnvFile {
+    #[allow(unused)]
     pub fn is_for_http_method(&self, http_method: &HttpMethod) -> bool {
         match self.http_method.as_ref() {
             None => true,
@@ -157,7 +131,7 @@ impl EnvFile {
     }
 
     pub fn read_env_variables(&self) -> Result<HashMap<String, String>, anyhow::Error> {
-        let contents = fs::read_to_string(&self.source_file.path)?;
+        let contents = fs::read_to_string(self.source_file.abs_path())?;
         let mut vars: HashMap<String, String> = HashMap::new();
         for line in contents.lines() {
             let mut parts = line.splitn(2, '=');

@@ -9,12 +9,13 @@ use aws_sdk_iam::primitives::Blob;
 use aws_sdk_lambda::types::Environment;
 
 use crate::aws::clients::AwsClients;
-use crate::aws::lambda::{IntegrationId, RouteId};
+use crate::aws::lambda::{FunctionArn, IntegrationId, RouteId};
 use crate::aws::operations::lambda::{
     create_fn, wait_for_fn_state_active, wait_for_fn_update_successful,
 };
 use crate::aws::tasks::DeployFnParams;
 use crate::code::archiver::Archiver;
+use crate::code::checksum::ChecksumTree;
 use crate::lambda::RouteKey;
 
 pub async fn perform_deploy_fn(
@@ -29,24 +30,15 @@ pub async fn perform_deploy_fn(
             .join(&params.api_id)
             .join(&params.lambda_fn.fn_name),
     )?;
-    let archiver = Archiver::new(
+    let mut checksums = ChecksumTree::new(
         params.project_dir.clone(),
-        PathBuf::from(".l3")
-            .join(&params.api_id)
-            .join(&params.lambda_fn.fn_name)
-            .join("archive.zip")
-            .to_path_buf(),
-        vec![params.lambda_fn.source_file.path.clone()],
-    );
-    let archive_path = archiver.write()?;
-    println!(
-        "  ✔ Built code archive for Lambda Function {}",
-        &params.lambda_fn.fn_name
-    );
+        &params.api_id,
+        &params.lambda_fn.fn_name,
+    )?;
     let env_vars = params.lambda_fn.env_var_sources.read_env_variables()?;
-    let mut updated_env_vars = true;
     let synced_fn_arn = match &params.components.function_arn {
         None => {
+            let archive_path = create_archive(params)?;
             let created_fn_arn = create_fn(
                 &sdk_clients.lambda,
                 &params.lambda_fn.fn_name,
@@ -56,39 +48,18 @@ pub async fn perform_deploy_fn(
                 env_vars,
             )
             .await?;
+            add_api_gateway_invoke_permission(sdk_clients, params, &created_fn_arn).await?;
+            checksums.update_checksum(params.lambda_fn.source_file.path.clone())?;
+            checksums.update_env_var_checksums(&params.lambda_fn.env_var_sources)?;
             println!("  ✔ Created Lambda Function {}", &params.lambda_fn.fn_name);
             wait_for_fn_state_active(&sdk_clients.lambda, &params.lambda_fn.fn_name).await?;
-
-            let source_arn = format!(
-                "arn:aws:execute-api:{}:{}:{}/{}/{}/{}",
-                params.region,
-                params.account_id,
-                params.api_id,
-                params.stage_name,
-                params.lambda_fn.route_key.http_method,
-                params.lambda_fn.route_key.http_path,
-            );
-            sdk_clients
-                .lambda
-                .add_permission()
-                .statement_id(format!("{}_{}", params.api_id, params.stage_name))
-                .function_name(&created_fn_arn)
-                .action("lambda:InvokeFunction")
-                .principal("apigateway.amazonaws.com")
-                .source_arn(source_arn)
-                .send()
-                .await
-                .map_err(|err| anyhow!("{}", err.into_service_error().to_string()))?;
             created_fn_arn
         }
         Some(updating_fn_arn) => {
-            if !params
-                .lambda_fn
-                .env_var_sources
-                .requires_update(&params.api_id)?
-            {
-                updated_env_vars = false;
-            } else {
+            if !does_api_gateway_have_invoke_permission(sdk_clients, params).await? {
+                add_api_gateway_invoke_permission(sdk_clients, params, updating_fn_arn).await?;
+            }
+            if !checksums.do_env_checksums_match(&params.lambda_fn.env_var_sources)? {
                 sdk_clients
                     .lambda
                     .update_function_configuration()
@@ -99,25 +70,34 @@ pub async fn perform_deploy_fn(
                     .map_err(|err| anyhow!("{}", err.into_service_error().to_string()))?;
                 wait_for_fn_update_successful(&sdk_clients.lambda, &params.lambda_fn.fn_name)
                     .await?;
+                checksums.update_env_var_checksums(&params.lambda_fn.env_var_sources)?;
                 println!(
                     "  ✔ Updated env vars for Lambda Function {}",
                     &params.lambda_fn.fn_name
                 );
             }
-            sdk_clients
-                .lambda
-                .update_function_code()
-                .function_name(&params.lambda_fn.fn_name)
-                .zip_file(Blob::new(fs::read(&archive_path)?))
-                .send()
-                .await
-                .map_err(|err| anyhow!("{}", err.into_service_error().to_string()))?;
-            // todo update code
-            // todo wait for publish to finish
-            println!(
-                "  ✔ Updated code for Lambda Function {}",
-                &params.lambda_fn.fn_name
-            );
+            if checksums.do_checksums_match(&params.lambda_fn.source_file.path)? {
+                println!(
+                    "  ✔ Lambda {} code already up to date!",
+                    &params.lambda_fn.fn_name
+                );
+            } else {
+                let archive_path = create_archive(params)?;
+                sdk_clients
+                    .lambda
+                    .update_function_code()
+                    .function_name(&params.lambda_fn.fn_name)
+                    .zip_file(Blob::new(fs::read(&archive_path)?))
+                    .send()
+                    .await
+                    .map_err(|err| anyhow!("{}", err.into_service_error().to_string()))?;
+                checksums.update_checksum(params.lambda_fn.source_file.path.clone())?;
+                // todo wait for publish to finish
+                println!(
+                    "  ✔ Updated code for Lambda Function {}",
+                    &params.lambda_fn.fn_name
+                );
+            }
             updating_fn_arn.clone()
         }
     };
@@ -125,13 +105,6 @@ pub async fn perform_deploy_fn(
     // todo publish version and use fully qualified published version arn for api gateway
     if params.publish_fn_updates {
         println!("todo: do not forget to `aws lambda publish-version`")
-    }
-
-    if updated_env_vars {
-        params
-            .lambda_fn
-            .env_var_sources
-            .update_cached_checksums(&params.api_id)?;
     }
 
     match &params.components.route {
@@ -189,6 +162,78 @@ pub async fn perform_deploy_fn(
         },
     };
     Ok(())
+}
+
+async fn does_api_gateway_have_invoke_permission(
+    sdk_clients: &AwsClients,
+    params: &DeployFnParams,
+) -> Result<bool, anyhow::Error> {
+    match sdk_clients
+        .lambda
+        .get_policy()
+        .function_name(&params.lambda_fn.fn_name)
+        .send()
+        .await
+    {
+        Ok(get_policy_output) => Ok(get_policy_output
+            .policy
+            .unwrap()
+            .contains(format!("\"Sid\":\"{}_{}\"", params.api_id, params.stage_name).as_str())),
+        Err(err) => {
+            let service_err = err.into_service_error();
+            if service_err.is_resource_not_found_exception() {
+                Ok(false)
+            } else {
+                Err(anyhow!("{}", service_err.to_string()))
+            }
+        }
+    }
+}
+
+async fn add_api_gateway_invoke_permission(
+    sdk_clients: &AwsClients,
+    params: &DeployFnParams,
+    fn_arn: &FunctionArn,
+) -> Result<(), anyhow::Error> {
+    let source_arn = format!(
+        "arn:aws:execute-api:{}:{}:{}/{}/{}/{}",
+        params.region,
+        params.account_id,
+        params.api_id,
+        params.stage_name,
+        params.lambda_fn.route_key.http_method,
+        params.lambda_fn.route_key.http_path,
+    );
+    sdk_clients
+        .lambda
+        .add_permission()
+        .statement_id(format!("{}_{}", params.api_id, params.stage_name))
+        .function_name(fn_arn)
+        .action("lambda:InvokeFunction")
+        .principal("apigateway.amazonaws.com")
+        .source_arn(source_arn)
+        .send()
+        .await
+        .map_err(|err| anyhow!("{}", err.into_service_error().to_string()))?;
+    Ok(())
+}
+
+fn create_archive(params: &DeployFnParams) -> Result<PathBuf, anyhow::Error> {
+    let archiver = Archiver::new(
+        params.project_dir.clone(),
+        PathBuf::from(".l3")
+            .join(&params.api_id)
+            .join(&params.lambda_fn.fn_name)
+            .join("archive.zip")
+            .to_path_buf(),
+        vec![params.lambda_fn.source_file.path.clone()],
+    );
+    let p = archiver.write()?;
+    println!(
+        "  ✔ Built code archive for Lambda Function {}",
+        params.lambda_fn.fn_name
+    );
+    Ok(p)
 }
 
 async fn create_route(

@@ -15,6 +15,7 @@ fn create_fn_name(project_name: &String, route_key: &RouteKey) -> String {
     )
 }
 
+// todo trait for lambdas with to_fn_name and to_dir_path not strictly for http lambdas
 #[derive(Clone, Eq, Hash, PartialEq)]
 pub struct RouteKey {
     pub http_method: HttpMethod,
@@ -33,7 +34,6 @@ impl RouteKey {
         }
     }
 
-    #[allow(unused)]
     pub fn to_fn_name(&self, project_name: &String) -> String {
         create_fn_name(project_name, self)
     }

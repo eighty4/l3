@@ -16,6 +16,9 @@ mod ui;
 #[cfg(test)]
 mod lambda_test;
 
+#[cfg(test)]
+mod testing;
+
 #[derive(Parser)]
 #[command(author, version, about)]
 struct LambdaX3Cli {

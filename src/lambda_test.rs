@@ -1,10 +1,9 @@
+use std::path::PathBuf;
+
 use crate::code::env::EnvVarSources;
 use crate::code::source::SourceFile;
-use std::fs;
-use std::path::PathBuf;
-use temp_dir::TempDir;
-
 use crate::lambda::{HttpMethod, LambdaFn, RouteKey};
+use crate::testing::{ProjectTest, TestSource};
 
 #[test]
 fn test_route_key_new() {
@@ -57,42 +56,44 @@ fn test_http_method_try_from() {
 
 #[test]
 fn test_lambda_fn_fn_name() {
-    let project_dir = TempDir::new().unwrap();
-    fs::create_dir_all(project_dir.path().join("routes/data")).unwrap();
-    let source_file_path = PathBuf::from("routes/data/lambda.js");
-    fs::write(
-        project_dir.path().join(&source_file_path),
-        "export function DELETE(){}",
-    )
-    .unwrap();
+    let project_test = ProjectTest::builder()
+        .with_source(
+            TestSource::with_path("routes/data/lambda.js").content("export function DELETE(){}"),
+        )
+        .build();
     let route_key = RouteKey::new(HttpMethod::Delete, "data".to_string());
     let lambda_fn = LambdaFn::new(
-        EnvVarSources::new(Vec::new(), route_key.clone()).unwrap(),
+        EnvVarSources::new(&project_test.project_dir, &route_key).unwrap(),
         "DELETE".to_string(),
         &"my_proj".to_string(),
         route_key,
-        SourceFile::create(source_file_path, project_dir.path().to_path_buf()).unwrap(),
+        SourceFile::create(
+            PathBuf::from("routes/data/lambda.js"),
+            project_test.project_dir,
+        )
+        .unwrap(),
     );
     assert_eq!(lambda_fn.fn_name, "l3-my_proj-data-delete");
 }
 
 #[test]
 fn test_lambda_fn_handler_path() {
-    let project_dir = TempDir::new().unwrap();
-    fs::create_dir_all(project_dir.path().join("routes/data")).unwrap();
-    let source_file_path = PathBuf::from("routes/data/lambda.js");
-    fs::write(
-        project_dir.path().join(&source_file_path),
-        "export function GET(){}",
-    )
-    .unwrap();
+    let project_test = ProjectTest::builder()
+        .with_source(
+            TestSource::with_path("routes/data/lambda.js").content("export function GET(){}"),
+        )
+        .build();
     let route_key = RouteKey::new(HttpMethod::Get, "data".to_string());
     let lambda_fn = LambdaFn::new(
-        EnvVarSources::new(Vec::new(), route_key.clone()).unwrap(),
+        EnvVarSources::new(&project_test.project_dir, &route_key).unwrap(),
         "GET".to_string(),
         &"my_proj".to_string(),
         route_key,
-        SourceFile::create(source_file_path, project_dir.path().to_path_buf()).unwrap(),
+        SourceFile::create(
+            PathBuf::from("routes/data/lambda.js"),
+            project_test.project_dir,
+        )
+        .unwrap(),
     );
     assert_eq!(
         lambda_fn.handler_path(),

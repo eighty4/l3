@@ -21,7 +21,7 @@ fn test_deployed_state_resolves_lambda_components_by_route_key() {
     .unwrap();
     let route_key = RouteKey::new(HttpMethod::Get, "some/function".to_string());
     let lambda_fn = LambdaFn::new(
-        EnvVarSources::new(Vec::new(), route_key.clone()).unwrap(),
+        EnvVarSources::new(project_dir.path(), &route_key).unwrap(),
         "GET".to_string(),
         &"this_project".to_string(),
         route_key,

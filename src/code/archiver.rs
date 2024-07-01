@@ -6,7 +6,9 @@ use zip::write::FileOptions;
 use zip::ZipWriter;
 
 pub struct Archiver {
+    /// Absolute path to archive result
     dest: PathBuf,
+    /// Absolute path to compressed files
     file_paths: Vec<PathBuf>,
     project_dir: PathBuf,
 }

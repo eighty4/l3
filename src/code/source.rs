@@ -1,13 +1,10 @@
 use std::path::PathBuf;
 
-use crate::code::checksum::ChecksumCached;
-use crate::code::sha256::make_checksum;
-
 #[derive(Clone)]
 pub struct SourceFile {
     pub extension: String,
     pub file_name: String,
-    pub hash: String,
+    /// Relative path
     pub path: PathBuf,
     project_dir: PathBuf,
 }
@@ -26,23 +23,12 @@ impl SourceFile {
         Ok(Self {
             extension,
             file_name,
-            hash: make_checksum(abs_path)?,
             path,
             project_dir,
         })
     }
-}
 
-impl ChecksumCached for SourceFile {
-    fn get_project_dir(&self) -> &PathBuf {
-        &self.project_dir
-    }
-
-    fn get_relative_source_path(&self) -> &PathBuf {
-        &self.path
-    }
-
-    fn get_source_checksum(&self) -> Result<String, anyhow::Error> {
-        Ok(self.hash.clone())
+    pub fn abs_path(&self) -> PathBuf {
+        self.project_dir.join(&self.path)
     }
 }
