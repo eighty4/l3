@@ -1,7 +1,6 @@
 use std::path::PathBuf;
 
 use crate::code::env::EnvVarSources;
-use crate::code::source::SourceFile;
 use crate::lambda::{HttpMethod, LambdaFn, RouteKey};
 use crate::testing::{ProjectTest, TestSource};
 
@@ -65,13 +64,9 @@ fn test_lambda_fn_fn_name() {
     let lambda_fn = LambdaFn::new(
         EnvVarSources::new(&project_test.project_dir, &route_key).unwrap(),
         "DELETE".to_string(),
+        PathBuf::from("routes/data/lambda.js"),
         &"my_proj".to_string(),
         route_key,
-        SourceFile::create(
-            PathBuf::from("routes/data/lambda.js"),
-            project_test.project_dir,
-        )
-        .unwrap(),
     );
     assert_eq!(lambda_fn.fn_name, "l3-my_proj-data-delete");
 }
@@ -87,13 +82,9 @@ fn test_lambda_fn_handler_path() {
     let lambda_fn = LambdaFn::new(
         EnvVarSources::new(&project_test.project_dir, &route_key).unwrap(),
         "GET".to_string(),
+        PathBuf::from("routes/data/lambda.js"),
         &"my_proj".to_string(),
         route_key,
-        SourceFile::create(
-            PathBuf::from("routes/data/lambda.js"),
-            project_test.project_dir,
-        )
-        .unwrap(),
     );
     assert_eq!(
         lambda_fn.handler_path(),

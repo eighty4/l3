@@ -5,7 +5,6 @@ use std::path::{Path, PathBuf};
 use lazy_static::lazy_static;
 use regex::Regex;
 
-use crate::code::source::SourceFile;
 use crate::lambda::{HttpMethod, RouteKey};
 
 lazy_static! {
@@ -45,19 +44,13 @@ impl EnvVarSources {
             route_key.http_method.to_string().to_lowercase()
         ));
         let method_env_file = if project_dir.join(&method_env_file_path).exists() {
-            Some(EnvFile::create(
-                method_env_file_path.clone(),
-                project_dir.to_path_buf(),
-            )?)
+            Some(EnvFile::create(method_env_file_path.clone(), project_dir)?)
         } else {
             None
         };
         let path_env_file_path = lambda_dir_path.join("lambda.env");
         let path_env_file = if project_dir.join(&path_env_file_path).exists() {
-            Some(EnvFile::create(
-                path_env_file_path.clone(),
-                project_dir.to_path_buf(),
-            )?)
+            Some(EnvFile::create(path_env_file_path.clone(), project_dir)?)
         } else {
             None
         };
@@ -93,11 +86,7 @@ impl EnvVarSources {
         [&self.method_env_file, &self.path_env_file]
             .iter()
             .filter(|opt| opt.is_some())
-            .map(|opt| {
-                opt.as_ref()
-                    .map(|env_file| env_file.source_file.path.clone())
-                    .unwrap()
-            })
+            .map(|opt| opt.as_ref().map(|env_file| env_file.path.clone()).unwrap())
             .collect()
     }
 }
@@ -106,17 +95,22 @@ impl EnvVarSources {
 pub struct EnvFile {
     #[allow(unused)]
     pub http_method: Option<HttpMethod>,
-    pub source_file: SourceFile,
+    /// Relative path
+    pub path: PathBuf,
+    abs_path: PathBuf,
 }
 
 impl EnvFile {
-    pub fn create(path: PathBuf, project_dir: PathBuf) -> Result<Self, anyhow::Error> {
+    pub fn create(path: PathBuf, project_dir: &Path) -> Result<Self, anyhow::Error> {
         assert!(path.is_relative());
-        let source_file = SourceFile::create(path, project_dir)?;
-        let http_method = parse_env_file_name_for_http_method(source_file.file_name.as_str());
+        let http_method = parse_env_file_name_for_http_method(
+            path.file_name().unwrap().to_string_lossy().as_ref(),
+        );
+        let abs_path = project_dir.join(&path);
         Ok(Self {
             http_method,
-            source_file,
+            path,
+            abs_path,
         })
     }
 }
@@ -131,7 +125,7 @@ impl EnvFile {
     }
 
     pub fn read_env_variables(&self) -> Result<HashMap<String, String>, anyhow::Error> {
-        let contents = fs::read_to_string(self.source_file.abs_path())?;
+        let contents = fs::read_to_string(&self.abs_path)?;
         let mut vars: HashMap<String, String> = HashMap::new();
         for line in contents.lines() {
             let mut parts = line.splitn(2, '=');

@@ -4,7 +4,6 @@ use std::path::PathBuf;
 use anyhow::anyhow;
 
 use crate::code::env::EnvVarSources;
-use crate::code::source::SourceFile;
 
 fn create_fn_name(project_name: &String, route_key: &RouteKey) -> String {
     format!(
@@ -102,34 +101,35 @@ pub struct LambdaFn {
     pub env_var_sources: EnvVarSources,
     pub fn_name: String,
     pub handler_fn: String,
+    pub path: PathBuf,
     pub route_key: RouteKey,
-    pub source_file: SourceFile,
 }
 
 impl LambdaFn {
     pub fn new(
         env_var_sources: EnvVarSources,
         handler_fn: String,
+        path: PathBuf,
         project_name: &String,
         route_key: RouteKey,
-        source_file: SourceFile,
     ) -> Self {
         Self {
             env_var_sources,
             fn_name: create_fn_name(project_name, &route_key),
             handler_fn,
+            path,
             route_key,
-            source_file,
         }
     }
 
     pub fn handler_path(&self) -> String {
+        let file_name = self.path.file_name().unwrap().to_string_lossy();
+        let extension = self.path.extension().unwrap().to_string_lossy();
         format!(
             "routes/{}/{}.{}",
             self.route_key.http_path,
-            self.source_file
-                .file_name
-                .strip_suffix(&self.source_file.extension)
+            file_name
+                .strip_suffix(extension.as_ref())
                 .unwrap()
                 .strip_suffix('.')
                 .unwrap(),

@@ -3,7 +3,6 @@ use std::path::{Path, PathBuf};
 
 use crate::code::env::EnvVarSources;
 use crate::code::parse::parse_module_for_lambda_handlers;
-use crate::code::source::SourceFile;
 use crate::lambda::{LambdaFn, RouteKey};
 
 pub fn read_route_dir_for_lambdas(
@@ -18,16 +17,15 @@ pub fn read_route_dir_for_lambdas(
             continue;
         }
         let http_path = create_http_path_from_source_path(&lambda_path);
-        let source_file = SourceFile::create(lambda_path, project_dir.to_path_buf())?;
         for (http_method, handler_fn) in lambda_fns {
             let route_key = RouteKey::new(http_method, http_path.clone());
             let env_var_sources = EnvVarSources::new(project_dir, &route_key)?;
             lambdas.push(LambdaFn::new(
                 env_var_sources,
                 handler_fn,
+                lambda_path.clone(),
                 project_name,
                 route_key,
-                source_file.clone(),
             ));
         }
     }

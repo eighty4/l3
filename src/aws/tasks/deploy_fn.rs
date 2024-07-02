@@ -49,7 +49,7 @@ pub async fn perform_deploy_fn(
             )
             .await?;
             add_api_gateway_invoke_permission(sdk_clients, params, &created_fn_arn).await?;
-            checksums.update_checksum(params.lambda_fn.source_file.path.clone())?;
+            checksums.update_checksum(params.lambda_fn.path.clone())?;
             checksums.update_env_var_checksums(&params.lambda_fn.env_var_sources)?;
             println!("  ✔ Created Lambda Function {}", &params.lambda_fn.fn_name);
             wait_for_fn_state_active(&sdk_clients.lambda, &params.lambda_fn.fn_name).await?;
@@ -76,7 +76,7 @@ pub async fn perform_deploy_fn(
                     &params.lambda_fn.fn_name
                 );
             }
-            if checksums.do_checksums_match(&params.lambda_fn.source_file.path)? {
+            if checksums.do_checksums_match(&params.lambda_fn.path)? {
                 println!(
                     "  ✔ Lambda {} code already up to date!",
                     &params.lambda_fn.fn_name
@@ -91,7 +91,7 @@ pub async fn perform_deploy_fn(
                     .send()
                     .await
                     .map_err(|err| anyhow!("{}", err.into_service_error().to_string()))?;
-                checksums.update_checksum(params.lambda_fn.source_file.path.clone())?;
+                checksums.update_checksum(params.lambda_fn.path.clone())?;
                 // todo wait for publish to finish
                 println!(
                     "  ✔ Updated code for Lambda Function {}",
@@ -226,7 +226,7 @@ fn create_archive(params: &DeployFnParams) -> Result<PathBuf, anyhow::Error> {
             .join(&params.lambda_fn.fn_name)
             .join("archive.zip")
             .to_path_buf(),
-        vec![params.lambda_fn.source_file.path.clone()],
+        vec![params.lambda_fn.path.clone()],
     );
     let p = archiver.write()?;
     println!(
