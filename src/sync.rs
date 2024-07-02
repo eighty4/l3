@@ -1,5 +1,5 @@
 use std::path::PathBuf;
-use std::process;
+use std::{fs, process};
 
 use anyhow::anyhow;
 
@@ -17,6 +17,7 @@ use crate::{aws, ui};
 pub struct SyncOptions {
     pub api_id: Option<String>,
     pub auto_confirm: bool,
+    pub clear_cache: bool,
     pub project_dir: PathBuf,
     pub project_name: String,
     pub stage_name: String,
@@ -42,6 +43,11 @@ pub(crate) async fn sync_project(sync_options: SyncOptions) -> Result<(), anyhow
     if !sync_options.auto_confirm && !ui::confirm("  Continue with syncing?")? {
         println!("  Cancelling sync operations!");
         process::exit(0);
+    }
+
+    if sync_options.clear_cache {
+        println!("\nClearing cache at .l3/{api_id} and re-syncing");
+        let _ = fs::remove_dir_all(PathBuf::from(".l3").join(&api_id));
     }
 
     write_api_id_to_data_dir(&api_id)?;

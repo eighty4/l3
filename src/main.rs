@@ -61,12 +61,26 @@ impl From<InitArgs> for InitOptions {
 
 #[derive(Parser, Debug)]
 struct SyncArgs {
-    #[clap(long, value_name = "API_ID")]
+    #[clap(
+        long,
+        value_name = "API_ID",
+        long_help = "Configure the project's API Gateway ID and cache in .l3"
+    )]
     api_id: Option<String>,
-    #[clap(long, default_value = "false")]
+    #[clap(
+        long,
+        default_value = "false",
+        long_help = "Clear cache before sync and cleanly rebuild all Lambdas"
+    )]
+    clean: bool,
+    #[clap(
+        long,
+        default_value = "false",
+        long_help = "Auto approve AWS Region and API Gateway ID before syncing"
+    )]
     confirm: bool,
-    #[clap(long, value_name = "STAGE_NAME", default_value = "development")]
-    stage_name: String,
+    // #[clap(long, value_name = "STAGE_NAME", default_value = "development")]
+    // stage_name: String,
 }
 
 impl TryFrom<SyncArgs> for SyncOptions {
@@ -76,12 +90,13 @@ impl TryFrom<SyncArgs> for SyncOptions {
         Ok(Self {
             api_id: args.api_id,
             auto_confirm: args.confirm,
+            clear_cache: args.clean,
             project_dir: env::current_dir()?,
             project_name: match config::project_name()? {
                 None => panic!("need a l3.yml file with a `project_name: ` string"),
                 Some(project_name) => project_name,
             },
-            stage_name: args.stage_name,
+            stage_name: "development".to_string(),
         })
     }
 }
