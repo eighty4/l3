@@ -6,7 +6,7 @@ use swc::config::IsModule;
 use swc::try_with_handler;
 use swc_common::{SourceMap, GLOBALS};
 use swc_ecma_ast::{Decl, EsVersion, ModuleDecl, Program};
-use swc_ecma_parser::{EsConfig, Syntax};
+use swc_ecma_parser::{EsSyntax, Syntax};
 
 pub struct EsModule {
     pub exported_fns: Vec<String>,
@@ -80,7 +80,7 @@ fn parse_module_for_ast(path: &Path) -> Result<Program, anyhow::Error> {
                     source_map.load_file(path)?,
                     handler,
                     EsVersion::EsNext,
-                    Syntax::Es(EsConfig::default()),
+                    Syntax::Es(EsSyntax::default()),
                     IsModule::Unknown,
                     None,
                 )
