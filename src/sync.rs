@@ -1,4 +1,5 @@
-use std::path::PathBuf;
+use std::collections::HashMap;
+use std::path::{Path, PathBuf};
 use std::{fs, process};
 
 use anyhow::anyhow;
@@ -10,8 +11,12 @@ use crate::aws::operations::iam::{create_lambda_role, get_account_id};
 use crate::aws::state::DeployedProjectState;
 use crate::aws::tasks::SyncTask::RemoveFn;
 use crate::aws::tasks::{DeployFnParams, RemoveFnParams, SyncTask};
-use crate::code::read::read_route_dir_for_lambdas;
+use crate::code::env::EnvVarSources;
+use crate::code::parse::parse_source_file;
+use crate::code::read::recursively_read_dirs;
+use crate::code::source::SourceFile;
 use crate::config::{read_api_id_from_data_dir, write_api_id_to_data_dir};
+use crate::lambda::{HttpMethod, LambdaFn, RouteKey};
 use crate::{aws, ui};
 
 pub struct SyncOptions {
@@ -132,4 +137,61 @@ async fn validate_or_create_api(
             Err(err) => Err(anyhow!("error verifying api {api_id} exists: {err}")),
         },
     }
+}
+
+// todo testing
+fn read_route_dir_for_lambdas(
+    project_dir: &Path,
+    project_name: &String,
+) -> Result<Vec<LambdaFn>, anyhow::Error> {
+    let mut lambdas = Vec::new();
+    for path in recursively_read_dirs(&PathBuf::from("routes"))? {
+        let file_name = path.file_name().unwrap().to_string_lossy().to_string();
+        match file_name.as_ref() {
+            "lambda.ts" | "lambda.js" | "lambda.mjs" => {}
+            _ => {
+                // todo warning about unresolvable env and non route source files
+                continue;
+            }
+        }
+        let source_file = parse_source_file(&path, project_dir)?;
+        let handler_fns = collect_handler_fn_names(&source_file)?;
+        if handler_fns.is_empty() {
+            // todo warning if env files without any lambdas in a route dir
+            continue;
+        }
+        let http_path = RouteKey::extract_http_path(&path).unwrap();
+        // todo move to SourceFile
+        for (http_method, handler_fn) in handler_fns {
+            let route_key = RouteKey::new(http_method, http_path.clone());
+            let env_var_sources = EnvVarSources::new(project_dir, &route_key)?;
+            lambdas.push(LambdaFn::new(
+                env_var_sources,
+                handler_fn,
+                path.clone(),
+                project_name,
+                route_key,
+            ));
+        }
+    }
+    Ok(lambdas)
+}
+
+// todo move to SourceFile
+fn collect_handler_fn_names(
+    source_file: &SourceFile,
+) -> Result<HashMap<HttpMethod, String>, anyhow::Error> {
+    let mut handler_fns = HashMap::new();
+    for exported_fn in &source_file.exported_fns {
+        if let Ok(http_method) = HttpMethod::try_from(exported_fn.as_str()) {
+            if handler_fns.contains_key(&http_method) {
+                return Err(anyhow!(
+                    "multiple {http_method} functions found in source file {}",
+                    source_file.path.file_name().unwrap().to_string_lossy()
+                ));
+            }
+            handler_fns.insert(http_method, exported_fn.clone());
+        }
+    }
+    Ok(handler_fns)
 }

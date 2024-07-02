@@ -1,5 +1,5 @@
 use std::fmt;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use anyhow::anyhow;
 
@@ -22,6 +22,19 @@ pub struct RouteKey {
 }
 
 impl RouteKey {
+    pub fn extract_http_path(path: &Path) -> Option<String> {
+        debug_assert!(path.is_relative());
+        let mut parts = Vec::new();
+        for p in path.parent().unwrap().components().rev() {
+            if p.as_os_str().to_string_lossy().as_ref() == "routes" {
+                return Some(PathBuf::from_iter(parts).to_string_lossy().to_string());
+            } else {
+                parts.insert(0, p);
+            }
+        }
+        None
+    }
+
     pub fn new(http_method: HttpMethod, http_path: String) -> Self {
         Self {
             http_method,

@@ -5,6 +5,17 @@ use crate::lambda::{HttpMethod, LambdaFn, RouteKey};
 use crate::testing::{ProjectTest, TestSource};
 
 #[test]
+fn test_route_key_extract_http_path_not_a_routes_dir_path() {
+    assert!(RouteKey::extract_http_path(&PathBuf::from("src/data.js")).is_none());
+}
+
+#[test]
+fn test_route_key_extract_http_path() {
+    let http_path = RouteKey::extract_http_path(&PathBuf::from("routes/data/lambda.js"));
+    assert_eq!(http_path.unwrap().as_str(), "data");
+}
+
+#[test]
 fn test_route_key_new() {
     let route_key = RouteKey::new(HttpMethod::Get, "data".to_string());
     assert_eq!(route_key.http_method, HttpMethod::Get);

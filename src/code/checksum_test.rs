@@ -3,8 +3,9 @@ use std::path::PathBuf;
 
 use crate::code::checksum::ChecksumTree;
 use crate::code::env::EnvVarSources;
+use crate::code::source::Language;
 use crate::lambda::{HttpMethod, RouteKey};
-use crate::testing::{ProjectTest, SourceType, TestSource};
+use crate::testing::{ProjectTest, TestSource};
 
 #[test]
 fn test_checksum_tree_do_checksums_match_clean_checksum() {
@@ -13,7 +14,7 @@ fn test_checksum_tree_do_checksums_match_clean_checksum() {
         .api_id("API_ID")
         .project_name("PROJECT_NAME")
         .with_source(
-            TestSource::http_fn(SourceType::JavaScript, route_key.clone())
+            TestSource::http_fn(Language::JavaScript, route_key.clone())
                 .content("export const GET = () => {}")
                 .with_clean_checksum(),
         )
@@ -38,7 +39,7 @@ fn test_checksum_tree_do_checksums_match_dirty_checksum() {
         .api_id("API_ID")
         .project_name("PROJECT_NAME")
         .with_source(
-            TestSource::http_fn(SourceType::ModuleJavaScript, route_key.clone())
+            TestSource::http_fn(Language::JavaScript, route_key.clone())
                 .content("export const GET = () => {}")
                 .with_dirty_checksum(),
         )
@@ -52,7 +53,7 @@ fn test_checksum_tree_do_checksums_match_dirty_checksum() {
     .unwrap();
 
     assert!(!checksum_tree
-        .do_checksums_match(&PathBuf::from("routes/data/lambda.mjs"))
+        .do_checksums_match(&PathBuf::from("routes/data/lambda.js"))
         .unwrap());
 }
 
@@ -63,7 +64,7 @@ fn test_checksum_tree_do_checksums_match_without_checksum() {
         .api_id("API_ID")
         .project_name("PROJECT_NAME")
         .with_source(
-            TestSource::http_fn(SourceType::TypeScript, route_key.clone())
+            TestSource::http_fn(Language::TypeScript, route_key.clone())
                 .content("export const GET = () => {}")
                 .without_checksum(),
         )
@@ -88,7 +89,7 @@ fn test_checksum_tree_do_all_checksums_match_clean_checksums() {
         .api_id("API_ID")
         .project_name("PROJECT_NAME")
         .with_source(
-            TestSource::http_fn(SourceType::JavaScript, route_key.clone())
+            TestSource::http_fn(Language::JavaScript, route_key.clone())
                 .content("export const GET = () => {}")
                 .with_clean_checksum(),
         )
@@ -118,7 +119,7 @@ fn test_checksum_tree_do_all_checksums_match_dirty_checksum() {
         .api_id("API_ID")
         .project_name("PROJECT_NAME")
         .with_source(
-            TestSource::http_fn(SourceType::Python, route_key.clone())
+            TestSource::http_fn(Language::Python, route_key.clone())
                 .content("export const GET = () => {}")
                 .with_clean_checksum(),
         )
@@ -148,7 +149,7 @@ fn test_checksum_tree_do_all_checksums_match_without_checksum() {
         .api_id("API_ID")
         .project_name("PROJECT_NAME")
         .with_source(
-            TestSource::http_fn(SourceType::JavaScript, route_key.clone())
+            TestSource::http_fn(Language::JavaScript, route_key.clone())
                 .content("export const GET = () => {}")
                 .with_clean_checksum(),
         )
@@ -452,7 +453,7 @@ fn test_checksum_tree_remove_checksum_removes_from_cache_and_fs() {
         .api_id("API_ID")
         .project_name("PROJECT_NAME")
         .with_source(
-            TestSource::http_fn(SourceType::JavaScript, route_key.clone())
+            TestSource::http_fn(Language::JavaScript, route_key.clone())
                 .content("export const GET = () => {}")
                 .with_clean_checksum(),
         )
@@ -479,7 +480,7 @@ fn test_checksum_tree_update_checksum() {
         .api_id("API_ID")
         .project_name("PROJECT_NAME")
         .with_source(
-            TestSource::http_fn(SourceType::JavaScript, route_key.clone())
+            TestSource::http_fn(Language::JavaScript, route_key.clone())
                 .content("export const GET = () => {}")
                 .with_dirty_checksum(),
         )
@@ -504,12 +505,12 @@ fn test_checksum_tree_update_all_checksums() {
         .api_id("API_ID")
         .project_name("PROJECT_NAME")
         .with_source(
-            TestSource::http_fn(SourceType::JavaScript, route_key.clone())
+            TestSource::http_fn(Language::JavaScript, route_key.clone())
                 .content("export const GET = () => {}")
                 .with_dirty_checksum(),
         )
         .with_source(
-            TestSource::http_fn(SourceType::TypeScript, route_key.clone())
+            TestSource::http_fn(Language::TypeScript, route_key.clone())
                 .content("export const GET = () => {}")
                 .with_dirty_checksum(),
         )

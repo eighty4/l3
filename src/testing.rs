@@ -5,14 +5,8 @@ use temp_dir::TempDir;
 
 use crate::code::checksum::ChecksumTree;
 use crate::code::sha256::make_checksum;
+use crate::code::source::Language;
 use crate::lambda::RouteKey;
-
-pub enum SourceType {
-    JavaScript,
-    ModuleJavaScript,
-    Python,
-    TypeScript,
-}
 
 pub struct ProjectTest {
     pub api_id: String,
@@ -25,6 +19,12 @@ pub struct ProjectTest {
 }
 
 impl ProjectTest {
+    pub fn with_file(path: &str, content: &str) -> Self {
+        ProjectTest::builder()
+            .with_source(TestSource::with_path(path).content(content))
+            .build()
+    }
+
     pub fn builder() -> ProjectTestBuilder {
         ProjectTestBuilder::new()
     }
@@ -119,15 +119,14 @@ impl TestSource {
         )
     }
 
-    pub fn http_fn(source_type: SourceType, route_key: RouteKey) -> TestSourceBuilder {
+    pub fn http_fn(language: Language, route_key: RouteKey) -> TestSourceBuilder {
         Self::with_route_key(
             format!(
                 "lambda.{}",
-                match source_type {
-                    SourceType::JavaScript => "js",
-                    SourceType::ModuleJavaScript => "mjs",
-                    SourceType::Python => "py",
-                    SourceType::TypeScript => "ts",
+                match language {
+                    Language::JavaScript => "js",
+                    Language::Python => "py",
+                    Language::TypeScript => "ts",
                 }
             ),
             route_key,
