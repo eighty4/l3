@@ -5,6 +5,9 @@ set -e
 
 _git_status_output=$(git status --porcelain)
 
+echo '\n*** cargo build ***'
+cargo build
+
 echo '\n*** cargo fmt -v ***'
 cargo fmt -v
 if [ -z "$_git_status_output" ]; then
@@ -13,9 +16,6 @@ fi
 
 echo '\n*** cargo clippy -- -D warnings ***'
 cargo clippy -- -D warnings
-
-echo '\n*** cargo build ***'
-cargo build
 
 echo '\n*** cargo test ***'
 cargo test
