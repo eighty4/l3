@@ -16,9 +16,9 @@ lazy_static = "1.5.0"
 regex = "1.10.5"
 sha2 = "0.10.8"
 swc = "0.279.0"
-swc_common = "0.34.3"
+swc_common = { version = "0.34.3", features = ["concurrent"] }
 swc_ecma_ast = "0.115.1"
-swc_ecma_parser = "0.146.7"
+swc_ecma_parser = { version = "0.146.7", features = ["typescript"] }
 tokio = { version = "1.38.0", features = ["full"] }
 toml = "0.8.14"
 yaml-rust = "0.4.5"
