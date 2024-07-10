@@ -14,11 +14,11 @@ if [ -z "$_git_status_output" ]; then
   git diff --exit-code
 fi
 
-echo '\n*** cargo clippy -- -D warnings ***'
-cargo clippy -- -D warnings
-
 echo '\n*** cargo test ***'
 cargo test
+
+echo '\n*** cargo clippy -- -D warnings ***'
+cargo clippy -- -D warnings
 
 if [ -n "$_git_status_output" ]; then
   echo
