@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::PathBuf;
 
-/// Paths are relative
+/// Paths are relative from dir_path
 pub fn recursively_read_dirs(dir_path: &PathBuf) -> Result<Vec<PathBuf>, anyhow::Error> {
     let mut files: Vec<PathBuf> = Vec::new();
     for dir_entry_result in fs::read_dir(dir_path)? {

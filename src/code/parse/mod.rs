@@ -1,7 +1,7 @@
-use std::path::Path;
-
 use anyhow::anyhow;
 
+use crate::code::project::ProjectDetails;
+use crate::code::source::path::SourcePath;
 use crate::code::source::{Language, SourceFile};
 
 mod swc;
@@ -11,24 +11,19 @@ mod parse_test;
 #[cfg(test)]
 mod swc_test;
 
-pub fn parse_source_file(path: &Path, project_dir: &Path) -> Result<SourceFile, anyhow::Error> {
-    debug_assert!(path.is_relative());
-    debug_assert!(path.extension().is_some());
-    debug_assert!(project_dir.is_absolute());
-    debug_assert!(project_dir.is_dir());
-    debug_assert!(project_dir.join(path).is_file());
-    let language = match Language::from_extension(path) {
-        None => {
-            return Err(anyhow!(
-                "{} is not a supported file type",
-                path.file_name().unwrap().to_string_lossy()
-            ))
-        }
+pub fn parse_source_file(
+    path: SourcePath,
+    project_details: &ProjectDetails,
+) -> Result<SourceFile, anyhow::Error> {
+    debug_assert!(path.rel.extension().is_some());
+    debug_assert!(path.abs.is_file());
+    let language = match path.language() {
+        None => return Err(anyhow!("{} is not a supported file type", path.file_name())),
         Some(language) => language,
     };
     match language {
         Language::JavaScript | Language::TypeScript => {
-            swc::parse_source_file(language, path.to_path_buf(), project_dir)
+            swc::parse_source_file(language, path, project_details)
         }
         Language::Python => panic!(),
     }

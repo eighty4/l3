@@ -1,59 +1,47 @@
+use std::fs;
 use std::fs::File;
 use std::io::{Read, Write};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use zip::write::FileOptions;
 use zip::ZipWriter;
 
+use crate::code::source::path::SourcePath;
+use crate::code::source::FunctionBuildDir;
+
 pub struct Archiver {
     /// Absolute path to archive result
     dest: PathBuf,
-    /// Absolute path to compressed files
-    file_paths: Vec<PathBuf>,
-    project_dir: PathBuf,
+    source_paths: Vec<SourcePath>,
 }
 
 impl Archiver {
-    pub fn new(project_dir: PathBuf, archive_path: PathBuf, file_paths: Vec<PathBuf>) -> Self {
+    pub fn new(
+        project_dir: &Path,
+        build_dir: &FunctionBuildDir,
+        source_paths: Vec<SourcePath>,
+    ) -> Self {
         debug_assert!(project_dir.is_absolute());
-        debug_assert!(archive_path.is_relative());
-        debug_assert!(
-            archive_path.components().count() == 1
-                || archive_path
-                    .parent()
-                    .map(|dir| dir.exists())
-                    .unwrap_or(true)
-        );
+        debug_assert!(source_paths
+            .iter()
+            .all(|p| p.abs.is_dir() || p.abs.is_file()));
         Self {
-            dest: project_dir.join(archive_path),
-            file_paths: file_paths
-                .into_iter()
-                .map(|p| {
-                    if p.is_absolute() {
-                        p
-                    } else {
-                        project_dir.join(p)
-                    }
-                })
-                .collect(),
-            project_dir,
+            dest: build_dir.abs(project_dir).join("code.zip"),
+            source_paths,
         }
     }
 
     pub fn write(self) -> Result<PathBuf, anyhow::Error> {
+        _ = fs::create_dir_all(self.dest.parent().unwrap());
+        _ = fs::remove_file(&self.dest);
         let zip_file = File::create(&self.dest)?;
         let mut zip_writer = ZipWriter::new(zip_file);
         let compress_options: FileOptions<'static, ()> =
             FileOptions::default().compression_method(zip::CompressionMethod::Deflated);
         let mut buf = Vec::new();
-        for path in &self.file_paths {
-            File::open(path)?.read_to_end(&mut buf)?;
-            zip_writer.start_file(
-                path.strip_prefix(&self.project_dir)?
-                    .to_string_lossy()
-                    .to_string(),
-                compress_options,
-            )?;
+        for path in &self.source_paths {
+            File::open(&path.abs)?.read_to_end(&mut buf)?;
+            zip_writer.start_file(path.rel.to_string_lossy().to_string(), compress_options)?;
             zip_writer.write_all(buf.as_ref())?;
             buf.clear();
         }

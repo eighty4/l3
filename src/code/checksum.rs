@@ -61,6 +61,7 @@ impl ChecksumTree {
 
     #[allow(unused)]
     pub fn do_all_checksums_match(&self, paths: &Vec<PathBuf>) -> Result<bool, anyhow::Error> {
+        debug_assert!(paths.iter().all(|p| p.is_relative()));
         for p in paths {
             if !self.do_checksums_match(p)? {
                 return Ok(false);

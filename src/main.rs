@@ -2,12 +2,15 @@ use std::{env, process};
 
 use clap::{Parser, Subcommand};
 
+use crate::code::build::BuildMode;
+use crate::dev::{develop_project, DevOptions};
 use crate::init::{init_project, InitOptions};
 use crate::sync::{sync_project, SyncOptions};
 
 mod aws;
 mod code;
 mod config;
+mod dev;
 mod init;
 mod lambda;
 mod sync;
@@ -32,6 +35,8 @@ enum LambdaX3Command {
     Init(InitArgs),
     #[clap(about = "Deploy project resources to Lambda and API Gateway")]
     Sync(SyncArgs),
+    #[clap(about = "Watch project directory and sync updates")]
+    Dev(DevArgs),
 }
 
 #[derive(Parser, Debug)]
@@ -81,6 +86,12 @@ struct SyncArgs {
     confirm: bool,
     // #[clap(long, value_name = "STAGE_NAME", default_value = "development")]
     // stage_name: String,
+    #[clap(
+        long,
+        default_value = "false",
+        long_help = "Create a release build of Lambda Function artifacts"
+    )]
+    release: bool,
 }
 
 impl TryFrom<SyncArgs> for SyncOptions {
@@ -90,6 +101,10 @@ impl TryFrom<SyncArgs> for SyncOptions {
         Ok(Self {
             api_id: args.api_id,
             auto_confirm: args.confirm,
+            build_mode: match args.release {
+                true => BuildMode::Release,
+                false => BuildMode::Debug,
+            },
             clear_cache: args.clean,
             project_dir: env::current_dir()?,
             project_name: match config::project_name()? {
@@ -98,6 +113,17 @@ impl TryFrom<SyncArgs> for SyncOptions {
             },
             stage_name: "development".to_string(),
         })
+    }
+}
+
+#[derive(Parser, Debug)]
+struct DevArgs {}
+
+impl TryFrom<DevArgs> for DevOptions {
+    type Error = anyhow::Error;
+
+    fn try_from(_args: DevArgs) -> Result<Self, Self::Error> {
+        Ok(Self {})
     }
 }
 
@@ -113,5 +139,6 @@ async fn exec_cmd(cmd: LambdaX3Command) -> Result<(), anyhow::Error> {
     match cmd {
         LambdaX3Command::Init(args) => init_project(InitOptions::from(args)),
         LambdaX3Command::Sync(args) => sync_project(SyncOptions::try_from(args)?).await,
+        LambdaX3Command::Dev(args) => develop_project(DevOptions::try_from(args)?).await,
     }
 }

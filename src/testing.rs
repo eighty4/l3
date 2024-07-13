@@ -4,8 +4,10 @@ use std::path::PathBuf;
 use temp_dir::TempDir;
 
 use crate::code::checksum::ChecksumTree;
+use crate::code::parse::parse_source_file;
 use crate::code::sha256::make_checksum;
-use crate::code::source::Language;
+use crate::code::source::path::SourcePath;
+use crate::code::source::{Language, SourceFile};
 use crate::lambda::RouteKey;
 
 pub struct ProjectTest {
@@ -41,12 +43,20 @@ impl ProjectTest {
         self.project_dir.join(path)
     }
 
-    pub fn path_string(&self, path: &str) -> String {
-        self.path(path).to_string_lossy().to_string()
+    pub fn source_file(&self, path: &str) -> SourceFile {
+        debug_assert!(&self.project_dir.join(path).is_file());
+        parse_source_file(self.source_path(path), &Default::default()).unwrap()
     }
 
-    pub fn source_paths(&self) -> Vec<PathBuf> {
-        self.sources.iter().map(|s| s.rel_path.clone()).collect()
+    pub fn source_path(&self, path: &str) -> SourcePath {
+        SourcePath::from_rel(&self.project_dir, PathBuf::from(path))
+    }
+
+    pub fn source_paths(&self) -> Vec<SourcePath> {
+        self.sources
+            .iter()
+            .map(|s| self.source_path(s.rel_path.to_string_lossy().as_ref()))
+            .collect()
     }
 }
 

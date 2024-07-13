@@ -6,6 +6,8 @@ use remove_fn::perform_remove_fn;
 
 use crate::aws::clients::AwsClients;
 use crate::aws::state::DeployedLambdaComponents;
+use crate::code::build::BuildMode;
+use crate::code::project::ProjectDetails;
 use crate::lambda::LambdaFn;
 
 mod deploy_fn;
@@ -16,9 +18,11 @@ mod update_env;
 pub struct DeployFnParams {
     pub account_id: String,
     pub api_id: String,
+    pub build_mode: BuildMode,
     pub components: DeployedLambdaComponents,
     pub lambda_fn: LambdaFn,
     pub lambda_role_arn: String,
+    pub project_details: ProjectDetails,
     pub project_dir: PathBuf,
     pub publish_fn_updates: bool,
     pub region: String,

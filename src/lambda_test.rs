@@ -75,7 +75,7 @@ fn test_lambda_fn_fn_name() {
     let lambda_fn = LambdaFn::new(
         EnvVarSources::new(&project_test.project_dir, &route_key).unwrap(),
         "DELETE".to_string(),
-        PathBuf::from("routes/data/lambda.js"),
+        project_test.source_path("routes/data/lambda.js"),
         &"my_proj".to_string(),
         route_key,
     );
@@ -93,7 +93,7 @@ fn test_lambda_fn_handler_path() {
     let lambda_fn = LambdaFn::new(
         EnvVarSources::new(&project_test.project_dir, &route_key).unwrap(),
         "GET".to_string(),
-        PathBuf::from("routes/data/lambda.js"),
+        project_test.source_path("routes/data/lambda.js"),
         &"my_proj".to_string(),
         route_key,
     );

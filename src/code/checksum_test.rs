@@ -108,7 +108,13 @@ fn test_checksum_tree_do_all_checksums_match_clean_checksums() {
     .unwrap();
 
     assert!(checksum_tree
-        .do_all_checksums_match(&project_test.source_paths())
+        .do_all_checksums_match(
+            &project_test
+                .source_paths()
+                .iter()
+                .map(|p| p.rel.clone())
+                .collect()
+        )
         .unwrap());
 }
 
@@ -138,7 +144,13 @@ fn test_checksum_tree_do_all_checksums_match_dirty_checksum() {
     .unwrap();
 
     assert!(!checksum_tree
-        .do_all_checksums_match(&project_test.source_paths())
+        .do_all_checksums_match(
+            &project_test
+                .source_paths()
+                .iter()
+                .map(|p| p.rel.clone())
+                .collect()
+        )
         .unwrap());
 }
 
@@ -168,7 +180,13 @@ fn test_checksum_tree_do_all_checksums_match_without_checksum() {
     .unwrap();
 
     assert!(!checksum_tree
-        .do_all_checksums_match(&project_test.source_paths())
+        .do_all_checksums_match(
+            &project_test
+                .source_paths()
+                .iter()
+                .map(|p| p.rel.clone())
+                .collect()
+        )
         .unwrap());
 }
 
@@ -301,7 +319,7 @@ fn test_checksum_tree_do_env_checksums_match_with_method_env_checksum_without_so
     .unwrap();
 
     fs::remove_file(
-        &project_test
+        project_test
             .project_dir
             .join(route_key.to_route_dir_path())
             .join("lambda.get.env"),
@@ -336,7 +354,7 @@ fn test_checksum_tree_do_env_checksums_match_with_path_env_checksum_without_sour
     .unwrap();
 
     fs::remove_file(
-        &project_test
+        project_test
             .project_dir
             .join(route_key.to_route_dir_path())
             .join("lambda.env"),
@@ -418,7 +436,7 @@ fn test_checksum_tree_update_env_var_checksums_removes_checksums() {
         .unwrap());
 
     fs::remove_file(
-        &project_test
+        project_test
             .project_dir
             .join(route_key.to_route_dir_path())
             .join("lambda.env"),

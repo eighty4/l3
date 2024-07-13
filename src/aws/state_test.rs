@@ -1,5 +1,3 @@
-use std::path::PathBuf;
-
 use aws_sdk_apigatewayv2::types::{Integration, Route};
 use aws_sdk_lambda::types::FunctionConfiguration;
 
@@ -22,7 +20,7 @@ fn test_deployed_state_resolves_lambda_components_by_route_key() {
     let lambda_fn = LambdaFn::new(
         EnvVarSources::new(&project_test.project_dir, &route_key).unwrap(),
         "GET".to_string(),
-        PathBuf::from("routes/some/function/lambda.js"),
+        project_test.source_path("routes/some/function/lambda.js"),
         &"this_project".to_string(),
         route_key,
     );

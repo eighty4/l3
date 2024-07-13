@@ -1,5 +1,3 @@
-use std::path::PathBuf;
-
 use crate::code::parse::parse_source_file;
 use crate::testing::{ProjectTest, TestSource};
 
@@ -9,7 +7,7 @@ fn test_parse_module_errors_for_unsupported_source_type() {
         .with_source(TestSource::with_path("lambda.toml").content("[unsupported]"))
         .build();
     assert_eq!(
-        parse_source_file(&PathBuf::from("lambda.toml"), &project_test.project_dir)
+        parse_source_file(project_test.source_path("lambda.toml"), &Default::default())
             .err()
             .unwrap()
             .to_string(),

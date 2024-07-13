@@ -11,9 +11,12 @@ use crate::aws::operations::iam::{create_lambda_role, get_account_id};
 use crate::aws::state::DeployedProjectState;
 use crate::aws::tasks::SyncTask::RemoveFn;
 use crate::aws::tasks::{DeployFnParams, RemoveFnParams, SyncTask};
+use crate::code::build::BuildMode;
 use crate::code::env::EnvVarSources;
 use crate::code::parse::parse_source_file;
+use crate::code::project::ProjectDetails;
 use crate::code::read::recursively_read_dirs;
+use crate::code::source::path::SourcePath;
 use crate::code::source::SourceFile;
 use crate::config::{read_api_id_from_data_dir, write_api_id_to_data_dir};
 use crate::lambda::{HttpMethod, LambdaFn, RouteKey};
@@ -22,6 +25,7 @@ use crate::{aws, ui};
 pub struct SyncOptions {
     pub api_id: Option<String>,
     pub auto_confirm: bool,
+    pub build_mode: BuildMode,
     pub clear_cache: bool,
     pub project_dir: PathBuf,
     pub project_name: String,
@@ -59,11 +63,16 @@ pub(crate) async fn sync_project(sync_options: SyncOptions) -> Result<(), anyhow
     let account_id = get_account_id(&sdk_clients.iam).await?;
     let lambda_role = create_lambda_role(&sdk_clients.iam, &sync_options.project_name).await?;
 
-    let lambdas =
-        read_route_dir_for_lambdas(&sync_options.project_dir, &sync_options.project_name)?;
+    let lambdas = read_route_dir_for_lambdas(
+        &Default::default(),
+        &sync_options.project_dir,
+        &sync_options.project_name,
+    )?;
     let mut deployed_state =
         DeployedProjectState::fetch_from_aws(&sdk_clients, &sync_options.project_name, &api_id)
             .await?;
+
+    let project_details = ProjectDetails::read_details(&sync_options.project_dir)?;
     let mut sync_tasks: Vec<SyncTask> = Vec::new();
 
     println!("\nSyncing {} lambdas", lambdas.len());
@@ -71,10 +80,12 @@ pub(crate) async fn sync_project(sync_options: SyncOptions) -> Result<(), anyhow
         sync_tasks.push(SyncTask::DeployFn(Box::new(DeployFnParams {
             account_id: account_id.clone(),
             api_id: api_id.clone(),
+            build_mode: sync_options.build_mode.clone(),
             components: deployed_state
                 .rm_deployed_components(&lambda_fn.route_key, &lambda_fn.fn_name),
             lambda_fn: lambda_fn.clone(),
             lambda_role_arn: lambda_role.arn.clone(),
+            project_details: project_details.clone(),
             project_dir: sync_options.project_dir.clone(),
             publish_fn_updates: false,
             region: region.to_string(),
@@ -141,6 +152,7 @@ async fn validate_or_create_api(
 
 // todo testing
 fn read_route_dir_for_lambdas(
+    project_details: &ProjectDetails,
     project_dir: &Path,
     project_name: &String,
 ) -> Result<Vec<LambdaFn>, anyhow::Error> {
@@ -154,13 +166,14 @@ fn read_route_dir_for_lambdas(
                 continue;
             }
         }
-        let source_file = parse_source_file(&path, project_dir)?;
+        let source_path = SourcePath::from_rel(project_dir, path);
+        let source_file = parse_source_file(source_path.clone(), project_details)?;
         let handler_fns = collect_handler_fn_names(&source_file)?;
         if handler_fns.is_empty() {
             // todo warning if env files without any lambdas in a route dir
             continue;
         }
-        let http_path = RouteKey::extract_http_path(&path).unwrap();
+        let http_path = RouteKey::extract_http_path(&source_path.rel).unwrap();
         // todo move to SourceFile
         for (http_method, handler_fn) in handler_fns {
             let route_key = RouteKey::new(http_method, http_path.clone());
@@ -168,7 +181,7 @@ fn read_route_dir_for_lambdas(
             lambdas.push(LambdaFn::new(
                 env_var_sources,
                 handler_fn,
-                path.clone(),
+                source_path.clone(),
                 project_name,
                 route_key,
             ));
@@ -187,7 +200,7 @@ fn collect_handler_fn_names(
             if handler_fns.contains_key(&http_method) {
                 return Err(anyhow!(
                     "multiple {http_method} functions found in source file {}",
-                    source_file.path.file_name().unwrap().to_string_lossy()
+                    source_file.path.rel.file_name().unwrap().to_string_lossy()
                 ));
             }
             handler_fns.insert(http_method, exported_fn.clone());

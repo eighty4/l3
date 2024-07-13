@@ -14,7 +14,7 @@ use crate::aws::operations::lambda::{
     create_fn, wait_for_fn_state_active, wait_for_fn_update_successful,
 };
 use crate::aws::tasks::DeployFnParams;
-use crate::code::archiver::Archiver;
+use crate::code::build::LambdaFnBuild;
 use crate::code::checksum::ChecksumTree;
 use crate::lambda::RouteKey;
 
@@ -24,7 +24,6 @@ pub async fn perform_deploy_fn(
 ) -> Result<(), anyhow::Error> {
     // todo updating code should upload to s3
     // todo include imported deps in archive
-    // todo skip update code if checksums are clean
     fs::create_dir_all(
         PathBuf::from(".l3")
             .join(&params.api_id)
@@ -38,7 +37,7 @@ pub async fn perform_deploy_fn(
     let env_vars = params.lambda_fn.env_var_sources.read_env_variables()?;
     let synced_fn_arn = match &params.components.function_arn {
         None => {
-            let archive_path = create_archive(params)?;
+            let archive_path = build_and_zip_sources(params).await?;
             let created_fn_arn = create_fn(
                 &sdk_clients.lambda,
                 &params.lambda_fn.fn_name,
@@ -49,7 +48,7 @@ pub async fn perform_deploy_fn(
             )
             .await?;
             add_api_gateway_invoke_permission(sdk_clients, params, &created_fn_arn).await?;
-            checksums.update_checksum(params.lambda_fn.path.clone())?;
+            checksums.update_checksum(params.lambda_fn.path.rel.clone())?;
             checksums.update_env_var_checksums(&params.lambda_fn.env_var_sources)?;
             println!("  ✔ Created Lambda Function {}", &params.lambda_fn.fn_name);
             wait_for_fn_state_active(&sdk_clients.lambda, &params.lambda_fn.fn_name).await?;
@@ -76,13 +75,13 @@ pub async fn perform_deploy_fn(
                     &params.lambda_fn.fn_name
                 );
             }
-            if checksums.do_checksums_match(&params.lambda_fn.path)? {
+            if checksums.do_checksums_match(&params.lambda_fn.path.rel)? {
                 println!(
                     "  ✔ Lambda {} code already up to date!",
                     &params.lambda_fn.fn_name
                 );
             } else {
-                let archive_path = create_archive(params)?;
+                let archive_path = build_and_zip_sources(params).await?;
                 sdk_clients
                     .lambda
                     .update_function_code()
@@ -91,7 +90,7 @@ pub async fn perform_deploy_fn(
                     .send()
                     .await
                     .map_err(|err| anyhow!("{}", err.into_service_error().to_string()))?;
-                checksums.update_checksum(params.lambda_fn.path.clone())?;
+                checksums.update_checksum(params.lambda_fn.path.rel.clone())?;
                 // todo wait for publish to finish
                 println!(
                     "  ✔ Updated code for Lambda Function {}",
@@ -218,22 +217,21 @@ async fn add_api_gateway_invoke_permission(
     Ok(())
 }
 
-fn create_archive(params: &DeployFnParams) -> Result<PathBuf, anyhow::Error> {
-    let archiver = Archiver::new(
+async fn build_and_zip_sources(params: &DeployFnParams) -> Result<PathBuf, anyhow::Error> {
+    let archive_path = LambdaFnBuild::new(
+        params.project_details.clone(),
         params.project_dir.clone(),
-        PathBuf::from(".l3")
-            .join(&params.api_id)
-            .join(&params.lambda_fn.fn_name)
-            .join("archive.zip")
-            .to_path_buf(),
-        vec![params.lambda_fn.path.clone()],
-    );
-    let p = archiver.write()?;
+        params.api_id.clone(),
+        params.build_mode.clone(),
+        params.lambda_fn.clone(),
+    )
+    .create_code_archive()
+    .await?;
     println!(
         "  ✔ Built code archive for Lambda Function {}",
         params.lambda_fn.fn_name
     );
-    Ok(p)
+    Ok(archive_path)
 }
 
 async fn create_route(
