@@ -9,21 +9,21 @@ pub struct TypeScriptDeets {
     // https://www.typescriptlang.org/tsconfig/#paths
     // https://www.typescriptlang.org/docs/handbook/modules/reference.html#paths
     #[allow(unused)]
-    ts_path_aliases: HashMap<String, Vec<PathBuf>>,
+    pub path_aliases: HashMap<String, Vec<PathBuf>>,
 }
 
 impl TypeScriptDeets {
     pub fn read_details(project_dir: &Path) -> Result<Self, anyhow::Error> {
         Ok(if project_dir.join("tsconfig.json").is_file() {
             Self {
-                ts_path_aliases: Self::read_ts_path_aliases(project_dir)?,
+                path_aliases: Self::read_path_aliases(project_dir)?,
             }
         } else {
             Default::default()
         })
     }
 
-    fn read_ts_path_aliases(
+    fn read_path_aliases(
         project_dir: &Path,
     ) -> Result<HashMap<String, Vec<PathBuf>>, anyhow::Error> {
         let tsconfig: Value = match fs::read_to_string(project_dir.join("tsconfig.json")) {

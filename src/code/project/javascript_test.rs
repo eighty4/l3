@@ -1,59 +1,62 @@
+use crate::code::project::javascript::NodePackageManager::{Npm, Pnpm};
+use crate::code::project::javascript::{JavaScriptDeets, NodeConditionalImportKind};
+use crate::testing::{ProjectTest, TestSource};
 use std::path::PathBuf;
 
-use crate::code::project::javascript::{
-    JavaScriptDeets, NodeConditionalImport, NodeConditionalImportKind,
-};
-
 #[test]
-fn test_javascript_deets_map_subpath_import_without_match() {
-    let js = JavaScriptDeets::default();
-    assert!(js.map_subpath_import("#db-dep").is_none());
+fn test_read_details_reads_dependencies() {
+    let project_test = ProjectTest::builder()
+        .with_source(TestSource::with_path("package.json").content(
+            "{\"dependencies\":{\"pg\":\"0.0.1\"},\"devDependencies\":{\"@types/pg\":\"0.0.1\"}}",
+        ))
+        .build();
+    let js_deets = JavaScriptDeets::read_details(&project_test.project_dir).unwrap();
+    assert_eq!(2, js_deets.dependencies.len());
+    assert!(js_deets.dependencies.contains(&"pg".to_string()));
+    assert!(js_deets.dependencies.contains(&"@types/pg".to_string()));
 }
 
 #[test]
-fn test_javascript_deets_map_subpath_import_matches_explicit_import() {
-    let mut js = JavaScriptDeets::default();
-    js.subpath_imports.insert(
-        "#db-dep".to_string(),
-        vec![NodeConditionalImport {
-            kind: NodeConditionalImportKind::Default,
-            path: PathBuf::from("./db_dep.js"),
-        }],
-    );
-    match js.map_subpath_import("#db-dep") {
-        None => panic!(),
-        Some(p) => assert_eq!(p, PathBuf::from("./db_dep.js")),
-    }
+fn test_read_details_checks_for_pnpm_package_manager() {
+    let project_test = ProjectTest::builder()
+        .with_source(TestSource::with_path("pnpm-lock.yaml").content(""))
+        .build();
+    let js_deets = JavaScriptDeets::read_details(&project_test.project_dir).unwrap();
+    assert_eq!(Pnpm, js_deets.package_manager);
 }
 
 #[test]
-fn test_javascript_deets_map_subpath_import_matches_wildcard_to_explicit_path() {
-    let mut js = JavaScriptDeets::default();
-    js.subpath_imports.insert(
-        "#db-dep/*.js".to_string(),
-        vec![NodeConditionalImport {
-            kind: NodeConditionalImportKind::Default,
-            path: PathBuf::from("./lib/db/code.js"),
-        }],
-    );
-    match js.map_subpath_import("#db-dep/data.js") {
-        None => panic!(),
-        Some(p) => assert_eq!(p, PathBuf::from("./lib/db/code.js")),
-    }
+fn test_read_details_defaults_to_npm_package_manager() {
+    let project_test = ProjectTest::builder().build();
+    let js_deets = JavaScriptDeets::read_details(&project_test.project_dir).unwrap();
+    assert_eq!(Npm, js_deets.package_manager);
 }
 
 #[test]
-fn test_javascript_deets_map_subpath_import_matches_wildcard_mapping() {
-    let mut js = JavaScriptDeets::default();
-    js.subpath_imports.insert(
-        "#db-dep/*.js".to_string(),
-        vec![NodeConditionalImport {
-            kind: NodeConditionalImportKind::Default,
-            path: PathBuf::from("./lib/db/*.js"),
-        }],
-    );
-    match js.map_subpath_import("#db-dep/data.js") {
-        None => panic!(),
-        Some(p) => assert_eq!(p, PathBuf::from("./lib/db/data.js")),
+fn test_read_details_reads_subpath_imports() {
+    let project_test = ProjectTest::builder()
+        .with_source(TestSource::with_path("package.json").content(
+            "{\"imports\":{\"#dep\":{\"node\":\"dep-node-native\",\"default\":\"./dep-polyfill.js\"}}}",
+        ))
+        .build();
+    let js_deets = JavaScriptDeets::read_details(&project_test.project_dir).unwrap();
+    let lookup = js_deets.subpath_imports.get(&"#dep".to_string());
+    assert!(lookup.is_some());
+    let subpaths = lookup.unwrap();
+    assert_eq!(2, subpaths.iter().len());
+    let mut matches = 0;
+    for subpath in subpaths {
+        match subpath.kind {
+            NodeConditionalImportKind::Node => {
+                matches = matches + 1;
+                assert_eq!(PathBuf::from("dep-node-native"), subpath.path)
+            }
+            NodeConditionalImportKind::Default => {
+                matches = matches + 1;
+                assert_eq!(PathBuf::from("./dep-polyfill.js"), subpath.path)
+            }
+            _ => panic!(),
+        }
     }
+    assert_eq!(2, matches);
 }

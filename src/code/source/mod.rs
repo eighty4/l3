@@ -62,24 +62,14 @@ impl FunctionBuildDir {
 }
 
 pub enum ModuleImport {
-    // https://nodejs.org/api/packages.html#subpath-imports
     #[allow(unused)]
-    NodeSubpathImport {
-        declared: String,
-        path: SourcePath,
-    },
     PackageDependency {
         package: String,
         subpath: Option<String>,
     },
-    RelativeSource(SourcePath),
-    // https://www.typescriptlang.org/tsconfig/#paths
-    // https://www.typescriptlang.org/docs/handbook/modules/reference.html#paths
     #[allow(unused)]
-    TypeScriptPathMapping {
-        declared: String,
-        path: SourcePath,
-    },
+    RelativeSource(SourcePath),
+    #[allow(unused)]
     Unknown(String),
 }
 

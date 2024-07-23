@@ -99,6 +99,10 @@ fn build_source_file_from_module_ast(
     SourceFile::new(exported_fns, imports, language, path)
 }
 
+// todo resolve ts and js import path mappings
+//  https://nodejs.org/api/packages.html#subpath-imports
+//  https://www.typescriptlang.org/tsconfig/#paths
+//  https://www.typescriptlang.org/docs/handbook/modules/reference.html#paths
 fn parse_import_path(
     import_path: &str,
     source_path: &SourcePath,
@@ -106,14 +110,6 @@ fn parse_import_path(
 ) -> ModuleImport {
     if import_path.starts_with('.') {
         ModuleImport::RelativeSource(source_path.to_relative_source(&PathBuf::from(import_path)))
-    } else if import_path.chars().next().map_or(false, |c| c == '#') {
-        match project_details.javascript.map_subpath_import(import_path) {
-            None => ModuleImport::Unknown(import_path.to_string()),
-            Some(p) => ModuleImport::NodeSubpathImport {
-                declared: import_path.to_string(),
-                path: SourcePath::from_rel(&project_details.project_dir, p),
-            },
-        }
     } else {
         let (maybe_dep_package, maybe_dep_subpath) = match import_path.split_once('/') {
             None => (import_path.to_string(), None),

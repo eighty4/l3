@@ -7,7 +7,7 @@ use serde_json::Value;
 use crate::code::project::javascript::NodeConditionalImportKind::*;
 use crate::code::project::javascript::NodePackageManager::*;
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum NodePackageManager {
     Npm,
     Pnpm,
@@ -15,7 +15,9 @@ pub enum NodePackageManager {
 
 #[derive(Clone)]
 pub struct NodeConditionalImport {
+    #[allow(unused)]
     pub kind: NodeConditionalImportKind,
+    #[allow(unused)]
     pub path: PathBuf,
 }
 
@@ -64,18 +66,6 @@ impl JavaScriptDeets {
 
     pub fn has_dependency(&self, dependency: &String) -> bool {
         self.dependencies.contains(dependency)
-    }
-
-    pub fn map_subpath_import(&self, import_path: &str) -> Option<PathBuf> {
-        debug_assert!(import_path.starts_with('#'));
-        match self.subpath_imports.get(import_path) {
-            None => None,
-            Some(mappings) => {
-                // todo filter on file exists
-                // mappings.iter().filter(|a| a.path.is_file()).map(|import| import.path.clone())
-                mappings.first().map(|import| import.path.clone())
-            }
-        }
     }
 
     fn read_dependencies(project_dir: &Path) -> Result<Vec<String>, anyhow::Error> {

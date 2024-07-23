@@ -11,10 +11,14 @@ pub(crate) mod typescript;
 #[cfg(test)]
 mod javascript_test;
 
+#[cfg(test)]
+mod typescript_test;
+
 #[derive(Clone, Default)]
 pub struct ProjectDetails {
     #[allow(unused)]
     pub javascript: JavaScriptDeets,
+    #[allow(unused)]
     pub project_dir: PathBuf,
     #[allow(unused)]
     pub python: PythonDeets,

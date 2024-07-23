@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use crate::code::parse::parse_source_file;
+use crate::code::project::javascript::{NodeConditionalImport, NodeConditionalImportKind};
 use crate::code::project::ProjectDetails;
 use crate::code::source::ModuleImport;
 use crate::code::source::ModuleImport::*;
@@ -37,13 +38,6 @@ fn verify_package_dependency_import(
 fn verify_unknown_import(import: &ModuleImport, expected_value: String) {
     if let Unknown(value) = import {
         assert_eq!(value, &expected_value);
-    } else {
-        panic!();
-    }
-}
-
-fn verify_node_subpath_import(import: &ModuleImport) {
-    if let NodeSubpathImport { declared, path } = import {
     } else {
         panic!();
     }
@@ -101,28 +95,18 @@ fn test_parse_source_file_parses_es_package_dependency_import_as_unknown_without
     }
 }
 
-#[test]
-fn test_parse_source_file_parses_es_node_subpath_import() {
+fn test_parse_source_file_parses_es_node_subpath_import_as_unknown() {
     for path in &["lambda.js", "lambda.mjs"] {
         let project_test = ProjectTest::with_file(path, "import {dbHelper} from '#db/helpers.js'");
         let mut project_details = ProjectDetails::default();
-        project_details
-            .javascript
-            .dependencies
-            .push("#db-dep".to_string());
+        project_details.javascript.subpath_imports.insert(
+            "#db".to_string(),
+            vec![NodeConditionalImport {
+                kind: NodeConditionalImportKind::Default,
+                path: PathBuf::from("code"),
+            }],
+        );
         let module = parse_source_file(project_test.source_path(path), &project_details).unwrap();
-        assert_eq!(module.imports.len(), 1);
-        verify_node_subpath_import(module.imports.first().unwrap());
-        assert!(module.exported_fns.is_empty());
-    }
-}
-
-#[test]
-fn test_parse_source_file_parses_es_node_subpath_import_without_alias() {
-    for path in &["lambda.js", "lambda.mjs"] {
-        let project_test = ProjectTest::with_file(path, "import {dbHelper} from '#db/helpers.js'");
-        let module =
-            parse_source_file(project_test.source_path(path), &Default::default()).unwrap();
         assert_eq!(module.imports.len(), 1);
         verify_unknown_import(
             module.imports.first().unwrap(),
