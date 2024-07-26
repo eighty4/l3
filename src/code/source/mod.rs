@@ -6,6 +6,7 @@ use crate::code::source::path::{SourceKind, SourcePath};
 pub(crate) mod path;
 pub(crate) mod tracker;
 pub(crate) mod tree;
+pub(crate) mod watcher;
 
 #[cfg(test)]
 mod path_test;
