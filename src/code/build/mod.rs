@@ -1,4 +1,5 @@
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use crate::code::archiver::Archiver;
 use crate::code::build::swc::SwcBuilder;
@@ -65,7 +66,7 @@ impl LambdaFnBuild {
         project_dir: PathBuf,
         api_id: String,
         build_mode: BuildMode,
-        lambda_fn: LambdaFn,
+        lambda_fn: Arc<LambdaFn>,
     ) -> Self {
         let build_dir =
             FunctionBuildDir::new(api_id, build_mode.clone(), lambda_fn.fn_name.clone());

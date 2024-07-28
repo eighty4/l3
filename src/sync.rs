@@ -1,4 +1,5 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
+use std::sync::Arc;
 use std::{fs, process};
 
 use anyhow::anyhow;
@@ -11,13 +12,9 @@ use crate::aws::state::DeployedProjectState;
 use crate::aws::tasks::SyncTask::RemoveFn;
 use crate::aws::tasks::{exec_tasks, DeployFnParams, RemoveFnParams, SyncTask};
 use crate::code::build::BuildMode;
-use crate::code::env::EnvVarSources;
-use crate::code::parse::parse_source_file;
 use crate::code::project::ProjectDetails;
-use crate::code::read::recursively_read_dirs;
-use crate::code::source::path::SourcePath;
+use crate::code::source::tree::SourceTree;
 use crate::config::{read_api_id_from_data_dir, write_api_id_to_data_dir};
-use crate::lambda::{LambdaFn, RouteKey};
 use crate::ui::confirm::confirm;
 
 pub struct SyncOptions {
@@ -61,11 +58,14 @@ pub(crate) async fn sync_project(sync_options: SyncOptions) -> Result<(), anyhow
     let account_id = get_account_id(&sdk_clients.iam).await?;
     let lambda_role = create_lambda_role(&sdk_clients.iam, &sync_options.project_name).await?;
 
-    let lambdas = read_route_dir_for_lambdas(
-        &Default::default(),
+    let project_details = Arc::new(ProjectDetails::read_details(
         &sync_options.project_dir,
-        &sync_options.project_name,
-    )?;
+        sync_options.project_name.clone(),
+    )?);
+
+    let mut source_tree = SourceTree::new(project_details.clone());
+    source_tree.initialize().await?;
+
     let mut deployed_state =
         DeployedProjectState::fetch_from_aws(&sdk_clients, &sync_options.project_name, &api_id)
             .await?;
@@ -74,8 +74,8 @@ pub(crate) async fn sync_project(sync_options: SyncOptions) -> Result<(), anyhow
         ProjectDetails::read_details(&sync_options.project_dir, sync_options.project_name.clone())?;
     let mut sync_tasks: Vec<SyncTask> = Vec::new();
 
-    println!("\nSyncing {} lambdas", lambdas.len());
-    for lambda_fn in &lambdas {
+    println!("\nSyncing {} lambdas", source_tree.lambdas.len());
+    for lambda_fn in source_tree.lambdas.values() {
         sync_tasks.push(SyncTask::DeployFn(Box::new(DeployFnParams {
             account_id: account_id.clone(),
             api_id: api_id.clone(),
@@ -107,7 +107,7 @@ pub(crate) async fn sync_project(sync_options: SyncOptions) -> Result<(), anyhow
 
     println!("\nLambdas deployed to API Gateway\n---");
 
-    for lambda_fn in lambdas {
+    for lambda_fn in source_tree.lambdas.values() {
         println!(
             "{} https://{}.execute-api.{}.amazonaws.com/development/{}",
             lambda_fn.route_key.http_method, api_id, region, lambda_fn.route_key.http_path,
@@ -147,44 +147,4 @@ async fn validate_or_create_api(
             Err(err) => Err(anyhow!("error verifying api {api_id} exists: {err}")),
         },
     }
-}
-
-// todo testing
-fn read_route_dir_for_lambdas(
-    project_details: &ProjectDetails,
-    project_dir: &Path,
-    project_name: &String,
-) -> Result<Vec<LambdaFn>, anyhow::Error> {
-    let mut lambdas = Vec::new();
-    for path in recursively_read_dirs(&PathBuf::from("routes"))? {
-        let file_name = path.file_name().unwrap().to_string_lossy().to_string();
-        match file_name.as_ref() {
-            "lambda.ts" | "lambda.js" | "lambda.mjs" => {}
-            _ => {
-                // todo warning about unresolvable env and non route source files
-                continue;
-            }
-        }
-        let source_path = SourcePath::from_rel(project_dir, path);
-        let source_file = parse_source_file(source_path.clone(), project_details)?;
-        let handler_fns = source_file.collect_handler_fn_names()?;
-        if handler_fns.is_empty() {
-            // todo warning if env files without any lambdas in a route dir
-            continue;
-        }
-        let http_path = RouteKey::extract_http_path(&source_path.rel).unwrap();
-        // todo move to SourceFile
-        for (http_method, handler_fn) in handler_fns {
-            let route_key = RouteKey::new(http_method, http_path.clone());
-            let env_var_sources = EnvVarSources::new(project_dir, &route_key)?;
-            lambdas.push(LambdaFn::new(
-                env_var_sources,
-                handler_fn,
-                source_path.clone(),
-                project_name,
-                route_key,
-            ));
-        }
-    }
-    Ok(lambdas)
 }
