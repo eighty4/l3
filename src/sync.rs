@@ -72,7 +72,8 @@ pub(crate) async fn sync_project(sync_options: SyncOptions) -> Result<(), anyhow
         DeployedProjectState::fetch_from_aws(&sdk_clients, &sync_options.project_name, &api_id)
             .await?;
 
-    let project_details = ProjectDetails::read_details(&sync_options.project_dir)?;
+    let project_details =
+        ProjectDetails::read_details(&sync_options.project_dir, sync_options.project_name.clone())?;
     let mut sync_tasks: Vec<SyncTask> = Vec::new();
 
     println!("\nSyncing {} lambdas", lambdas.len());
