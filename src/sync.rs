@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::{fs, process};
 
@@ -17,9 +16,8 @@ use crate::code::parse::parse_source_file;
 use crate::code::project::ProjectDetails;
 use crate::code::read::recursively_read_dirs;
 use crate::code::source::path::SourcePath;
-use crate::code::source::SourceFile;
 use crate::config::{read_api_id_from_data_dir, write_api_id_to_data_dir};
-use crate::lambda::{HttpMethod, LambdaFn, RouteKey};
+use crate::lambda::{LambdaFn, RouteKey};
 use crate::ui::confirm::confirm;
 
 pub struct SyncOptions {
@@ -169,7 +167,7 @@ fn read_route_dir_for_lambdas(
         }
         let source_path = SourcePath::from_rel(project_dir, path);
         let source_file = parse_source_file(source_path.clone(), project_details)?;
-        let handler_fns = collect_handler_fn_names(&source_file)?;
+        let handler_fns = source_file.collect_handler_fn_names()?;
         if handler_fns.is_empty() {
             // todo warning if env files without any lambdas in a route dir
             continue;
@@ -189,23 +187,4 @@ fn read_route_dir_for_lambdas(
         }
     }
     Ok(lambdas)
-}
-
-// todo move to SourceFile
-fn collect_handler_fn_names(
-    source_file: &SourceFile,
-) -> Result<HashMap<HttpMethod, String>, anyhow::Error> {
-    let mut handler_fns = HashMap::new();
-    for exported_fn in &source_file.exported_fns {
-        if let Ok(http_method) = HttpMethod::try_from(exported_fn.as_str()) {
-            if handler_fns.contains_key(&http_method) {
-                return Err(anyhow!(
-                    "multiple {http_method} functions found in source file {}",
-                    source_file.path.rel.file_name().unwrap().to_string_lossy()
-                ));
-            }
-            handler_fns.insert(http_method, exported_fn.clone());
-        }
-    }
-    Ok(handler_fns)
 }

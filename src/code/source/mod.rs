@@ -1,7 +1,11 @@
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+
+use anyhow::anyhow;
 
 use crate::code::build::BuildMode;
 use crate::code::source::path::{SourceKind, SourcePath};
+use crate::lambda::HttpMethod;
 
 pub(crate) mod path;
 pub(crate) mod tracker;
@@ -97,5 +101,21 @@ impl SourceFile {
             language,
             path,
         }
+    }
+
+    pub fn collect_handler_fn_names(&self) -> Result<HashMap<HttpMethod, String>, anyhow::Error> {
+        let mut handler_fns = HashMap::new();
+        for exported_fn in &self.exported_fns {
+            if let Ok(http_method) = HttpMethod::try_from(exported_fn.as_str()) {
+                if handler_fns.contains_key(&http_method) {
+                    return Err(anyhow!(
+                        "multiple {http_method} functions found in source file {}",
+                        self.path.rel.file_name().unwrap().to_string_lossy()
+                    ));
+                }
+                handler_fns.insert(http_method, exported_fn.clone());
+            }
+        }
+        Ok(handler_fns)
     }
 }
