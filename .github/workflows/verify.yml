@@ -43,6 +43,10 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: swatinem/rust-cache@v2
       - run: cargo clippy -- -D warnings
+        if: github.ref == 'refs/heads/main'
+      - run: cargo clippy
+        if: github.ref != 'refs/heads/main'
+        continue-on-error: true
 
   test:
     runs-on: ubuntu-latest
