@@ -48,6 +48,14 @@ impl RouteKey {
         }
     }
 
+    /// Creates a RouteKey from a string format "{http_method} {http_path}"
+    pub fn from_route_key_string(s: String) -> Result<Self, anyhow::Error> {
+        let (http_method_str, http_path_str) = s.split_once(' ').unwrap();
+        let http_method = HttpMethod::try_from(http_method_str)?;
+        let http_path = http_path_str.trim().to_string();
+        Ok(RouteKey::new(http_method, http_path))
+    }
+
     pub fn to_fn_name(&self, project_name: &String) -> String {
         create_fn_name(project_name, self)
     }
@@ -58,17 +66,6 @@ impl RouteKey {
 
     pub fn to_route_key_string(&self) -> String {
         format!("{} /{}", self.http_method, self.http_path)
-    }
-}
-
-impl TryFrom<String> for RouteKey {
-    type Error = anyhow::Error;
-
-    fn try_from(route_key_str: String) -> Result<Self, Self::Error> {
-        let (http_method_str, http_path_str) = route_key_str.split_once(' ').unwrap();
-        let http_method = HttpMethod::try_from(http_method_str)?;
-        let http_path = http_path_str.trim().to_string();
-        Ok(RouteKey::new(http_method, http_path))
     }
 }
 

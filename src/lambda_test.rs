@@ -44,10 +44,15 @@ fn test_route_key_to_route_dir_path() {
 }
 
 #[test]
-fn test_route_key_try_from() {
-    let route_key = RouteKey::try_from("GET /data".to_string()).unwrap();
-    assert_eq!(route_key.http_method, HttpMethod::Get);
-    assert_eq!(route_key.http_path, "data".to_string());
+fn test_route_key_from_route_key_string() {
+    assert!(
+        RouteKey::from_route_key_string("GET /data".to_string()).unwrap()
+            == RouteKey::new(HttpMethod::Get, "data".to_string())
+    );
+    assert!(
+        RouteKey::from_route_key_string("POST data".to_string()).unwrap()
+            == RouteKey::new(HttpMethod::Post, "data".to_string())
+    );
 }
 
 #[test]

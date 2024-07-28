@@ -42,8 +42,10 @@ impl DeployedProjectState {
         }
         let mut routes = HashMap::new();
         for route in fetched_routes {
-            let route_key = RouteKey::try_from(route.route_key.clone().unwrap()).unwrap();
-            routes.insert(route_key, route);
+            routes.insert(
+                RouteKey::from_route_key_string(route.route_key.clone().unwrap()).unwrap(),
+                route,
+            );
         }
         let mut integrations = HashMap::new();
         for integration in fetched_integrations {
