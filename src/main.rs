@@ -13,6 +13,7 @@ mod config;
 mod dev;
 mod init;
 mod lambda;
+mod notification;
 mod sync;
 mod ui;
 
