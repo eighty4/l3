@@ -23,9 +23,9 @@ pub enum LambdaEventKind {
 }
 
 pub enum LambdaUpdateKind {
-    UpdateCode(LambdaUpdateResult),
-    UpdateDependencies(LambdaUpdateResult),
-    UpdateEnv(LambdaUpdateResult),
+    Code(LambdaUpdateResult),
+    Dependencies(LambdaUpdateResult),
+    Env(LambdaUpdateResult),
 }
 
 pub enum LambdaUpdateResult {

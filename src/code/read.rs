@@ -50,7 +50,7 @@ pub mod parallel {
         Ok(files)
     }
 
-    pub fn read_dir(p: &PathBuf) -> Result<DirRead, anyhow::Error> {
+    fn read_dir(p: &PathBuf) -> Result<DirRead, anyhow::Error> {
         let mut files = Vec::new();
         let mut sub_dirs = Vec::new();
         for dir_entry_result in fs::read_dir(p)? {
