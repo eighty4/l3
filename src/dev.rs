@@ -73,6 +73,7 @@ async fn handle_fs_events(
             FileUpdate::ContentChanged(p) => sources.lock().unwrap().content_changed(p),
             FileUpdate::FileCreated(p) => sources.lock().unwrap().file_created(p),
             FileUpdate::FileRemoved(p) => sources.lock().unwrap().file_removed(p),
+            FileUpdate::FileRenamed(p) => todo!(),
         }
     }
 }

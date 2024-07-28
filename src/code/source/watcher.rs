@@ -1,53 +1,61 @@
 use std::path::PathBuf;
-use std::time::Duration;
 
 use anyhow::anyhow;
-use notify::event::{DataChange, ModifyKind};
-use notify::{EventKind, RecommendedWatcher, RecursiveMode, Watcher};
-use notify_debouncer_full::{new_debouncer, DebounceEventResult, Debouncer, FileIdMap};
+use notify::event::{DataChange, ModifyKind, RenameMode};
+use notify::{Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use tokio::sync::mpsc::Sender;
 
+// todo FileUpdate as struct with FileUpdateKind so enum doesn't have to be matched to access path
 pub enum FileUpdate {
     ContentChanged(PathBuf),
     FileCreated(PathBuf),
     FileRemoved(PathBuf),
+    FileRenamed(PathBuf),
 }
 
 pub struct FileWatcher {
-    w: Debouncer<RecommendedWatcher, FileIdMap>,
+    paths: Vec<PathBuf>,
+    w: RecommendedWatcher,
 }
 
 impl FileWatcher {
     pub fn new(s: Sender<FileUpdate>) -> Result<Self, anyhow::Error> {
         Ok(Self {
-            w: new_debouncer(
-                Duration::from_secs(1),
-                None,
-                move |result: DebounceEventResult| match result {
-                    Ok(events) => {
-                        for event in events {
-                            let path = event.paths.first().cloned().unwrap();
-                            if path.is_dir() {
-                                continue;
+            paths: Vec::new(),
+            w: RecommendedWatcher::new(
+                move |result: notify::Result<Event>| match result {
+                    Ok(event) => {
+                        let path = event.paths.first().cloned().unwrap();
+                        let maybe_update = match event.kind {
+                            EventKind::Create(_) => Some(FileUpdate::FileCreated(path)),
+                            EventKind::Modify(ModifyKind::Data(DataChange::Any)) => {
+                                Some(FileUpdate::ContentChanged(path))
                             }
-                            let maybe_update = match event.event.kind {
-                                EventKind::Create(_) => Some(FileUpdate::FileCreated(path)),
-                                EventKind::Modify(ModifyKind::Data(DataChange::Any)) => {
-                                    Some(FileUpdate::ContentChanged(path))
-                                }
-                                EventKind::Remove(_) => Some(FileUpdate::FileRemoved(path)),
-                                _ => None,
-                            };
-                            match maybe_update {
-                                None => println!("{:?} {:?}", event.event.kind, event.event.paths),
-                                Some(update) => _ = s.try_send(update),
-                            };
-                        }
+                            EventKind::Modify(ModifyKind::Name(RenameMode::Any)) => {
+                                Some(FileUpdate::FileRenamed(path))
+                            }
+                            EventKind::Modify(ModifyKind::Name(rename_mode)) => {
+                                panic!("unexpected EventKind::Modify(ModifyKind::Name(RenameMode::{:?}))", rename_mode);
+                            }
+                            EventKind::Remove(_) => Some(FileUpdate::FileRemoved(path)),
+                            _ => None,
+                        };
+                        match maybe_update {
+                            None => println!("{:?} {:?}", event.kind, event.paths),
+                            Some(update) => _ = s.try_send(update),
+                        };
                     }
-                    Err(errors) => errors.iter().for_each(|e| eprintln!("{e:?}")),
+                    Err(e) => eprintln!("{e:?}"),
                 },
+                Default::default(),
             )?,
         })
+    }
+
+    pub fn for_file(s: Sender<FileUpdate>, p: PathBuf) -> Result<Self, anyhow::Error> {
+        let mut w = Self::new(s)?;
+        w.add_path(p)?;
+        Ok(w)
     }
 
     pub fn add_path(&mut self, path: PathBuf) -> Result<(), anyhow::Error> {
@@ -57,20 +65,18 @@ impl FileWatcher {
                 path.to_string_lossy()
             ));
         }
-        self.w
-            .watcher()
-            .watch(path.as_path(), RecursiveMode::Recursive)?;
-        // todo research behavior diff bw cache path and root
-        self.w
-            .cache()
-            .add_root(path.as_path(), RecursiveMode::Recursive);
+        self.w.watch(path.as_path(), RecursiveMode::Recursive)?;
+        self.paths.push(path);
         Ok(())
     }
 
     #[allow(unused)]
     pub fn rm_path(&mut self, path: PathBuf) -> Result<(), anyhow::Error> {
-        self.w.watcher().unwatch(path.as_path())?;
-        self.w.cache().remove_root(path.as_path());
+        self.w.unwatch(path.as_path())?;
+        self.paths
+            .iter()
+            .position(|p| p == &path)
+            .map(|i| self.paths.remove(i));
         Ok(())
     }
 }
