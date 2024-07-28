@@ -10,7 +10,7 @@ use crate::aws::operations::api_gateway::{create_api, does_api_exist};
 use crate::aws::operations::iam::{create_lambda_role, get_account_id};
 use crate::aws::state::DeployedProjectState;
 use crate::aws::tasks::SyncTask::RemoveFn;
-use crate::aws::tasks::{DeployFnParams, RemoveFnParams, SyncTask};
+use crate::aws::tasks::{exec_tasks, DeployFnParams, RemoveFnParams, SyncTask};
 use crate::code::build::BuildMode;
 use crate::code::env::EnvVarSources;
 use crate::code::parse::parse_source_file;
@@ -20,7 +20,7 @@ use crate::code::source::path::SourcePath;
 use crate::code::source::SourceFile;
 use crate::config::{read_api_id_from_data_dir, write_api_id_to_data_dir};
 use crate::lambda::{HttpMethod, LambdaFn, RouteKey};
-use crate::{aws, ui};
+use crate::ui::confirm::confirm;
 
 pub struct SyncOptions {
     pub api_id: Option<String>,
@@ -49,7 +49,7 @@ pub(crate) async fn sync_project(sync_options: SyncOptions) -> Result<(), anyhow
     println!("  project: {}", sync_options.project_name);
     println!("  region: {region}");
     println!("  api id: {api_id}");
-    if !sync_options.auto_confirm && !ui::confirm("  Continue with syncing?")? {
+    if !sync_options.auto_confirm && !confirm("  Continue with syncing?")? {
         println!("  Cancelling sync operations!");
         process::exit(0);
     }
@@ -105,7 +105,7 @@ pub(crate) async fn sync_project(sync_options: SyncOptions) -> Result<(), anyhow
         }
     }
 
-    aws::tasks::exec(&sdk_clients, sync_tasks).await?;
+    exec_tasks(&sdk_clients, sync_tasks).await?;
 
     println!("\nLambdas deployed to API Gateway\n---");
 

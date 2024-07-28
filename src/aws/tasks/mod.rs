@@ -39,7 +39,7 @@ pub enum SyncTask {
     RemoveFn(Box<RemoveFnParams>),
 }
 
-pub async fn exec(
+pub async fn exec_tasks(
     sdk_clients: &AwsClients,
     sync_tasks: Vec<SyncTask>,
 ) -> Result<(), anyhow::Error> {
