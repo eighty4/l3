@@ -8,16 +8,18 @@ use swc_common::{SourceMap, GLOBALS};
 use swc_ecma_ast::{Decl, EsVersion, ExportDecl, Module, ModuleDecl, Program};
 use swc_ecma_parser::Syntax;
 
-use crate::code::project::ProjectDetails;
+use crate::code::runtime::SourcesRuntimeDeets;
 use crate::code::source::path::SourcePath;
 use crate::code::source::{Language, ModuleImport, SourceFile};
 
 pub fn parse_source_file(
     language: Language,
     path: SourcePath,
-    project_details: &ProjectDetails,
+    project_details: &SourcesRuntimeDeets,
 ) -> Result<SourceFile, anyhow::Error> {
-    debug_assert!(language == Language::JavaScript || language == Language::TypeScript);
+    debug_assert!(
+        matches!(language, Language::JavaScript) || matches!(language, Language::TypeScript)
+    );
     let module = parse_module_ast(&language, &path)?;
     Ok(build_source_file_from_module_ast(
         language,
@@ -62,7 +64,7 @@ fn build_source_file_from_module_ast(
     language: Language,
     module: Module,
     path: SourcePath,
-    project_details: &ProjectDetails,
+    project_details: &SourcesRuntimeDeets,
 ) -> SourceFile {
     let mut exported_fns: Vec<String> = Vec::new();
     let mut imports: Vec<ModuleImport> = Vec::new();
@@ -106,7 +108,7 @@ fn build_source_file_from_module_ast(
 fn parse_import_path(
     import_path: &str,
     source_path: &SourcePath,
-    project_details: &ProjectDetails,
+    project_details: &SourcesRuntimeDeets,
 ) -> ModuleImport {
     if import_path.starts_with('.') {
         ModuleImport::RelativeSource(source_path.to_relative_source(&PathBuf::from(import_path)))

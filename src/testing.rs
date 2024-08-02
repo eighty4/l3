@@ -1,17 +1,27 @@
 use std::fs;
 use std::path::PathBuf;
+use std::sync::Arc;
 
+use aws_config::{BehaviorVersion, Region, SdkConfig};
+use aws_sdk_iam::primitives::DateTime;
+use aws_sdk_iam::types::Role;
 use temp_dir::TempDir;
 
+use crate::aws::clients::AwsClients;
+use crate::aws::{AwsApiDeets, AwsDeets};
+use crate::code::build::BuildMode;
 use crate::code::checksum::ChecksumTree;
 use crate::code::parse::parse_source_file;
+use crate::code::runtime::SourcesRuntimeDeets;
 use crate::code::sha256::make_checksum;
 use crate::code::source::path::SourcePath;
 use crate::code::source::{Language, SourceFile};
 use crate::lambda::RouteKey;
+use crate::project::{Lx3ProjectDeets, Lx3ProjectDeetsBuilder};
 
 pub struct ProjectTest {
     pub api_id: String,
+    pub project_deets: Arc<Lx3ProjectDeets>,
     pub project_dir: PathBuf,
     pub project_name: String,
     #[allow(unused)]
@@ -21,14 +31,14 @@ pub struct ProjectTest {
 }
 
 impl ProjectTest {
+    pub fn builder() -> ProjectTestBuilder {
+        ProjectTestBuilder::new()
+    }
+
     pub fn with_file(path: &str, content: &str) -> Self {
         ProjectTest::builder()
             .with_source(TestSource::with_path(path).content(content))
             .build()
-    }
-
-    pub fn builder() -> ProjectTestBuilder {
-        ProjectTestBuilder::new()
     }
 
     pub fn lambda_checksum_path(&self, route_key: &RouteKey) -> PathBuf {
@@ -62,6 +72,7 @@ impl ProjectTest {
 
 pub struct ProjectTestBuilder {
     api_id: Option<String>,
+    build_mode: Option<BuildMode>,
     project_name: Option<String>,
     sources: Vec<TestSourceBuilder>,
 }
@@ -70,6 +81,7 @@ impl ProjectTestBuilder {
     fn new() -> Self {
         Self {
             api_id: None,
+            build_mode: None,
             project_name: None,
             sources: Vec::new(),
         }
@@ -85,8 +97,36 @@ impl ProjectTestBuilder {
             .into_iter()
             .map(|s| s.build(&project_name, &project_dir, &api_id))
             .collect();
+        let project_deets = Arc::new(
+            Lx3ProjectDeets::builder()
+                .aws_deets(AwsDeets {
+                    account_id: "account_id".to_string(),
+                    api: AwsApiDeets {
+                        id: api_id.clone(),
+                        stage_name: "development".to_string(),
+                    },
+                    region: Region::new("us-east-1"),
+                    sdk_clients: AwsClients::from(
+                        &SdkConfig::builder()
+                            .behavior_version(BehaviorVersion::v2024_03_28())
+                            .build(),
+                    ),
+                    lambda_role: Role::builder()
+                        .arn("arn")
+                        .create_date(DateTime::from_secs(1))
+                        .path("path")
+                        .role_id("role_id")
+                        .role_name("role_name")
+                        .build()
+                        .unwrap(),
+                })
+                .build_mode(self.build_mode.unwrap_or(BuildMode::Debug))
+                .runtime_deets(SourcesRuntimeDeets::default())
+                .build(project_dir.clone(), project_name.clone()),
+        );
         ProjectTest {
             api_id,
+            project_deets,
             project_name,
             temp_dir,
             project_dir,
@@ -96,6 +136,11 @@ impl ProjectTestBuilder {
 
     pub fn api_id(mut self, api_id: &str) -> Self {
         self.api_id = Some(api_id.to_string());
+        self
+    }
+
+    pub fn build_mode(mut self, build_mode: BuildMode) -> Self {
+        self.build_mode = Some(build_mode);
         self
     }
 

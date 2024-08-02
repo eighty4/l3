@@ -1,11 +1,13 @@
 use std::fmt;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use anyhow::anyhow;
 
 use crate::code::env::EnvVarSources;
-use crate::code::source::path::SourcePath;
+use crate::code::source::path::{FunctionBuildDir, SourcePath};
 use crate::code::source::Language;
+use crate::project::Lx3ProjectDeets;
 
 fn create_fn_name(project_name: &String, route_key: &RouteKey) -> String {
     format!(
@@ -108,7 +110,6 @@ impl<'a> TryFrom<&'a str> for HttpMethod {
     }
 }
 
-#[derive(Clone)]
 pub struct LambdaFn {
     pub env_var_sources: EnvVarSources,
     pub fn_name: String,
@@ -123,18 +124,22 @@ impl LambdaFn {
         env_var_sources: EnvVarSources,
         handler_fn: String,
         path: SourcePath,
-        project_name: &String,
+        project_details: Arc<Lx3ProjectDeets>,
         route_key: RouteKey,
     ) -> Self {
         debug_assert!(path.rel.starts_with("routes"));
         Self {
             env_var_sources,
-            fn_name: create_fn_name(project_name, &route_key),
+            fn_name: create_fn_name(&project_details.project_name, &route_key),
             handler_fn,
             language: Language::from_extension(&path.rel).unwrap(),
             path,
             route_key,
         }
+    }
+
+    pub fn build_dir(&self, project_deets: &Arc<Lx3ProjectDeets>) -> FunctionBuildDir {
+        FunctionBuildDir::new(project_deets, &self.fn_name)
     }
 
     pub fn handler_path(&self) -> String {

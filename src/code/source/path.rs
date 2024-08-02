@@ -1,16 +1,45 @@
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
-use crate::code::source::{FunctionBuildDir, Language};
+use crate::code::build::BuildMode;
+use crate::code::source::Language;
+use crate::project::Lx3ProjectDeets;
 
-#[derive(Clone, PartialEq)]
+/// FunctionBuildDir paths are tokenized by the build's cloud destination (AWS), API Gateway ID,
+/// Lambda function name and BuildMode.
+#[derive(Clone)]
+pub struct FunctionBuildDir {
+    pub abs: PathBuf,
+    /// Relative to project_dir
+    pub _rel: PathBuf,
+}
+
+impl FunctionBuildDir {
+    pub fn new(project_deets: &Arc<Lx3ProjectDeets>, fn_name: &String) -> Self {
+        let _rel = PathBuf::from(".l3")
+            .join("aws")
+            .join(&project_deets.aws.api.id)
+            .join(fn_name)
+            .join(match project_deets.build_mode {
+                BuildMode::Debug => "debug",
+                BuildMode::Release => "release",
+            });
+        let abs = project_deets.project_dir.join(&_rel);
+        Self { abs, _rel }
+    }
+}
+
+#[derive(Clone)]
 pub enum SourceKind {
+    /// FunctionBuild is a SourcePath to a function build output with an absolute path to build directory.
     FunctionBuild(FunctionBuildDir),
+    /// OriginalSource is a SourcePath to a function source used as is without processing from the original path.
     OriginalSource,
 }
 
 #[derive(Clone)]
 pub struct SourcePath {
-    /// Distinguish between source roots for project sources and build outputs
+    /// SourceKind distinguishes between source roots for project sources and build outputs.
     pub kind: SourceKind,
     /// Absolute path to source in filesystem
     pub abs: PathBuf,
@@ -45,12 +74,12 @@ impl SourcePath {
         Language::from_extension(&self.rel)
     }
 
-    pub fn to_build_dir(&self, build_dir: FunctionBuildDir, project_dir: &Path) -> Self {
+    pub fn to_build_dir(&self, build_dir: FunctionBuildDir) -> Self {
         let rel = match self.rel.extension().unwrap().to_string_lossy().as_ref() {
             "ts" => self.rel.with_extension("js"),
             _ => self.rel.clone(),
         };
-        let abs = build_dir.abs(project_dir).join(&rel);
+        let abs = build_dir.abs.join(&rel);
         Self::new(SourceKind::FunctionBuild(build_dir), abs, rel)
     }
 
@@ -71,6 +100,7 @@ impl SourcePath {
         )
     }
 
+    // todo rewrite . and .. path parts
     // pub fn to_relative_source(&self, path: &PathBuf) -> Result<Self, anyhow::Error> {
     //     debug_assert!(path.starts_with(".") || path.starts_with(".."));
     //     let project_dir = PathBuf::from(

@@ -10,15 +10,18 @@ use swc_common::{FileName, SourceMap, GLOBALS};
 use swc_ecma_ast::EsVersion;
 use swc_ecma_parser::{Syntax, TsSyntax};
 
-use crate::code::build::{BuildMode, BuildOptions, Builder};
-use crate::code::source::path::SourcePath;
+use crate::code::build::{BuildMode, Builder};
+use crate::code::source::path::{FunctionBuildDir, SourcePath};
 use crate::code::source::{Language, SourceFile};
+use crate::project::Lx3ProjectDeets;
 
-pub struct SwcBuilder {}
+pub struct SwcBuilder {
+    project_details: Arc<Lx3ProjectDeets>,
+}
 
 impl SwcBuilder {
-    pub fn new() -> Self {
-        SwcBuilder {}
+    pub fn new(project_details: Arc<Lx3ProjectDeets>) -> Self {
+        Self { project_details }
     }
 }
 
@@ -26,25 +29,29 @@ impl Builder for SwcBuilder {
     fn build(
         &self,
         source_file: &SourceFile,
-        options: &BuildOptions,
+        build_dir: &FunctionBuildDir,
     ) -> Result<SourcePath, anyhow::Error> {
         debug_assert!(
-            source_file.language == Language::JavaScript
-                || source_file.language == Language::TypeScript
+            matches!(source_file.language, Language::JavaScript)
+                || matches!(source_file.language, Language::TypeScript)
         );
-        let compiled_result = if source_file.language == Language::TypeScript {
-            Some(compile_ts_file(&source_file.path.abs, &options.mode)?)
-        } else if options.mode.should_minify() {
-            Some(minify_js_file(&source_file.path.abs)?)
-        } else {
-            None
+        let compiled_result = match source_file.language {
+            Language::TypeScript => Some(compile_ts_file(
+                &source_file.path.abs,
+                &self.project_details.build_mode,
+            )?),
+            _ => {
+                if self.project_details.build_mode.should_minify() {
+                    Some(minify_js_file(&source_file.path.abs)?)
+                } else {
+                    None
+                }
+            }
         };
-        let build_dir_path = source_file
-            .path
-            .to_build_dir(options.build_dir.clone(), &options.project_dir);
-        _ = fs::create_dir_all(build_dir_path.abs.parent().unwrap());
         match compiled_result {
             Some(compiled) => {
+                let build_dir_path = source_file.path.to_build_dir(build_dir.clone());
+                _ = fs::create_dir_all(build_dir_path.abs.parent().unwrap());
                 fs::write(&build_dir_path.abs, compiled)?;
                 Ok(build_dir_path)
             }

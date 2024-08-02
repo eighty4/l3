@@ -1,4 +1,3 @@
-use std::path::PathBuf;
 use std::sync::Arc;
 
 use tokio::task::JoinSet;
@@ -8,9 +7,8 @@ use remove_fn::perform_remove_fn;
 
 use crate::aws::clients::AwsClients;
 use crate::aws::state::DeployedLambdaComponents;
-use crate::code::build::BuildMode;
-use crate::code::project::ProjectDetails;
 use crate::lambda::LambdaFn;
+use crate::project::Lx3ProjectDeets;
 
 mod deploy_fn;
 mod remove_fn;
@@ -18,17 +16,10 @@ mod update_code;
 mod update_env;
 
 pub struct DeployFnParams {
-    pub account_id: String,
-    pub api_id: String,
-    pub build_mode: BuildMode,
     pub components: DeployedLambdaComponents,
     pub lambda_fn: Arc<LambdaFn>,
-    pub lambda_role_arn: String,
-    pub project_details: ProjectDetails,
-    pub project_dir: PathBuf,
+    pub project_deets: Arc<Lx3ProjectDeets>,
     pub publish_fn_updates: bool,
-    pub region: String,
-    pub stage_name: String,
 }
 
 pub struct RemoveFnParams {

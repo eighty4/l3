@@ -1,10 +1,8 @@
 use std::fs;
 
 use crate::code::build::swc::{compile_ts, compile_ts_file, minify_js, minify_js_file, SwcBuilder};
-use crate::code::build::Builder;
-use crate::code::build::{BuildMode, BuildOptions};
-use crate::code::source::path::SourceKind;
-use crate::code::source::FunctionBuildDir;
+use crate::code::build::{BuildMode, Builder};
+use crate::code::source::path::{FunctionBuildDir, SourceKind};
 use crate::testing::{ProjectTest, TestSource};
 
 #[test]
@@ -15,19 +13,19 @@ fn test_swc_builder_development_mode_returns_original_source_path() {
         )
         .build();
     let source_file = &project_test.source_file("routes/data/lambda.js");
-    let build_dir = FunctionBuildDir::new("API".to_string(), BuildMode::Debug, "FN".to_string());
-    let build_options = BuildOptions::new(
-        build_dir,
-        BuildMode::Debug,
-        project_test.project_dir.clone(),
-    );
-    let result = SwcBuilder::new()
-        .build(source_file, &build_options)
+    let build_dir =
+        FunctionBuildDir::new(&project_test.project_deets, &"l3-get-data-fn".to_string());
+    let built_path = SwcBuilder::new(project_test.project_deets.clone())
+        .build(source_file, &build_dir)
         .unwrap();
-    assert!(result.kind == SourceKind::OriginalSource);
+    assert!(matches!(built_path.kind, SourceKind::OriginalSource));
     assert_eq!(
-        result.rel.to_string_lossy().as_ref(),
+        built_path.rel.to_string_lossy().as_ref(),
         "routes/data/lambda.js"
+    );
+    assert_eq!(
+        built_path.abs,
+        project_test.project_dir.join("routes/data/lambda.js")
     );
 }
 
@@ -40,24 +38,22 @@ fn test_swc_builder_development_mode_writes_ts_to_build_dir() {
         )
         .build();
     let source_file = &project_test.source_file("routes/data/lambda.ts");
-    let build_dir = FunctionBuildDir::new("API".to_string(), BuildMode::Debug, "FN".to_string());
-    let build_options = BuildOptions::new(
-        build_dir,
-        BuildMode::Debug,
-        project_test.project_dir.clone(),
-    );
-    let built_path = SwcBuilder::new()
-        .build(source_file, &build_options)
+    let build_dir =
+        FunctionBuildDir::new(&project_test.project_deets, &"l3-get-data-fn".to_string());
+    let built_path = SwcBuilder::new(project_test.project_deets.clone())
+        .build(source_file, &build_dir)
         .unwrap();
+    assert!(matches!(built_path.kind, SourceKind::FunctionBuild(_)));
     assert_eq!(
         built_path.rel.to_string_lossy().as_ref(),
         "routes/data/lambda.js"
     );
-    assert!(built_path
-        .abs
-        .to_string_lossy()
-        .as_ref()
-        .ends_with(".l3/API/FN/dev/routes/data/lambda.js"));
+    assert_eq!(
+        built_path.abs,
+        project_test
+            .project_dir
+            .join(".l3/aws/API_ID/l3-get-data-fn/debug/routes/data/lambda.js")
+    );
     assert!(built_path.abs.is_file());
     assert_eq!(
         fs::read_to_string(built_path.abs).unwrap(),

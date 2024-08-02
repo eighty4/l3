@@ -22,16 +22,16 @@ pub async fn perform_deploy_fn(
     sdk_clients: &AwsClients,
     params: &DeployFnParams,
 ) -> Result<(), anyhow::Error> {
-    // todo updating code should upload to s3
+    // todo updating code should upload to s3 to avoid upload churn on retries
     // todo include imported deps in archive
     fs::create_dir_all(
         PathBuf::from(".l3")
-            .join(&params.api_id)
+            .join(&params.project_deets.aws.api.id)
             .join(&params.lambda_fn.fn_name),
     )?;
     let mut checksums = ChecksumTree::new(
-        params.project_dir.clone(),
-        &params.api_id,
+        params.project_deets.project_dir.clone(),
+        &params.project_deets.aws.api.id,
         &params.lambda_fn.fn_name,
     )?;
     let env_vars = params.lambda_fn.env_var_sources.read_env_variables()?;
@@ -43,7 +43,7 @@ pub async fn perform_deploy_fn(
                 &params.lambda_fn.fn_name,
                 &archive_path,
                 &params.lambda_fn.handler_path(),
-                &params.lambda_role_arn,
+                &params.project_deets.aws.lambda_role.arn,
                 env_vars,
             )
             .await?;
@@ -108,15 +108,19 @@ pub async fn perform_deploy_fn(
 
     match &params.components.route {
         None => {
-            let integration_id =
-                create_integration(sdk_clients, &params.api_id, &synced_fn_arn).await?;
+            let integration_id = create_integration(
+                sdk_clients,
+                &params.project_deets.aws.api.id,
+                &synced_fn_arn,
+            )
+            .await?;
             println!(
                 "  ✔ Created API Gateway Integration for {}",
                 &params.lambda_fn.fn_name
             );
             create_route(
                 sdk_clients,
-                &params.api_id,
+                &params.project_deets.aws.api.id,
                 &params.lambda_fn.route_key,
                 &integration_id,
             )
@@ -129,13 +133,23 @@ pub async fn perform_deploy_fn(
         }
         Some(route_id) => match &params.components.integration {
             None => {
-                let integration_id =
-                    create_integration(sdk_clients, &params.api_id, &synced_fn_arn).await?;
+                let integration_id = create_integration(
+                    sdk_clients,
+                    &params.project_deets.aws.api.id,
+                    &synced_fn_arn,
+                )
+                .await?;
                 println!(
                     "  ✔ Created API Gateway Integration for {}",
                     &params.lambda_fn.fn_name
                 );
-                update_route_target(sdk_clients, &params.api_id, route_id, &integration_id).await?;
+                update_route_target(
+                    sdk_clients,
+                    &params.project_deets.aws.api.id,
+                    route_id,
+                    &integration_id,
+                )
+                .await?;
                 println!(
                     "  ✔ Updated API Gateway Route for {} to call {}",
                     &params.lambda_fn.route_key.to_route_key_string(),
@@ -146,7 +160,7 @@ pub async fn perform_deploy_fn(
                 if integration_uri.as_str() != synced_fn_arn.as_str() {
                     update_integration_uri(
                         sdk_clients,
-                        &params.api_id,
+                        &params.project_deets.aws.api.id,
                         integration_id,
                         &synced_fn_arn,
                     )
@@ -174,10 +188,13 @@ async fn does_api_gateway_have_invoke_permission(
         .send()
         .await
     {
-        Ok(get_policy_output) => Ok(get_policy_output
-            .policy
-            .unwrap()
-            .contains(format!("\"Sid\":\"{}_{}\"", params.api_id, params.stage_name).as_str())),
+        Ok(get_policy_output) => Ok(get_policy_output.policy.unwrap().contains(
+            format!(
+                "\"Sid\":\"{}_{}\"",
+                params.project_deets.aws.api.id, params.project_deets.aws.api.stage_name
+            )
+            .as_str(),
+        )),
         Err(err) => {
             let service_err = err.into_service_error();
             if service_err.is_resource_not_found_exception() {
@@ -196,17 +213,20 @@ async fn add_api_gateway_invoke_permission(
 ) -> Result<(), anyhow::Error> {
     let source_arn = format!(
         "arn:aws:execute-api:{}:{}:{}/{}/{}/{}",
-        params.region,
-        params.account_id,
-        params.api_id,
-        params.stage_name,
+        params.project_deets.aws.region,
+        params.project_deets.aws.account_id,
+        params.project_deets.aws.api.id,
+        params.project_deets.aws.api.stage_name,
         params.lambda_fn.route_key.http_method,
         params.lambda_fn.route_key.http_path,
     );
     sdk_clients
         .lambda
         .add_permission()
-        .statement_id(format!("{}_{}", params.api_id, params.stage_name))
+        .statement_id(format!(
+            "{}_{}",
+            params.project_deets.aws.api.id, params.project_deets.aws.api.stage_name
+        ))
         .function_name(fn_arn)
         .action("lambda:InvokeFunction")
         .principal("apigateway.amazonaws.com")
@@ -218,15 +238,9 @@ async fn add_api_gateway_invoke_permission(
 }
 
 async fn build_and_zip_sources(params: &DeployFnParams) -> Result<PathBuf, anyhow::Error> {
-    let archive_path = LambdaFnBuild::new(
-        params.project_details.clone(),
-        params.project_dir.clone(),
-        params.api_id.clone(),
-        params.build_mode.clone(),
-        params.lambda_fn.clone(),
-    )
-    .create_code_archive()
-    .await?;
+    let archive_path = LambdaFnBuild::new(params.lambda_fn.clone(), params.project_deets.clone())
+        .create_code_archive()
+        .await?;
     println!(
         "  ✔ Built code archive for Lambda Function {}",
         params.lambda_fn.fn_name

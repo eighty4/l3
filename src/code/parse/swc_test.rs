@@ -1,8 +1,8 @@
 use std::path::{Path, PathBuf};
 
 use crate::code::parse::parse_source_file;
-use crate::code::project::javascript::{NodeConditionalImport, NodeConditionalImportKind};
-use crate::code::project::ProjectDetails;
+use crate::code::runtime::javascript::{NodeConditionalImport, NodeConditionalImportKind};
+use crate::code::runtime::SourcesRuntimeDeets;
 use crate::code::source::ModuleImport;
 use crate::code::source::ModuleImport::*;
 use crate::testing::ProjectTest;
@@ -47,7 +47,7 @@ fn verify_unknown_import(import: &ModuleImport, expected_value: String) {
 fn test_parse_source_file_parses_es_package_dependency_import_without_subpath() {
     for path in &["lambda.js", "lambda.mjs"] {
         let project_test = ProjectTest::with_file(path, "import {dbHelper} from 'db-dep'");
-        let mut project_details = ProjectDetails::default();
+        let mut project_details = SourcesRuntimeDeets::default();
         project_details
             .javascript
             .dependencies
@@ -67,7 +67,7 @@ fn test_parse_source_file_parses_es_package_dependency_import_without_subpath() 
 fn test_parse_source_file_parses_es_package_dependency_import_with_subpath() {
     for path in &["lambda.js", "lambda.mjs"] {
         let project_test = ProjectTest::with_file(path, "import {dbHelper} from 'db-dep/helpers'");
-        let mut project_details = ProjectDetails::default();
+        let mut project_details = SourcesRuntimeDeets::default();
         project_details
             .javascript
             .dependencies
@@ -98,7 +98,7 @@ fn test_parse_source_file_parses_es_package_dependency_import_as_unknown_without
 fn test_parse_source_file_parses_es_node_subpath_import_as_unknown() {
     for path in &["lambda.js", "lambda.mjs"] {
         let project_test = ProjectTest::with_file(path, "import {dbHelper} from '#db/helpers.js'");
-        let mut project_details = ProjectDetails::default();
+        let mut project_details = SourcesRuntimeDeets::default();
         project_details.javascript.subpath_imports.insert(
             "#db".to_string(),
             vec![NodeConditionalImport {

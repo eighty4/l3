@@ -21,7 +21,7 @@ fn test_deployed_state_resolves_lambda_components_by_route_key() {
         EnvVarSources::new(&project_test.project_dir, &route_key).unwrap(),
         "GET".to_string(),
         project_test.source_path("routes/some/function/lambda.js"),
-        &"this_project".to_string(),
+        project_test.project_deets.clone(),
         route_key,
     );
     let state = DeployedProjectState::new(

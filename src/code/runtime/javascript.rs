@@ -4,10 +4,10 @@ use std::path::{Path, PathBuf};
 
 use serde_json::Value;
 
-use crate::code::project::javascript::NodeConditionalImportKind::*;
-use crate::code::project::javascript::NodePackageManager::*;
+use crate::code::runtime::javascript::NodeConditionalImportKind::*;
+use crate::code::runtime::javascript::NodePackageManager::*;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone)]
 pub enum NodePackageManager {
     Npm,
     Pnpm,

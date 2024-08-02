@@ -1,11 +1,11 @@
 use std::{env, process};
 
-use clap::{Parser, Subcommand};
-
+use crate::aws::AwsApiConfig;
 use crate::code::build::BuildMode;
 use crate::dev::{develop_project, DevOptions};
 use crate::init::{init_project, InitOptions};
 use crate::sync::{sync_project, SyncOptions};
+use clap::{Parser, Subcommand};
 
 mod aws;
 mod code;
@@ -14,6 +14,7 @@ mod dev;
 mod init;
 mod lambda;
 mod notification;
+mod project;
 mod sync;
 mod ui;
 
@@ -85,8 +86,6 @@ struct SyncArgs {
         long_help = "Auto approve AWS Region and API Gateway ID before syncing"
     )]
     confirm: bool,
-    // #[clap(long, value_name = "STAGE_NAME", default_value = "development")]
-    // stage_name: String,
     #[clap(
         long,
         default_value = "false",
@@ -100,7 +99,10 @@ impl TryFrom<SyncArgs> for SyncOptions {
 
     fn try_from(args: SyncArgs) -> Result<Self, Self::Error> {
         Ok(Self {
-            api_id: args.api_id,
+            aws: AwsApiConfig {
+                api_id: args.api_id,
+                stage_name: None,
+            },
             auto_confirm: args.confirm,
             build_mode: match args.release {
                 true => BuildMode::Release,
@@ -112,19 +114,49 @@ impl TryFrom<SyncArgs> for SyncOptions {
                 None => panic!("need a l3.yml file with a `project_name: ` string"),
                 Some(project_name) => project_name,
             },
-            stage_name: "development".to_string(),
         })
     }
 }
 
 #[derive(Parser, Debug)]
-struct DevArgs {}
+struct DevArgs {
+    #[clap(
+        long,
+        value_name = "API_ID",
+        long_help = "Configure the project's API Gateway ID and cache in .l3"
+    )]
+    api_id: Option<String>,
+    #[clap(
+        long,
+        default_value = "false",
+        long_help = "Clear cache before sync and cleanly rebuild all Lambdas"
+    )]
+    clean: bool,
+    #[clap(
+        long,
+        default_value = "false",
+        long_help = "Auto approve AWS Region and API Gateway ID before syncing"
+    )]
+    confirm: bool,
+}
 
 impl TryFrom<DevArgs> for DevOptions {
     type Error = anyhow::Error;
 
-    fn try_from(_args: DevArgs) -> Result<Self, Self::Error> {
-        Ok(Self {})
+    fn try_from(args: DevArgs) -> Result<Self, Self::Error> {
+        Ok(Self {
+            aws: AwsApiConfig {
+                api_id: args.api_id,
+                stage_name: None,
+            },
+            auto_confirm: args.confirm,
+            clear_cache: args.clean,
+            project_dir: env::current_dir()?,
+            project_name: match config::project_name()? {
+                None => panic!("need a l3.yml file with a `project_name: ` string"),
+                Some(project_name) => project_name,
+            },
+        })
     }
 }
 

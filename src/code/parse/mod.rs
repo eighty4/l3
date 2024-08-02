@@ -1,6 +1,6 @@
 use anyhow::anyhow;
 
-use crate::code::project::ProjectDetails;
+use crate::code::runtime::SourcesRuntimeDeets;
 use crate::code::source::path::SourcePath;
 use crate::code::source::{Language, SourceFile};
 
@@ -13,7 +13,7 @@ mod swc_test;
 
 pub fn parse_source_file(
     path: SourcePath,
-    project_details: &ProjectDetails,
+    project_details: &SourcesRuntimeDeets,
 ) -> Result<SourceFile, anyhow::Error> {
     debug_assert!(path.rel.extension().is_some());
     debug_assert!(path.abs.is_file());

@@ -72,6 +72,7 @@ fn test_http_method_try_from() {
 #[test]
 fn test_lambda_fn_fn_name() {
     let project_test = ProjectTest::builder()
+        .project_name("my_proj")
         .with_source(
             TestSource::with_path("routes/data/lambda.js").content("export function DELETE(){}"),
         )
@@ -81,7 +82,7 @@ fn test_lambda_fn_fn_name() {
         EnvVarSources::new(&project_test.project_dir, &route_key).unwrap(),
         "DELETE".to_string(),
         project_test.source_path("routes/data/lambda.js"),
-        &"my_proj".to_string(),
+        project_test.project_deets.clone(),
         route_key,
     );
     assert_eq!(lambda_fn.fn_name, "l3-my_proj-data-delete");
@@ -99,7 +100,7 @@ fn test_lambda_fn_handler_path() {
         EnvVarSources::new(&project_test.project_dir, &route_key).unwrap(),
         "GET".to_string(),
         project_test.source_path("routes/data/lambda.js"),
-        &"my_proj".to_string(),
+        project_test.project_deets.clone(),
         route_key,
     );
     assert_eq!(

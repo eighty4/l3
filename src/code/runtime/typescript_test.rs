@@ -1,4 +1,4 @@
-use crate::code::project::typescript::TypeScriptDeets;
+use crate::code::runtime::typescript::TypeScriptDeets;
 use crate::testing::{ProjectTest, TestSource};
 
 #[test]

@@ -4,10 +4,10 @@ use std::sync::Arc;
 use crate::code::archiver::Archiver;
 use crate::code::build::swc::SwcBuilder;
 use crate::code::parse::parse_source_file;
-use crate::code::project::ProjectDetails;
-use crate::code::source::path::SourcePath;
-use crate::code::source::{FunctionBuildDir, Language, SourceFile};
+use crate::code::source::path::{FunctionBuildDir, SourcePath};
+use crate::code::source::{Language, SourceFile};
 use crate::lambda::LambdaFn;
+use crate::project::Lx3ProjectDeets;
 
 mod swc;
 
@@ -18,11 +18,11 @@ trait Builder {
     fn build(
         &self,
         source_file: &SourceFile,
-        options: &BuildOptions,
+        build_dir: &FunctionBuildDir,
     ) -> Result<SourcePath, anyhow::Error>;
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone)]
 pub enum BuildMode {
     Debug,
     Release,
@@ -37,61 +37,41 @@ impl BuildMode {
     }
 }
 
-pub struct BuildOptions {
-    build_dir: FunctionBuildDir,
-    mode: BuildMode,
-    project_dir: PathBuf,
-}
-
-impl BuildOptions {
-    fn new(build_dir: FunctionBuildDir, mode: BuildMode, project_dir: PathBuf) -> Self {
-        Self {
-            build_dir,
-            mode,
-            project_dir,
-        }
-    }
-}
-
 pub struct LambdaFnBuild {
+    build_dir: FunctionBuildDir,
+    // todo arc
     builder: Box<dyn Builder + Send + Sync>,
     entrypoint: SourcePath,
-    options: BuildOptions,
-    project_details: ProjectDetails,
+    project_details: Arc<Lx3ProjectDeets>,
 }
 
 impl LambdaFnBuild {
-    pub fn new(
-        project_details: ProjectDetails,
-        project_dir: PathBuf,
-        api_id: String,
-        build_mode: BuildMode,
-        lambda_fn: Arc<LambdaFn>,
-    ) -> Self {
-        let build_dir =
-            FunctionBuildDir::new(api_id, build_mode.clone(), lambda_fn.fn_name.clone());
+    pub fn new(lambda_fn: Arc<LambdaFn>, project_details: Arc<Lx3ProjectDeets>) -> Self {
         Self {
+            build_dir: lambda_fn.build_dir(&project_details),
             builder: Box::new(match &lambda_fn.language {
-                Language::JavaScript | Language::TypeScript => SwcBuilder::new(),
+                Language::JavaScript | Language::TypeScript => {
+                    SwcBuilder::new(project_details.clone())
+                }
                 Language::Python => panic!(),
             }),
             entrypoint: lambda_fn.path.clone(),
-            options: BuildOptions::new(build_dir, build_mode, project_dir),
             project_details,
         }
     }
 
     pub async fn build(&self) -> Result<Vec<SourcePath>, anyhow::Error> {
-        let source_file = parse_source_file(self.entrypoint.clone(), &self.project_details)?;
-        self.builder.build(&source_file, &self.options)?;
+        let source_file =
+            parse_source_file(self.entrypoint.clone(), &self.project_details.sources)?;
+        self.builder.build(&source_file, &self.build_dir)?;
         Ok(vec![source_file.path])
     }
 
     pub async fn create_code_archive(&self) -> Result<PathBuf, anyhow::Error> {
-        Archiver::new(&self.options.project_dir, self.dir(), self.build().await?).write()
-    }
-
-    pub fn dir(&self) -> &FunctionBuildDir {
-        &self.options.build_dir
+        Archiver::new(
+            self.project_details.project_dir.clone(),
+            self.build().await?,
+        )
+        .write()
     }
 }

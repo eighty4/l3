@@ -1,5 +1,5 @@
-use crate::code::project::javascript::NodePackageManager::{Npm, Pnpm};
-use crate::code::project::javascript::{JavaScriptDeets, NodeConditionalImportKind};
+use crate::code::runtime::javascript::NodePackageManager::{Npm, Pnpm};
+use crate::code::runtime::javascript::{JavaScriptDeets, NodeConditionalImportKind};
 use crate::testing::{ProjectTest, TestSource};
 use std::path::PathBuf;
 
@@ -22,14 +22,14 @@ fn test_read_details_checks_for_pnpm_package_manager() {
         .with_source(TestSource::with_path("pnpm-lock.yaml").content(""))
         .build();
     let js_deets = JavaScriptDeets::read_details(&project_test.project_dir).unwrap();
-    assert_eq!(Pnpm, js_deets.package_manager);
+    assert!(matches!(js_deets.package_manager, Pnpm));
 }
 
 #[test]
 fn test_read_details_defaults_to_npm_package_manager() {
     let project_test = ProjectTest::builder().build();
     let js_deets = JavaScriptDeets::read_details(&project_test.project_dir).unwrap();
-    assert_eq!(Npm, js_deets.package_manager);
+    assert!(matches!(js_deets.package_manager, Npm));
 }
 
 #[test]
