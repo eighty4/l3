@@ -17,7 +17,7 @@ use crate::code::sha256::make_checksum;
 use crate::code::source::path::SourcePath;
 use crate::code::source::{Language, SourceFile};
 use crate::lambda::RouteKey;
-use crate::project::{Lx3ProjectDeets, Lx3ProjectDeetsBuilder};
+use crate::project::Lx3ProjectDeets;
 
 pub struct ProjectTest {
     pub api_id: String,

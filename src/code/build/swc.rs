@@ -64,7 +64,7 @@ impl Builder for SwcBuilder {
 pub fn compile_ts(ts: String, mode: &BuildMode) -> Result<String, anyhow::Error> {
     with_swc_compiler::<_, String>(|compiler, handler, source_map| {
         let result = compiler.process_js_file(
-            source_map.new_source_file(FileName::Anon, ts),
+            source_map.new_source_file(Arc::new(FileName::Anon), ts),
             handler,
             &compile_ts_options(mode),
         );
@@ -108,7 +108,7 @@ fn compile_ts_options(mode: &BuildMode) -> Options {
 pub fn minify_js(js: String) -> Result<String, anyhow::Error> {
     with_swc_compiler::<_, String>(|compiler, handler, source_map| {
         let result = compiler.minify(
-            source_map.new_source_file(FileName::Anon, js),
+            source_map.new_source_file(Arc::new(FileName::Anon), js),
             handler,
             &minify_options(),
         );

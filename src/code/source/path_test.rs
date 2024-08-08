@@ -9,7 +9,7 @@ fn test_function_build_dir_for_debug_build() {
     let build_dir =
         FunctionBuildDir::new(&project_test.project_deets, &"l3-get-data-fn".to_string());
     let expected_rel = ".l3/aws/API_ID/l3-get-data-fn/debug";
-    assert_eq!(build_dir.rel.to_string_lossy().as_ref(), expected_rel);
+    assert_eq!(build_dir._rel.to_string_lossy().as_ref(), expected_rel);
     assert_eq!(build_dir.abs, project_test.project_dir.join(expected_rel));
 }
 
@@ -21,7 +21,7 @@ fn test_function_build_dir_for_release_build() {
     let build_dir =
         FunctionBuildDir::new(&project_test.project_deets, &"l3-get-data-fn".to_string());
     let expected_rel = ".l3/aws/API_ID/l3-get-data-fn/release";
-    assert_eq!(build_dir.rel.to_string_lossy().as_ref(), expected_rel);
+    assert_eq!(build_dir._rel.to_string_lossy().as_ref(), expected_rel);
     assert_eq!(build_dir.abs, project_test.project_dir.join(expected_rel));
 }
 
