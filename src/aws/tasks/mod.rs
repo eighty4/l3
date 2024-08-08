@@ -14,6 +14,7 @@ mod deploy_fn;
 mod remove_fn;
 mod update_code;
 mod update_env;
+mod workflow;
 
 pub struct DeployFnParams {
     pub components: DeployedLambdaComponents,

@@ -19,7 +19,7 @@ pub struct FileWatcher {
 }
 
 impl FileWatcher {
-    pub fn new(s: Sender<FileUpdate>) -> Result<Self, anyhow::Error> {
+    fn new(s: Sender<FileUpdate>) -> Result<Self, anyhow::Error> {
         Ok(Self {
             paths: Vec::new(),
             w: RecommendedWatcher::new(
@@ -52,20 +52,34 @@ impl FileWatcher {
         })
     }
 
-    pub fn for_file(s: Sender<FileUpdate>, p: PathBuf) -> Result<Self, anyhow::Error> {
+    pub fn for_dir(s: Sender<FileUpdate>, p: PathBuf) -> Result<Self, anyhow::Error> {
+        debug_assert!(p.is_dir());
         let mut w = Self::new(s)?;
-        w.add_path(p)?;
+        w.add_path(p, RecursiveMode::NonRecursive)?;
         Ok(w)
     }
 
-    pub fn add_path(&mut self, path: PathBuf) -> Result<(), anyhow::Error> {
+    pub fn for_dir_recursive(s: Sender<FileUpdate>, p: PathBuf) -> Result<Self, anyhow::Error> {
+        debug_assert!(p.is_dir());
+        let mut w = Self::new(s)?;
+        w.add_path(p, RecursiveMode::Recursive)?;
+        Ok(w)
+    }
+
+    pub fn for_file(s: Sender<FileUpdate>, p: PathBuf) -> Result<Self, anyhow::Error> {
+        let mut w = Self::new(s)?;
+        w.add_path(p, RecursiveMode::NonRecursive)?;
+        Ok(w)
+    }
+
+    pub fn add_path(&mut self, path: PathBuf, mode: RecursiveMode) -> Result<(), anyhow::Error> {
         if !path.exists() {
             return Err(anyhow!(
                 "cannot watch {} does not exist",
                 path.to_string_lossy()
             ));
         }
-        self.w.watch(path.as_path(), RecursiveMode::Recursive)?;
+        self.w.watch(path.as_path(), mode)?;
         self.paths.push(path);
         Ok(())
     }

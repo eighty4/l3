@@ -9,6 +9,7 @@ use crate::lambda::HttpMethod;
 pub(crate) mod path;
 pub(crate) mod tracker;
 pub(crate) mod tree;
+pub(crate) mod update;
 pub(crate) mod watcher;
 
 #[cfg(test)]
