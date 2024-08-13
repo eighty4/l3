@@ -48,6 +48,13 @@ pub struct SourcePath {
 }
 
 impl SourcePath {
+    pub fn is_lambda_file_name(p: &Path) -> bool {
+        matches!(
+            p.file_name().unwrap().to_string_lossy().as_ref(),
+            "lambda.js" | "lambda.mjs" | "lambda.py" | "lambda.ts"
+        )
+    }
+
     fn new(kind: SourceKind, abs: PathBuf, rel: PathBuf) -> Self {
         debug_assert!(abs.is_absolute());
         debug_assert!(rel.is_relative());

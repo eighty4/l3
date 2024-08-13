@@ -1,7 +1,3 @@
-use std::path::PathBuf;
-use std::process;
-use std::sync::Arc;
-
 use crate::aws::preflight::AwsPreflightData;
 use crate::aws::state::DeployedProjectState;
 use crate::aws::tasks::SyncTask::RemoveFn;
@@ -10,8 +6,13 @@ use crate::aws::{AwsApiConfig, AwsDataDir, AwsDeets};
 use crate::code::build::BuildMode;
 use crate::code::runtime::SourcesRuntimeDeets;
 use crate::code::source::tree::SourceTree;
+use crate::notification::LambdaNotification;
 use crate::project::Lx3ProjectDeets;
 use crate::ui::confirm::confirm;
+use std::path::PathBuf;
+use std::process;
+use std::sync::Arc;
+use tokio::sync::mpsc::unbounded_channel;
 
 pub struct SyncOptions {
     pub aws: AwsApiConfig,
@@ -69,8 +70,9 @@ pub(crate) async fn sync_project(sync_options: SyncOptions) -> Result<(), anyhow
 
     AwsDataDir::cache_api_id(&project_deets.project_dir, &project_deets.aws.api.id)?;
 
-    let mut source_tree = SourceTree::new(project_deets.clone());
-    source_tree.initialize().await?;
+    let (notification_tx, _notification_rx) = unbounded_channel::<LambdaNotification>();
+    let (source_tree, sources_api) = SourceTree::new(notification_tx, project_deets.clone());
+    sources_api.refresh_routes().await?;
 
     let mut deployed_state = DeployedProjectState::fetch_from_aws(
         &project_deets.aws.sdk_clients,
@@ -79,9 +81,10 @@ pub(crate) async fn sync_project(sync_options: SyncOptions) -> Result<(), anyhow
     )
     .await?;
     let mut sync_tasks: Vec<SyncTask> = Vec::new();
+    let lambda_fns = { source_tree.lock().unwrap().lambda_fns() };
 
-    println!("\nSyncing {} lambdas", source_tree.lambdas.len());
-    for lambda_fn in source_tree.lambdas.values() {
+    println!("\nSyncing {} lambdas", lambda_fns.len());
+    for lambda_fn in &lambda_fns {
         sync_tasks.push(SyncTask::DeployFn(Box::new(DeployFnParams {
             components: deployed_state
                 .rm_deployed_components(&lambda_fn.route_key, &lambda_fn.fn_name),
@@ -106,7 +109,7 @@ pub(crate) async fn sync_project(sync_options: SyncOptions) -> Result<(), anyhow
 
     println!("\nLambdas deployed to API Gateway\n---");
 
-    for lambda_fn in source_tree.lambdas.values() {
+    for lambda_fn in lambda_fns {
         println!(
             "{} https://{}.execute-api.{}.amazonaws.com/development/{}",
             lambda_fn.route_key.http_method,

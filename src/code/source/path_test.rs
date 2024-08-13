@@ -4,6 +4,21 @@ use crate::testing::ProjectTest;
 use std::path::PathBuf;
 
 #[test]
+fn test_source_path_is_lambda_file_name() {
+    for p in &[
+        "routes/data/lambda.js",
+        "routes/data/lambda.mjs",
+        "routes/data/lambda.ts",
+        "routes/data/lambda.py",
+    ] {
+        assert!(SourcePath::is_lambda_file_name(&PathBuf::from(p)));
+    }
+    for p in &["routes/data/lambda.go", "routes/data/.env"] {
+        assert!(!SourcePath::is_lambda_file_name(&PathBuf::from(p)));
+    }
+}
+
+#[test]
 fn test_function_build_dir_for_debug_build() {
     let project_test = ProjectTest::builder().build_mode(BuildMode::Debug).build();
     let build_dir =

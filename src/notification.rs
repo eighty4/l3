@@ -4,8 +4,9 @@ use std::time::Instant;
 use crate::lambda::LambdaFn;
 
 pub enum LambdaNotification {
-    LambdaEvent(LambdaEvent),
-    LogEvent(LogEvent),
+    Lambda(LambdaEvent),
+    Log(LogEvent),
+    Sources(SourcesEvent),
 }
 
 pub struct LambdaEvent {
@@ -38,3 +39,5 @@ pub struct LogEvent {
     message: String,
     timestamp: Instant,
 }
+
+pub enum SourcesEvent {}

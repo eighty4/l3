@@ -1,20 +1,17 @@
 use std::collections::HashMap;
 use std::path::Path;
 
-use anyhow::anyhow;
-
 use crate::code::source::path::{SourceKind, SourcePath};
 use crate::lambda::HttpMethod;
 
 pub(crate) mod path;
-pub(crate) mod tracker;
 pub(crate) mod tree;
 pub(crate) mod watcher;
 
 #[cfg(test)]
 mod path_test;
 #[cfg(test)]
-mod tracker_test;
+mod tree_test;
 
 #[derive(Clone)]
 pub enum Language {
@@ -71,19 +68,20 @@ impl SourceFile {
         }
     }
 
-    pub fn collect_handler_fn_names(&self) -> Result<HashMap<HttpMethod, String>, anyhow::Error> {
+    pub fn collect_http_handler_fn_names(&self) -> HashMap<HttpMethod, String> {
         let mut handler_fns = HashMap::new();
         for exported_fn in &self.exported_fns {
             if let Ok(http_method) = HttpMethod::try_from(exported_fn.as_str()) {
                 if handler_fns.contains_key(&http_method) {
-                    return Err(anyhow!(
-                        "multiple {http_method} functions found in source file {}",
-                        self.path.rel.file_name().unwrap().to_string_lossy()
-                    ));
+                    todo!("send LambdaNotification");
+                    // return Err(anyhow!(
+                    //     "multiple {http_method} functions found in source file {}",
+                    //     self.path.rel.file_name().unwrap().to_string_lossy()
+                    // ));
                 }
                 handler_fns.insert(http_method, exported_fn.clone());
             }
         }
-        Ok(handler_fns)
+        handler_fns
     }
 }
