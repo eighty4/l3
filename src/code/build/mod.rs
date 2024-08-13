@@ -1,16 +1,19 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use crate::code::archiver::Archiver;
 use crate::code::build::swc::SwcBuilder;
 use crate::code::parse::parse_source_file;
 use crate::code::source::path::{FunctionBuildDir, SourcePath};
 use crate::code::source::{Language, SourceFile};
 use crate::lambda::LambdaFn;
 use crate::project::Lx3ProjectDeets;
+use archiver::Archiver;
 
+mod archiver;
 mod swc;
 
+#[cfg(test)]
+mod archiver_test;
 #[cfg(test)]
 mod swc_test;
 

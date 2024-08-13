@@ -2,7 +2,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use crate::code::archiver::Archiver;
+use crate::code::build::archiver::Archiver;
 use crate::code::source::path::{FunctionBuildDir, SourcePath};
 use crate::testing::{ProjectTest, TestSource};
 

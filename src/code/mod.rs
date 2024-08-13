@@ -1,4 +1,3 @@
-pub(crate) mod archiver;
 pub(crate) mod build;
 // todo checksum should be mod private
 pub(crate) mod checksum;
@@ -9,8 +8,6 @@ pub(crate) mod runtime;
 pub(crate) mod sha256;
 pub(crate) mod source;
 
-#[cfg(test)]
-mod archiver_test;
 #[cfg(test)]
 mod checksum_test;
 #[cfg(test)]
