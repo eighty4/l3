@@ -1,4 +1,4 @@
-use crate::code::runtime::typescript::TypeScriptDeets;
+use crate::code::runtime::typescript::read_typescript_config;
 use crate::testing::{ProjectTest, TestSource};
 
 #[test]
@@ -9,7 +9,7 @@ fn test_read_details_reads_path_aliases() {
                 .content("{\"compilerOptions\":{\"paths\":{\"@app/*\":[\"./src/*\"]}}}"),
         )
         .build();
-    let ts_deets = TypeScriptDeets::read_details(&project_test.project_dir).unwrap();
+    let ts_deets = read_typescript_config(&project_test.project_dir);
     assert_eq!(1, ts_deets.path_aliases.len());
     assert!(ts_deets.path_aliases.get("@app/*").is_some());
     assert_eq!(

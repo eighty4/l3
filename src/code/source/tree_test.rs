@@ -9,8 +9,8 @@ async fn test_sources_api_refresh_routes() {
     let route_key = RouteKey::new(HttpMethod::Get, "data".to_string());
     let project_test = ProjectTest::builder()
         .with_source(
-            TestSource::http_fn(Language::TypeScript, route_key.clone())
-                .content("import {getData} from '../lib/data'\nexport const GET = () => {}"),
+            TestSource::http_fn(Language::JavaScript, route_key.clone())
+                .content("import {getData} from '../../lib/data.js'\nexport const GET = () => {}"),
         )
         .with_source(
             TestSource::with_path("lib/data.js").content("export const getData = () => 42"),
@@ -33,6 +33,8 @@ async fn test_sources_api_refresh_routes() {
 // todo test compilation error sends LambdaNotification
 // todo test duplicate HTTP handler functions sends LambdaNotification
 // todo test routes source file without HTTP handle function sends LambdaNotification
+// todo test using a TypeScript path alias for a `$lib/data.js` style import
+// todo test resolving extension to .js, .mjs or .ts with an extensionless `lib/data` style import
 
 // let mut timeout = interval_at(
 //     Instant::now() + Duration::from_secs(10),

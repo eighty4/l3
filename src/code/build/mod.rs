@@ -64,8 +64,10 @@ impl LambdaFnBuild {
     }
 
     pub async fn build(&self) -> Result<Vec<SourcePath>, anyhow::Error> {
-        let source_file =
-            parse_source_file(self.entrypoint.clone(), &self.project_details.sources)?;
+        let source_file = parse_source_file(
+            self.entrypoint.clone(),
+            self.project_details.runtime_config.clone(),
+        )?;
         self.builder.build(&source_file, &self.build_dir)?;
         Ok(vec![source_file.path])
     }

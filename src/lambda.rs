@@ -29,7 +29,7 @@ impl RouteKey {
     pub fn extract_http_path(path: &Path) -> Option<String> {
         debug_assert!(path.is_relative());
         let mut parts = Vec::new();
-        for p in path.parent().unwrap().components().rev() {
+        for p in path.parent()?.components().rev() {
             if p.as_os_str().to_string_lossy().as_ref() == "routes" {
                 return Some(PathBuf::from_iter(parts).to_string_lossy().to_string());
             } else {

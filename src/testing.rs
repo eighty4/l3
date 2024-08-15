@@ -12,7 +12,6 @@ use crate::aws::{AwsApiDeets, AwsDeets};
 use crate::code::build::BuildMode;
 use crate::code::checksum::ChecksumTree;
 use crate::code::parse::parse_source_file;
-use crate::code::runtime::SourcesRuntimeDeets;
 use crate::code::sha256::make_checksum;
 use crate::code::source::path::SourcePath;
 use crate::code::source::{Language, SourceFile};
@@ -55,7 +54,7 @@ impl ProjectTest {
 
     pub fn source_file(&self, path: &str) -> SourceFile {
         debug_assert!(&self.project_dir.join(path).is_file());
-        parse_source_file(self.source_path(path), &Default::default()).unwrap()
+        parse_source_file(self.source_path(path), Default::default()).unwrap()
     }
 
     pub fn source_path(&self, path: &str) -> SourcePath {
@@ -91,7 +90,7 @@ impl ProjectTestBuilder {
         let temp_dir = TempDir::new().unwrap();
         let api_id = self.api_id.unwrap_or("API_ID".to_string());
         let project_name = self.project_name.unwrap_or("PROJECT_NAME".to_string());
-        let project_dir = temp_dir.path().to_path_buf();
+        let project_dir = temp_dir.path().canonicalize().unwrap();
         let sources = self
             .sources
             .into_iter()
@@ -121,7 +120,7 @@ impl ProjectTestBuilder {
                         .unwrap(),
                 })
                 .build_mode(self.build_mode.unwrap_or(BuildMode::Debug))
-                .runtime_deets(SourcesRuntimeDeets::default())
+                .runtime_config(Default::default())
                 .build(project_dir.clone(), project_name.clone()),
         );
         ProjectTest {

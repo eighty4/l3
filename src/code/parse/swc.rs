@@ -1,6 +1,9 @@
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
+use crate::code::runtime::RuntimeConfig;
+use crate::code::source::path::SourcePath;
+use crate::code::source::{Language, ModuleImport, SourceFile};
 use anyhow::anyhow;
 use swc::config::IsModule;
 use swc::try_with_handler;
@@ -8,25 +11,16 @@ use swc_common::{SourceMap, GLOBALS};
 use swc_ecma_ast::{Decl, EsVersion, ExportDecl, Module, ModuleDecl, Program};
 use swc_ecma_parser::Syntax;
 
-use crate::code::runtime::SourcesRuntimeDeets;
-use crate::code::source::path::SourcePath;
-use crate::code::source::{Language, ModuleImport, SourceFile};
-
 pub fn parse_source_file(
     language: Language,
     path: SourcePath,
-    project_details: &SourcesRuntimeDeets,
+    runtime_config: Arc<Mutex<RuntimeConfig>>,
 ) -> Result<SourceFile, anyhow::Error> {
     debug_assert!(
         matches!(language, Language::JavaScript) || matches!(language, Language::TypeScript)
     );
     let module = parse_module_ast(&language, &path)?;
-    Ok(build_source_file_from_module_ast(
-        language,
-        module,
-        path,
-        project_details,
-    ))
+    Ok(build_source_file_from_module_ast(language, module, path))
 }
 
 fn parse_module_ast(language: &Language, path: &SourcePath) -> Result<Module, anyhow::Error> {
@@ -64,18 +58,15 @@ fn build_source_file_from_module_ast(
     language: Language,
     module: Module,
     path: SourcePath,
-    project_details: &SourcesRuntimeDeets,
 ) -> SourceFile {
     let mut exported_fns: Vec<String> = Vec::new();
     let mut imports: Vec<ModuleImport> = Vec::new();
     for module_item in module.body {
         if let Some(module_decl) = module_item.module_decl() {
             match module_decl {
-                ModuleDecl::Import(import_decl) => imports.push(parse_import_path(
-                    import_decl.src.value.as_str(),
-                    &path,
-                    project_details,
-                )),
+                ModuleDecl::Import(import_decl) => {
+                    imports.push(parse_import_path(import_decl.src.value.as_str(), &path))
+                }
                 ModuleDecl::ExportDecl(ExportDecl {
                     decl: Decl::Fn(fn_decl),
                     ..
@@ -105,11 +96,16 @@ fn build_source_file_from_module_ast(
 //  https://nodejs.org/api/packages.html#subpath-imports
 //  https://www.typescriptlang.org/tsconfig/#paths
 //  https://www.typescriptlang.org/docs/handbook/modules/reference.html#paths
-fn parse_import_path(
-    import_path: &str,
-    source_path: &SourcePath,
-    project_details: &SourcesRuntimeDeets,
-) -> ModuleImport {
+//  https://github.com/swc-project/swc/blob/95af2536a2cd5040f44e93f2eea9cf577558f335/crates/swc_ecma_loader/src/resolvers/node.rs
+fn parse_import_path(import_path: &str, source_path: &SourcePath) -> ModuleImport {
+    if import_path.starts_with('.') {
+        ModuleImport::RelativeSource(source_path.to_relative_source(&PathBuf::from(import_path)))
+    } else {
+        ModuleImport::Unknown(import_path.to_string())
+    }
+
+    /*
+
     if import_path.starts_with('.') {
         ModuleImport::RelativeSource(source_path.to_relative_source(&PathBuf::from(import_path)))
     } else {
@@ -130,6 +126,8 @@ fn parse_import_path(
             ModuleImport::Unknown(import_path.to_string())
         }
     }
+
+    */
 }
 
 fn parse_identifier_name(n: &str) -> String {

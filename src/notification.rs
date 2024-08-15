@@ -1,7 +1,6 @@
+use crate::lambda::LambdaFn;
 use std::sync::Arc;
 use std::time::Instant;
-
-use crate::lambda::LambdaFn;
 
 pub enum LambdaNotification {
     Lambda(LambdaEvent),

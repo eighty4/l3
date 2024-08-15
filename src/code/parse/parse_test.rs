@@ -7,7 +7,7 @@ fn test_parse_module_errors_for_unsupported_source_type() {
         .with_source(TestSource::with_path("lambda.toml").content("[unsupported]"))
         .build();
     assert_eq!(
-        parse_source_file(project_test.source_path("lambda.toml"), &Default::default())
+        parse_source_file(project_test.source_path("lambda.toml"), Default::default())
             .err()
             .unwrap()
             .to_string(),

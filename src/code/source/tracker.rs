@@ -1,0 +1,116 @@
+use crate::code::runtime::RuntimeConfigApi;
+use crate::code::source::tree::SourcesApi;
+use crate::code::source::watcher::{FileUpdate, FileUpdateKind, FileWatcher, SpecialFile};
+use crate::project::Lx3ProjectDeets;
+use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
+use std::time::Duration;
+use tokio::select;
+use tokio::sync::mpsc::{channel, Receiver};
+use tokio::time::{interval, Interval};
+
+struct SourceTrackerEventLoop {
+    file_rx: Receiver<FileUpdate>,
+    file_watcher: Arc<Mutex<FileWatcher>>,
+    interval: Interval,
+    project_deets: Arc<Lx3ProjectDeets>,
+    runtime_config_api: Arc<RuntimeConfigApi>,
+    sources_api: Arc<SourcesApi>,
+    updates: Vec<FileUpdate>,
+}
+
+impl SourceTrackerEventLoop {
+    fn new(
+        file_rx: Receiver<FileUpdate>,
+        file_watcher: Arc<Mutex<FileWatcher>>,
+        project_deets: Arc<Lx3ProjectDeets>,
+        runtime_config_api: Arc<RuntimeConfigApi>,
+        sources_api: Arc<SourcesApi>,
+    ) -> Self {
+        Self {
+            file_rx,
+            file_watcher,
+            interval: interval(Duration::from_secs(1)),
+            project_deets,
+            runtime_config_api,
+            sources_api,
+            updates: Vec::new(),
+        }
+    }
+
+    async fn start(&mut self) {
+        loop {
+            select! {
+                opt = self.file_rx.recv() => self.updates.push(opt.unwrap()),
+                _ = self.interval.tick() => self.sync_file_updates(),
+            }
+        }
+    }
+
+    fn sync_file_updates(&mut self) {
+        if !self.updates.is_empty() {
+            for file_update in &self.updates {
+                match &file_update.file {
+                    None => match &file_update.kind {
+                        FileUpdateKind::ContentChanged => {
+                            println!("{} content changed", file_update.path.to_string_lossy())
+                        }
+                        FileUpdateKind::FileCreated => {
+                            println!("{} file created", file_update.path.to_string_lossy())
+                        }
+                        FileUpdateKind::FileRemoved => {
+                            println!("{} file removed", file_update.path.to_string_lossy())
+                        }
+                        FileUpdateKind::FileRenamed => {
+                            println!("{} file renamed", file_update.path.to_string_lossy())
+                        }
+                    },
+                    Some(file) => match file {
+                        SpecialFile::PackageJson => self.runtime_config_api.refresh_node_config(),
+                        SpecialFile::TypeScriptConfig => {
+                            self.runtime_config_api.refresh_typescript_config()
+                        }
+                    },
+                }
+            }
+        }
+    }
+}
+
+pub struct SourceTracker {
+    file_watcher: Arc<Mutex<FileWatcher>>,
+    sources_api: Arc<SourcesApi>,
+}
+
+impl SourceTracker {
+    pub fn new(
+        project_deets: Arc<Lx3ProjectDeets>,
+        runtime_config_api: Arc<RuntimeConfigApi>,
+        sources_api: Arc<SourcesApi>,
+    ) -> Self {
+        let (tx, rx) = channel(10);
+        let file_watcher = Arc::new(Mutex::new(FileWatcher::new(
+            project_deets.project_dir.clone(),
+            tx,
+        )));
+        let mut event_loop = SourceTrackerEventLoop::new(
+            rx,
+            file_watcher.clone(),
+            project_deets,
+            runtime_config_api,
+            sources_api.clone(),
+        );
+        tokio::spawn(async move { event_loop.start().await });
+        {
+            let mut file_watcher = file_watcher.lock().unwrap();
+            file_watcher
+                .add_non_recursive(PathBuf::from("."))
+                .expect("wtf");
+            // file_watcher.add_recursive(PathBuf::from("routes")).expect("wtf");
+        }
+        Self {
+            file_watcher,
+            sources_api,
+        }
+    }
+}

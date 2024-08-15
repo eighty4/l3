@@ -4,7 +4,7 @@ use crate::aws::tasks::SyncTask::RemoveFn;
 use crate::aws::tasks::{exec_tasks, DeployFnParams, RemoveFnParams, SyncTask};
 use crate::aws::{AwsApiConfig, AwsDataDir, AwsDeets};
 use crate::code::build::BuildMode;
-use crate::code::runtime::SourcesRuntimeDeets;
+use crate::code::runtime::RuntimeConfig;
 use crate::code::source::tree::SourceTree;
 use crate::notification::LambdaNotification;
 use crate::project::Lx3ProjectDeets;
@@ -37,13 +37,13 @@ pub(crate) async fn sync_project(sync_options: SyncOptions) -> Result<(), anyhow
         &sync_options.project_name,
     )
     .await?;
+    let (runtime_config, runtime_config_api) = RuntimeConfig::new(sync_options.project_dir.clone());
+    runtime_config_api.initialize_runtime_configs().await;
     let project_deets = Arc::new(
         Lx3ProjectDeets::builder()
             .aws_deets(AwsDeets::from(aws_preflight_data))
             .build_mode(sync_options.build_mode.clone())
-            .runtime_deets(SourcesRuntimeDeets::read_details(
-                &sync_options.project_dir,
-            )?)
+            .runtime_config(runtime_config)
             .build(
                 sync_options.project_dir.clone(),
                 sync_options.project_name.clone(),

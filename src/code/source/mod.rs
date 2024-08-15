@@ -5,6 +5,7 @@ use crate::code::source::path::{SourceKind, SourcePath};
 use crate::lambda::HttpMethod;
 
 pub(crate) mod path;
+pub(crate) mod tracker;
 pub(crate) mod tree;
 pub(crate) mod watcher;
 
@@ -12,6 +13,8 @@ pub(crate) mod watcher;
 mod path_test;
 #[cfg(test)]
 mod tree_test;
+#[cfg(test)]
+mod watcher_test;
 
 #[derive(Clone)]
 pub enum Language {
