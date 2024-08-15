@@ -7,8 +7,8 @@ use crate::code::source::Language;
 use crate::lambda::{HttpMethod, RouteKey};
 use crate::testing::{ProjectTest, TestSource};
 
-#[test]
-fn test_checksum_tree_do_checksums_match_clean_checksum() {
+#[tokio::test]
+async fn test_checksum_tree_do_checksums_match_clean_checksum() {
     let route_key = RouteKey::new(HttpMethod::Get, "data".to_string());
     let project_test = ProjectTest::builder()
         .api_id("API_ID")
@@ -32,8 +32,8 @@ fn test_checksum_tree_do_checksums_match_clean_checksum() {
         .unwrap());
 }
 
-#[test]
-fn test_checksum_tree_do_checksums_match_dirty_checksum() {
+#[tokio::test]
+async fn test_checksum_tree_do_checksums_match_dirty_checksum() {
     let route_key = RouteKey::new(HttpMethod::Get, "data".to_string());
     let project_test = ProjectTest::builder()
         .api_id("API_ID")
@@ -57,8 +57,8 @@ fn test_checksum_tree_do_checksums_match_dirty_checksum() {
         .unwrap());
 }
 
-#[test]
-fn test_checksum_tree_do_checksums_match_without_checksum() {
+#[tokio::test]
+async fn test_checksum_tree_do_checksums_match_without_checksum() {
     let route_key = RouteKey::new(HttpMethod::Get, "data".to_string());
     let project_test = ProjectTest::builder()
         .api_id("API_ID")
@@ -82,8 +82,8 @@ fn test_checksum_tree_do_checksums_match_without_checksum() {
         .unwrap());
 }
 
-#[test]
-fn test_checksum_tree_do_all_checksums_match_clean_checksums() {
+#[tokio::test]
+async fn test_checksum_tree_do_all_checksums_match_clean_checksums() {
     let route_key = RouteKey::new(HttpMethod::Get, "data".to_string());
     let project_test = ProjectTest::builder()
         .api_id("API_ID")
@@ -118,8 +118,8 @@ fn test_checksum_tree_do_all_checksums_match_clean_checksums() {
         .unwrap());
 }
 
-#[test]
-fn test_checksum_tree_do_all_checksums_match_dirty_checksum() {
+#[tokio::test]
+async fn test_checksum_tree_do_all_checksums_match_dirty_checksum() {
     let route_key = RouteKey::new(HttpMethod::Get, "data".to_string());
     let project_test = ProjectTest::builder()
         .api_id("API_ID")
@@ -154,8 +154,8 @@ fn test_checksum_tree_do_all_checksums_match_dirty_checksum() {
         .unwrap());
 }
 
-#[test]
-fn test_checksum_tree_do_all_checksums_match_without_checksum() {
+#[tokio::test]
+async fn test_checksum_tree_do_all_checksums_match_without_checksum() {
     let route_key = RouteKey::new(HttpMethod::Get, "data".to_string());
     let project_test = ProjectTest::builder()
         .api_id("API_ID")
@@ -190,8 +190,8 @@ fn test_checksum_tree_do_all_checksums_match_without_checksum() {
         .unwrap());
 }
 
-#[test]
-fn test_checksum_tree_do_env_checksums_match_with_clean_method_env_checksum() {
+#[tokio::test]
+async fn test_checksum_tree_do_env_checksums_match_with_clean_method_env_checksum() {
     let route_key = RouteKey::new(HttpMethod::Get, "data".to_string());
     let project_test = ProjectTest::builder()
         .api_id("API_ID")
@@ -217,8 +217,8 @@ fn test_checksum_tree_do_env_checksums_match_with_clean_method_env_checksum() {
         .unwrap());
 }
 
-#[test]
-fn test_checksum_tree_do_env_checksums_match_with_clean_path_env_checksum() {
+#[tokio::test]
+async fn test_checksum_tree_do_env_checksums_match_with_clean_path_env_checksum() {
     let route_key = RouteKey::new(HttpMethod::Get, "data".to_string());
     let project_test = ProjectTest::builder()
         .api_id("API_ID")
@@ -244,8 +244,8 @@ fn test_checksum_tree_do_env_checksums_match_with_clean_path_env_checksum() {
         .unwrap());
 }
 
-#[test]
-fn test_checksum_tree_do_env_checksums_match_with_dirty_method_env_checksum() {
+#[tokio::test]
+async fn test_checksum_tree_do_env_checksums_match_with_dirty_method_env_checksum() {
     let route_key = RouteKey::new(HttpMethod::Get, "data".to_string());
     let project_test = ProjectTest::builder()
         .api_id("API_ID")
@@ -271,8 +271,8 @@ fn test_checksum_tree_do_env_checksums_match_with_dirty_method_env_checksum() {
         .unwrap());
 }
 
-#[test]
-fn test_checksum_tree_do_env_checksums_match_with_dirty_path_env_checksum() {
+#[tokio::test]
+async fn test_checksum_tree_do_env_checksums_match_with_dirty_path_env_checksum() {
     let route_key = RouteKey::new(HttpMethod::Get, "data".to_string());
     let project_test = ProjectTest::builder()
         .api_id("API_ID")
@@ -298,8 +298,8 @@ fn test_checksum_tree_do_env_checksums_match_with_dirty_path_env_checksum() {
         .unwrap());
 }
 
-#[test]
-fn test_checksum_tree_do_env_checksums_match_with_method_env_checksum_without_source() {
+#[tokio::test]
+async fn test_checksum_tree_do_env_checksums_match_with_method_env_checksum_without_source() {
     let route_key = RouteKey::new(HttpMethod::Get, "data".to_string());
     let project_test = ProjectTest::builder()
         .api_id("API_ID")
@@ -333,8 +333,8 @@ fn test_checksum_tree_do_env_checksums_match_with_method_env_checksum_without_so
         .unwrap());
 }
 
-#[test]
-fn test_checksum_tree_do_env_checksums_match_with_path_env_checksum_without_source() {
+#[tokio::test]
+async fn test_checksum_tree_do_env_checksums_match_with_path_env_checksum_without_source() {
     let route_key = RouteKey::new(HttpMethod::Get, "data".to_string());
     let project_test = ProjectTest::builder()
         .api_id("API_ID")
@@ -368,8 +368,8 @@ fn test_checksum_tree_do_env_checksums_match_with_path_env_checksum_without_sour
         .unwrap());
 }
 
-#[test]
-fn test_checksum_tree_update_env_var_checksums_updates_checksums() {
+#[tokio::test]
+async fn test_checksum_tree_update_env_var_checksums_updates_checksums() {
     let route_key = RouteKey::new(HttpMethod::Get, "data".to_string());
     let project_test = ProjectTest::builder()
         .api_id("API_ID")
@@ -405,8 +405,8 @@ fn test_checksum_tree_update_env_var_checksums_updates_checksums() {
         .unwrap());
 }
 
-#[test]
-fn test_checksum_tree_update_env_var_checksums_removes_checksums() {
+#[tokio::test]
+async fn test_checksum_tree_update_env_var_checksums_removes_checksums() {
     let route_key = RouteKey::new(HttpMethod::Get, "data".to_string());
     let project_test = ProjectTest::builder()
         .api_id("API_ID")
@@ -464,8 +464,8 @@ fn test_checksum_tree_update_env_var_checksums_removes_checksums() {
         .exists());
 }
 
-#[test]
-fn test_checksum_tree_remove_checksum_removes_from_cache_and_fs() {
+#[tokio::test]
+async fn test_checksum_tree_remove_checksum_removes_from_cache_and_fs() {
     let route_key = RouteKey::new(HttpMethod::Get, "data".to_string());
     let project_test = ProjectTest::builder()
         .api_id("API_ID")
@@ -491,8 +491,8 @@ fn test_checksum_tree_remove_checksum_removes_from_cache_and_fs() {
     assert!(!p.exists());
 }
 
-#[test]
-fn test_checksum_tree_update_checksum() {
+#[tokio::test]
+async fn test_checksum_tree_update_checksum() {
     let route_key = RouteKey::new(HttpMethod::Get, "data".to_string());
     let project_test = ProjectTest::builder()
         .api_id("API_ID")
@@ -516,8 +516,8 @@ fn test_checksum_tree_update_checksum() {
     assert!(checksum_tree.do_checksums_match(&p).unwrap());
 }
 
-#[test]
-fn test_checksum_tree_update_all_checksums() {
+#[tokio::test]
+async fn test_checksum_tree_update_all_checksums() {
     let route_key = RouteKey::new(HttpMethod::Get, "data".to_string());
     let project_test = ProjectTest::builder()
         .api_id("API_ID")

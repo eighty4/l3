@@ -1,9 +1,8 @@
 use crate::code::env::EnvVarSources;
-use crate::code::parse::parse_source_file;
 use crate::code::read::parallel::recursively_read_dirs;
 use crate::code::source::path::SourcePath;
 use crate::code::source::tree::SourceTreeMessage::*;
-use crate::code::source::{ModuleImport, SourceFile};
+use crate::code::source::{Language, SourceFile};
 use crate::lambda::{LambdaFn, RouteKey};
 use crate::notification::LambdaNotification;
 use crate::project::Lx3ProjectDeets;
@@ -105,22 +104,23 @@ impl SourceTreeEventLoop {
                 }
             }
 
-            // todo fix circular imports cause infinite queueing
-            let mut processing: Vec<oneshot::Receiver<bool>> = Vec::new();
-            for import in &source_file.imports {
-                match import {
-                    ModuleImport::PackageDependency { .. } => todo!(),
-                    ModuleImport::RelativeSource(source_path) => {
-                        let (sender, receiver) = oneshot::channel();
-                        processing.push(receiver);
-                        msg_tx.send(ProcessSourcePath {
-                            source_path: source_path.clone(),
-                            processed: Some(sender),
-                        })?
-                    }
-                    ModuleImport::Unknown(_) => todo!(),
-                }
-            }
+            // todo process ModuleImports::Unprocessed
+            // todo prevent circular imports cause infinite queueing
+            // let mut processing: Vec<oneshot::Receiver<bool>> = Vec::new();
+            // for import in &source_file.imports {
+            //     match import {
+            //         ModuleImport::PackageDependency { .. } => todo!(),
+            //         ModuleImport::RelativeSource(source_path) => {
+            //             let (sender, receiver) = oneshot::channel();
+            //             processing.push(receiver);
+            //             msg_tx.send(ProcessSourcePath {
+            //                 source_path: source_path.clone(),
+            //                 processed: Some(sender),
+            //             })?
+            //         }
+            //         ModuleImport::Unknown(_) => todo!(),
+            //     }
+            // }
 
             {
                 let mut source_tree = source_tree.lock().unwrap();
@@ -129,9 +129,9 @@ impl SourceTreeEventLoop {
                     source_tree.add_lambda_fn(lambda_fn);
                 }
             }
-            for completed in processing {
-                completed.await?;
-            }
+            // for completed in processing {
+            //     completed.await?;
+            // }
             if let Some(processed) = processed {
                 processed.send(true).unwrap();
             }
@@ -145,10 +145,16 @@ impl SourceTreeEventLoop {
         processed: Option<oneshot::Sender<bool>>,
     ) {
         let msg_tx = self.msg_tx.clone();
-        let project_deets = self.project_deets.clone();
+        let source_parser = {
+            self.project_deets
+                .runtime_config
+                .lock()
+                .unwrap()
+                .source_parser(&Language::from_extension(&source_path.rel).unwrap())
+        };
         tokio::spawn(async move {
             // todo surface error with LambdaNotification
-            match parse_source_file(source_path, project_deets.runtime_config.clone()) {
+            match source_parser.parse(source_path) {
                 Ok(source_file) => msg_tx.send(ProcessSourceFile {
                     source_file,
                     processed,

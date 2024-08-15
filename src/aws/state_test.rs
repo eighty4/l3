@@ -6,8 +6,8 @@ use crate::code::env::EnvVarSources;
 use crate::lambda::{HttpMethod, LambdaFn, RouteKey};
 use crate::testing::{ProjectTest, TestSource};
 
-#[test]
-fn test_deployed_state_resolves_lambda_components_by_route_key() {
+#[tokio::test]
+async fn test_deployed_state_resolves_lambda_components_by_route_key() {
     let project_test = ProjectTest::builder()
         .api_id("API_ID")
         .project_name("this_project")

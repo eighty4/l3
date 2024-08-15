@@ -1,8 +1,8 @@
 use crate::code::runtime::typescript::read_typescript_config;
 use crate::testing::{ProjectTest, TestSource};
 
-#[test]
-fn test_read_details_reads_path_aliases() {
+#[tokio::test]
+async fn test_read_details_reads_path_aliases() {
     let project_test = ProjectTest::builder()
         .with_source(
             TestSource::with_path("tsconfig.json")

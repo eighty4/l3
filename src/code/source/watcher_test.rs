@@ -1,7 +1,7 @@
 use crate::code::source::watcher::{FileUpdate, FileUpdateKind, FileWatcher, SpecialFile};
 use crate::testing::ProjectTest;
 use std::fs;
-use std::fs::{File, OpenOptions};
+use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::PathBuf;
 use std::time::Duration;

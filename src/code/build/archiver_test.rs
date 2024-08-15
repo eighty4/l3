@@ -6,8 +6,8 @@ use crate::code::build::archiver::Archiver;
 use crate::code::source::path::{FunctionBuildDir, SourcePath};
 use crate::testing::{ProjectTest, TestSource};
 
-#[test]
-fn test_archiver_write_zipped_source_file() {
+#[tokio::test]
+async fn test_archiver_write_zipped_source_file() {
     let project_test = ProjectTest::builder()
         .with_source(
             TestSource::with_path("routes/data/lambda.js").content("export const GET = () => {}"),
@@ -30,8 +30,8 @@ fn test_archiver_write_zipped_source_file() {
     );
 }
 
-#[test]
-fn test_archiver_write_zipped_build_output() {
+#[tokio::test]
+async fn test_archiver_write_zipped_build_output() {
     let project_test = ProjectTest::builder()
         .with_source(
             TestSource::with_path("routes/data/lambda.js").content("export const GET = () => {}"),
@@ -60,8 +60,8 @@ fn test_archiver_write_zipped_build_output() {
     );
 }
 
-#[test]
-fn test_archiver_write_does_not_append_to_existing_archive() {
+#[tokio::test]
+async fn test_archiver_write_does_not_append_to_existing_archive() {
     let project_test = ProjectTest::builder()
         .with_source(
             TestSource::with_path("routes/data/lambda.js").content("export const GET = () => {}"),

@@ -1,9 +1,9 @@
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
-use crate::code::runtime::RuntimeConfig;
+use crate::code::parse::SourceParser;
 use crate::code::source::path::SourcePath;
-use crate::code::source::{Language, ModuleImport, SourceFile};
+use crate::code::source::{Language, ModuleImport, ModuleImports, SourceFile};
 use anyhow::anyhow;
 use swc::config::IsModule;
 use swc::try_with_handler;
@@ -11,19 +11,41 @@ use swc_common::{SourceMap, GLOBALS};
 use swc_ecma_ast::{Decl, EsVersion, ExportDecl, Module, ModuleDecl, Program};
 use swc_ecma_parser::Syntax;
 
-pub fn parse_source_file(
+pub struct SwcSourceParser {
     language: Language,
-    path: SourcePath,
-    runtime_config: Arc<Mutex<RuntimeConfig>>,
-) -> Result<SourceFile, anyhow::Error> {
-    debug_assert!(
-        matches!(language, Language::JavaScript) || matches!(language, Language::TypeScript)
-    );
-    let module = parse_module_ast(&language, &path)?;
-    Ok(build_source_file_from_module_ast(language, module, path))
 }
 
-fn parse_module_ast(language: &Language, path: &SourcePath) -> Result<Module, anyhow::Error> {
+impl SwcSourceParser {
+    pub fn for_javascript() -> Self {
+        Self::new(Language::JavaScript)
+    }
+
+    pub fn for_typescript() -> Self {
+        Self::new(Language::TypeScript)
+    }
+
+    fn new(language: Language) -> Self {
+        Self { language }
+    }
+}
+
+impl SourceParser for SwcSourceParser {
+    fn parse(&self, path: SourcePath) -> Result<SourceFile, anyhow::Error> {
+        let (exported_fns, imports) = parse_ast(create_ast(&self.language, &path)?);
+        Ok(SourceFile::new(
+            exported_fns,
+            if imports.is_empty() {
+                ModuleImports::Empty
+            } else {
+                ModuleImports::Unprocessed(imports)
+            },
+            self.language.clone(),
+            path,
+        ))
+    }
+}
+
+fn create_ast(language: &Language, path: &SourcePath) -> Result<Module, anyhow::Error> {
     let source_map = Arc::<SourceMap>::default();
     let compiler = swc::Compiler::new(source_map.clone());
     let program = GLOBALS
@@ -54,19 +76,13 @@ fn parse_module_ast(language: &Language, path: &SourcePath) -> Result<Module, an
     }
 }
 
-fn build_source_file_from_module_ast(
-    language: Language,
-    module: Module,
-    path: SourcePath,
-) -> SourceFile {
+fn parse_ast(module: Module) -> (Vec<String>, Vec<String>) {
     let mut exported_fns: Vec<String> = Vec::new();
-    let mut imports: Vec<ModuleImport> = Vec::new();
+    let mut imports: Vec<String> = Vec::new();
     for module_item in module.body {
         if let Some(module_decl) = module_item.module_decl() {
             match module_decl {
-                ModuleDecl::Import(import_decl) => {
-                    imports.push(parse_import_path(import_decl.src.value.as_str(), &path))
-                }
+                ModuleDecl::Import(import_decl) => imports.push(import_decl.src.value.to_string()),
                 ModuleDecl::ExportDecl(ExportDecl {
                     decl: Decl::Fn(fn_decl),
                     ..
@@ -89,45 +105,7 @@ fn build_source_file_from_module_ast(
             }
         };
     }
-    SourceFile::new(exported_fns, imports, language, path)
-}
-
-// todo resolve ts and js import path mappings
-//  https://nodejs.org/api/packages.html#subpath-imports
-//  https://www.typescriptlang.org/tsconfig/#paths
-//  https://www.typescriptlang.org/docs/handbook/modules/reference.html#paths
-//  https://github.com/swc-project/swc/blob/95af2536a2cd5040f44e93f2eea9cf577558f335/crates/swc_ecma_loader/src/resolvers/node.rs
-fn parse_import_path(import_path: &str, source_path: &SourcePath) -> ModuleImport {
-    if import_path.starts_with('.') {
-        ModuleImport::RelativeSource(source_path.to_relative_source(&PathBuf::from(import_path)))
-    } else {
-        ModuleImport::Unknown(import_path.to_string())
-    }
-
-    /*
-
-    if import_path.starts_with('.') {
-        ModuleImport::RelativeSource(source_path.to_relative_source(&PathBuf::from(import_path)))
-    } else {
-        let (maybe_dep_package, maybe_dep_subpath) = match import_path.split_once('/') {
-            None => (import_path.to_string(), None),
-            Some((base, remainder)) => (base.to_string(), Some(remainder.to_string())),
-        };
-        if project_details
-            .javascript
-            .has_dependency(&maybe_dep_package)
-        {
-            ModuleImport::PackageDependency {
-                package: maybe_dep_package,
-                subpath: maybe_dep_subpath,
-            }
-        } else {
-            // todo resolve ts path alias
-            ModuleImport::Unknown(import_path.to_string())
-        }
-    }
-
-    */
+    (exported_fns, imports)
 }
 
 fn parse_identifier_name(n: &str) -> String {

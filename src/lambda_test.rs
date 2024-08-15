@@ -69,8 +69,8 @@ fn test_http_method_try_from() {
     assert_eq!(HttpMethod::try_from("PUT").unwrap(), HttpMethod::Put);
 }
 
-#[test]
-fn test_lambda_fn_fn_name() {
+#[tokio::test]
+async fn test_lambda_fn_fn_name() {
     let project_test = ProjectTest::builder()
         .project_name("my_proj")
         .with_source(
@@ -88,8 +88,8 @@ fn test_lambda_fn_fn_name() {
     assert_eq!(lambda_fn.fn_name, "l3-my_proj-data-delete");
 }
 
-#[test]
-fn test_lambda_fn_handler_path() {
+#[tokio::test]
+async fn test_lambda_fn_handler_path() {
     let project_test = ProjectTest::builder()
         .with_source(
             TestSource::with_path("routes/data/lambda.js").content("export function GET(){}"),

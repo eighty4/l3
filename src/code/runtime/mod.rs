@@ -1,3 +1,7 @@
+use crate::code::parse::imports::node::NodeImportResolver;
+use crate::code::parse::imports::ImportResolver;
+use crate::code::parse::swc::SwcSourceParser;
+use crate::code::parse::SourceParser;
 use crate::code::runtime::node::{read_node_config, NodeConfig};
 use crate::code::runtime::typescript::{read_typescript_config, TypeScriptConfig};
 use crate::code::runtime::RuntimeConfigMessage::*;
@@ -127,22 +131,46 @@ impl RuntimeConfigApi {
     }
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub struct RuntimeConfig {
-    // todo import_resolvers: HashMap<Language, Arc<Box<dyn ImportResolver>>>,
+    javascript_source_parser: Arc<Box<dyn SourceParser>>,
     node_config: Arc<NodeConfig>,
-    // todo source_parsers: HashMap<Language, Arc<Box<dyn SourceParser>>>,
+    node_import_resolver: Arc<Box<dyn ImportResolver>>,
     typescript_config: Arc<TypeScriptConfig>,
+    // typescript_import_resolver: Arc<Box<dyn ImportResolver>>,
+    typescript_source_parser: Arc<Box<dyn SourceParser>>,
 }
 
 impl RuntimeConfig {
     pub fn new(project_dir: PathBuf) -> (Arc<Mutex<RuntimeConfig>>, Arc<RuntimeConfigApi>) {
         let (msg_tx, msg_rx) = unbounded_channel();
-        let runtime_config: Arc<Mutex<RuntimeConfig>> = Default::default();
+        let node_config: Arc<NodeConfig> = Default::default();
+        let javascript_source_parser: Arc<Box<dyn SourceParser>> =
+            Arc::new(Box::new(SwcSourceParser::for_javascript()));
+        let node_import_resolver: Arc<Box<dyn ImportResolver>> =
+            Arc::new(Box::new(NodeImportResolver::new(node_config.clone())));
+        let typescript_config: Arc<TypeScriptConfig> = Default::default();
+        let typescript_source_parser: Arc<Box<dyn SourceParser>> =
+            Arc::new(Box::new(SwcSourceParser::for_typescript()));
+        let runtime_config: Arc<Mutex<RuntimeConfig>> = Arc::new(Mutex::new(RuntimeConfig {
+            javascript_source_parser,
+            node_config,
+            node_import_resolver,
+            typescript_config,
+            typescript_source_parser,
+        }));
         let mut event_loop =
             RuntimeConfigEventLoop::new(msg_rx, Arc::new(project_dir), runtime_config.clone());
         tokio::spawn(async move { event_loop.start().await });
         (runtime_config, RuntimeConfigApi::new(msg_tx))
+    }
+
+    pub fn import_resolver(&self, language: Language) -> Arc<Box<dyn ImportResolver>> {
+        match language {
+            JavaScript => self.node_import_resolver.clone(),
+            Python => todo!(),
+            TypeScript => todo!(),
+        }
     }
 
     pub fn node_config(&self) -> Arc<NodeConfig> {
@@ -151,10 +179,20 @@ impl RuntimeConfig {
 
     pub fn set_node_config(&mut self, node_config: NodeConfig) {
         self.node_config = Arc::new(node_config);
+        self.node_import_resolver =
+            Arc::new(Box::new(NodeImportResolver::new(self.node_config.clone())));
     }
 
     pub fn set_typescript_config(&mut self, typescript_config: TypeScriptConfig) {
         self.typescript_config = Arc::new(typescript_config);
+    }
+
+    pub fn source_parser(&self, language: &Language) -> Arc<Box<dyn SourceParser>> {
+        match language {
+            JavaScript => self.javascript_source_parser.clone(),
+            Python => todo!(),
+            TypeScript => self.typescript_source_parser.clone(),
+        }
     }
 
     pub fn typescript_config(&self) -> Arc<TypeScriptConfig> {

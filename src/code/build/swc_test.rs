@@ -5,8 +5,8 @@ use crate::code::build::{BuildMode, Builder};
 use crate::code::source::path::{FunctionBuildDir, SourceKind};
 use crate::testing::{ProjectTest, TestSource};
 
-#[test]
-fn test_swc_builder_development_mode_returns_original_source_path() {
+#[tokio::test]
+async fn test_swc_builder_development_mode_returns_original_source_path() {
     let project_test = ProjectTest::builder()
         .with_source(
             TestSource::with_path("routes/data/lambda.js").content("export const GET = (e) => {}"),
@@ -29,8 +29,8 @@ fn test_swc_builder_development_mode_returns_original_source_path() {
     );
 }
 
-#[test]
-fn test_swc_builder_development_mode_writes_ts_to_build_dir() {
+#[tokio::test]
+async fn test_swc_builder_development_mode_writes_ts_to_build_dir() {
     let project_test = ProjectTest::builder()
         .with_source(
             TestSource::with_path("routes/data/lambda.ts")
@@ -61,8 +61,8 @@ fn test_swc_builder_development_mode_writes_ts_to_build_dir() {
     );
 }
 
-#[test]
-fn test_compile_ts_for_development() {
+#[tokio::test]
+async fn test_compile_ts_for_development() {
     let project_test = ProjectTest::builder()
         .with_source(
             TestSource::with_path("routes/data/lambda.ts")
@@ -76,8 +76,8 @@ fn test_compile_ts_for_development() {
     assert_eq!(compile_ts_file(&path, &BuildMode::Debug).unwrap(), expected);
 }
 
-#[test]
-fn test_compile_ts_for_production() {
+#[tokio::test]
+async fn test_compile_ts_for_production() {
     let project_test = ProjectTest::builder()
         .with_source(
             TestSource::with_path("routes/data/lambda.ts")
@@ -94,8 +94,8 @@ fn test_compile_ts_for_production() {
     );
 }
 
-#[test]
-fn test_compile_ts_for_production_multi_module_snafu() {
+#[tokio::test]
+async fn test_compile_ts_for_production_multi_module_snafu() {
     let project_test = ProjectTest::builder()
         .with_source(
             TestSource::with_path("src/data.ts")
@@ -118,8 +118,8 @@ fn test_compile_ts_for_production_multi_module_snafu() {
     );
 }
 
-#[test]
-fn test_minify_js() {
+#[tokio::test]
+async fn test_minify_js() {
     let project_test = ProjectTest::builder()
         .with_source(
             TestSource::with_path("routes/data/lambda.ts")

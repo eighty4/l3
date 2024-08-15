@@ -3,8 +3,8 @@ use crate::code::runtime::node::{read_node_config, NodeConditionalImportKind};
 use crate::testing::{ProjectTest, TestSource};
 use std::path::PathBuf;
 
-#[test]
-fn test_read_node_config_defaults_when_package_json_does_not_exist() {
+#[tokio::test]
+async fn test_read_node_config_defaults_when_package_json_does_not_exist() {
     let project_test = ProjectTest::builder().build();
     let node_config = read_node_config(&project_test.project_dir);
     assert!(node_config.dependencies.is_empty());
@@ -12,8 +12,8 @@ fn test_read_node_config_defaults_when_package_json_does_not_exist() {
     assert!(node_config.subpath_imports.is_empty());
 }
 
-#[test]
-fn test_read_node_config_defaults_when_package_json_does_not_exist_with_pnpm() {
+#[tokio::test]
+async fn test_read_node_config_defaults_when_package_json_does_not_exist_with_pnpm() {
     let project_test = ProjectTest::builder()
         .with_source(TestSource::with_path("pnpm-lock.yaml").content(""))
         .build();
@@ -23,8 +23,8 @@ fn test_read_node_config_defaults_when_package_json_does_not_exist_with_pnpm() {
     assert!(node_config.subpath_imports.is_empty());
 }
 
-#[test]
-fn test_read_node_config_reads_dependencies() {
+#[tokio::test]
+async fn test_read_node_config_reads_dependencies() {
     let project_test = ProjectTest::builder()
         .with_source(TestSource::with_path("package.json").content(
             "{\"dependencies\":{\"pg\":\"0.0.1\"},\"devDependencies\":{\"@types/pg\":\"0.0.1\"}}",
@@ -36,8 +36,8 @@ fn test_read_node_config_reads_dependencies() {
     assert!(node_config.dependencies.contains(&"@types/pg".to_string()));
 }
 
-#[test]
-fn test_read_node_config_checks_for_pnpm_package_manager() {
+#[tokio::test]
+async fn test_read_node_config_checks_for_pnpm_package_manager() {
     let project_test = ProjectTest::builder()
         .with_source(TestSource::with_path("pnpm-lock.yaml").content(""))
         .build();
@@ -45,15 +45,15 @@ fn test_read_node_config_checks_for_pnpm_package_manager() {
     assert!(matches!(node_config.package_manager, Pnpm));
 }
 
-#[test]
-fn test_read_node_config_defaults_to_npm_package_manager() {
+#[tokio::test]
+async fn test_read_node_config_defaults_to_npm_package_manager() {
     let project_test = ProjectTest::builder().build();
     let node_config = read_node_config(&project_test.project_dir);
     assert!(matches!(node_config.package_manager, Npm));
 }
 
-#[test]
-fn test_read_node_config_reads_subpath_imports() {
+#[tokio::test]
+async fn test_read_node_config_reads_subpath_imports() {
     let project_test = ProjectTest::builder()
         .with_source(TestSource::with_path("package.json").content(
             "{\"imports\":{\"#dep\":{\"node\":\"dep-node-native\",\"default\":\"./dep-polyfill.js\"}}}",

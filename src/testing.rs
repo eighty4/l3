@@ -1,6 +1,6 @@
 use std::fs;
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use aws_config::{BehaviorVersion, Region, SdkConfig};
 use aws_sdk_iam::primitives::DateTime;
@@ -11,7 +11,7 @@ use crate::aws::clients::AwsClients;
 use crate::aws::{AwsApiDeets, AwsDeets};
 use crate::code::build::BuildMode;
 use crate::code::checksum::ChecksumTree;
-use crate::code::parse::parse_source_file;
+use crate::code::runtime::RuntimeConfig;
 use crate::code::sha256::make_checksum;
 use crate::code::source::path::SourcePath;
 use crate::code::source::{Language, SourceFile};
@@ -52,9 +52,22 @@ impl ProjectTest {
         self.project_dir.join(path)
     }
 
-    pub fn source_file(&self, path: &str) -> SourceFile {
+    pub fn parse_result(&self, path: &str) -> Result<SourceFile, anyhow::Error> {
         debug_assert!(&self.project_dir.join(path).is_file());
-        parse_source_file(self.source_path(path), Default::default()).unwrap()
+        self.project_deets
+            .runtime_config
+            .lock()
+            .unwrap()
+            .source_parser(&Language::from_extension(&PathBuf::from(&path)).unwrap())
+            .parse(self.source_path(path))
+    }
+
+    pub fn runtime_config(&self) -> Arc<Mutex<RuntimeConfig>> {
+        self.project_deets.runtime_config.clone()
+    }
+
+    pub fn source_file(&self, path: &str) -> SourceFile {
+        self.parse_result(path).unwrap()
     }
 
     pub fn source_path(&self, path: &str) -> SourcePath {
@@ -96,6 +109,7 @@ impl ProjectTestBuilder {
             .into_iter()
             .map(|s| s.build(&project_name, &project_dir, &api_id))
             .collect();
+        let (runtime_config, _) = RuntimeConfig::new(project_dir.clone());
         let project_deets = Arc::new(
             Lx3ProjectDeets::builder()
                 .aws_deets(AwsDeets {
@@ -120,7 +134,7 @@ impl ProjectTestBuilder {
                         .unwrap(),
                 })
                 .build_mode(self.build_mode.unwrap_or(BuildMode::Debug))
-                .runtime_config(Default::default())
+                .runtime_config(runtime_config)
                 .build(project_dir.clone(), project_name.clone()),
         );
         ProjectTest {

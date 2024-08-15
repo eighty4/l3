@@ -18,8 +18,8 @@ fn test_source_path_is_lambda_file_name() {
     }
 }
 
-#[test]
-fn test_function_build_dir_for_debug_build() {
+#[tokio::test]
+async fn test_function_build_dir_for_debug_build() {
     let project_test = ProjectTest::builder().build_mode(BuildMode::Debug).build();
     let build_dir =
         FunctionBuildDir::new(&project_test.project_deets, &"l3-get-data-fn".to_string());
@@ -28,8 +28,8 @@ fn test_function_build_dir_for_debug_build() {
     assert_eq!(build_dir.abs, project_test.project_dir.join(expected_rel));
 }
 
-#[test]
-fn test_function_build_dir_for_release_build() {
+#[tokio::test]
+async fn test_function_build_dir_for_release_build() {
     let project_test = ProjectTest::builder()
         .build_mode(BuildMode::Release)
         .build();
@@ -40,8 +40,8 @@ fn test_function_build_dir_for_release_build() {
     assert_eq!(build_dir.abs, project_test.project_dir.join(expected_rel));
 }
 
-#[test]
-fn test_source_path_to_relative_source() {
+#[tokio::test]
+async fn test_source_path_to_relative_source() {
     let project_test = ProjectTest::builder().build();
     let rel = PathBuf::from("routes/data/lambda.js");
     let lambda_src = SourcePath::from_rel(&project_test.project_dir, rel);

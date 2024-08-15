@@ -25,13 +25,19 @@ pub enum Language {
 
 impl Language {
     pub fn from_extension(path: &Path) -> Option<Language> {
-        match path.extension().unwrap().to_string_lossy().as_ref() {
+        match path.extension()?.to_string_lossy().as_ref() {
             "js" | "mjs" => Some(Language::JavaScript),
             "py" => Some(Language::Python),
             "ts" => Some(Language::TypeScript),
             &_ => None,
         }
     }
+}
+
+pub enum ModuleImports {
+    Empty,
+    Processed(Vec<ModuleImport>),
+    Unprocessed(Vec<String>),
 }
 
 pub enum ModuleImport {
@@ -48,9 +54,7 @@ pub enum ModuleImport {
 
 pub struct SourceFile {
     pub exported_fns: Vec<String>,
-    #[allow(unused)]
-    pub imports: Vec<ModuleImport>,
-    #[allow(unused)]
+    pub imports: ModuleImports,
     pub language: Language,
     pub path: SourcePath,
 }
@@ -58,7 +62,7 @@ pub struct SourceFile {
 impl SourceFile {
     pub fn new(
         exported_fns: Vec<String>,
-        imports: Vec<ModuleImport>,
+        imports: ModuleImports,
         language: Language,
         path: SourcePath,
     ) -> Self {

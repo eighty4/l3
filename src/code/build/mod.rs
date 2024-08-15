@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use crate::code::build::swc::SwcBuilder;
-use crate::code::parse::parse_source_file;
+use crate::code::parse::SourceParser;
 use crate::code::source::path::{FunctionBuildDir, SourcePath};
 use crate::code::source::{Language, SourceFile};
 use crate::lambda::LambdaFn;
@@ -45,11 +45,20 @@ pub struct LambdaFnBuild {
     // todo arc
     builder: Box<dyn Builder + Send + Sync>,
     entrypoint: SourcePath,
+    lambda_fn: Arc<LambdaFn>,
     project_details: Arc<Lx3ProjectDeets>,
+    source_parser: Arc<Box<dyn SourceParser>>,
 }
 
 impl LambdaFnBuild {
     pub fn new(lambda_fn: Arc<LambdaFn>, project_details: Arc<Lx3ProjectDeets>) -> Self {
+        let source_parser = {
+            project_details
+                .runtime_config
+                .lock()
+                .unwrap()
+                .source_parser(&lambda_fn.language)
+        };
         Self {
             build_dir: lambda_fn.build_dir(&project_details),
             builder: Box::new(match &lambda_fn.language {
@@ -59,15 +68,14 @@ impl LambdaFnBuild {
                 Language::Python => panic!(),
             }),
             entrypoint: lambda_fn.path.clone(),
+            lambda_fn,
             project_details,
+            source_parser,
         }
     }
 
     pub async fn build(&self) -> Result<Vec<SourcePath>, anyhow::Error> {
-        let source_file = parse_source_file(
-            self.entrypoint.clone(),
-            self.project_details.runtime_config.clone(),
-        )?;
+        let source_file = self.source_parser.parse(self.entrypoint.clone())?;
         self.builder.build(&source_file, &self.build_dir)?;
         Ok(vec![source_file.path])
     }
