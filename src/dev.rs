@@ -46,7 +46,7 @@ pub async fn develop_project(dev_options: DevOptions) -> Result<(), anyhow::Erro
     println!("  api id: {}", &project_deets.aws.api.id);
     println!();
 
-    if !dev_options.auto_confirm && !confirm("  Continue with syncing?")? {
+    if !dev_options.auto_confirm && !confirm("\n  Continue with syncing?")? {
         println!("  Cancelling sync operations!");
         process::exit(0);
     }

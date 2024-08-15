@@ -55,7 +55,7 @@ pub(crate) async fn sync_project(sync_options: SyncOptions) -> Result<(), anyhow
     println!("  region: {}", &project_deets.aws.region);
     println!("  api id: {}", &project_deets.aws.api.id);
 
-    if !sync_options.auto_confirm && !confirm("  Continue with syncing?")? {
+    if !sync_options.auto_confirm && !confirm("\n  Continue with syncing?")? {
         println!("  Cancelling sync operations!");
         process::exit(0);
     }
