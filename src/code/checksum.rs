@@ -20,6 +20,7 @@ impl ChecksumTree {
     pub fn dir_path(project_dir: &Path, api_id: &String, fn_name: &String) -> PathBuf {
         project_dir
             .join(".l3")
+            .join("aws")
             .join(api_id)
             .join(fn_name)
             .join("checksums")

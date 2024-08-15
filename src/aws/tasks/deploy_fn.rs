@@ -26,6 +26,7 @@ pub async fn perform_deploy_fn(
     // todo include imported deps in archive
     fs::create_dir_all(
         PathBuf::from(".l3")
+            .join("aws")
             .join(&params.project_deets.aws.api.id)
             .join(&params.lambda_fn.fn_name),
     )?;
