@@ -165,7 +165,7 @@ impl RuntimeConfig {
         (runtime_config, RuntimeConfigApi::new(msg_tx))
     }
 
-    pub fn import_resolver(&self, language: Language) -> Arc<Box<dyn ImportResolver>> {
+    pub fn import_resolver(&self, language: &Language) -> Arc<Box<dyn ImportResolver>> {
         match language {
             JavaScript => self.node_import_resolver.clone(),
             Python => todo!(),

@@ -1,9 +1,8 @@
-use std::path::PathBuf;
 use std::sync::Arc;
 
 use crate::code::parse::SourceParser;
 use crate::code::source::path::SourcePath;
-use crate::code::source::{Language, ModuleImport, ModuleImports, SourceFile};
+use crate::code::source::{Language, ModuleImports, SourceFile};
 use anyhow::anyhow;
 use swc::config::IsModule;
 use swc::try_with_handler;

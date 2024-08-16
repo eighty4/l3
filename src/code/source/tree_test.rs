@@ -2,6 +2,7 @@ use crate::code::source::tree::SourceTree;
 use crate::code::source::Language;
 use crate::lambda::{HttpMethod, RouteKey};
 use crate::testing::{ProjectTest, TestSource};
+use std::path::PathBuf;
 use tokio::sync::mpsc::unbounded_channel;
 
 #[tokio::test]
@@ -21,13 +22,16 @@ async fn test_sources_api_refresh_routes() {
     let (source_tree, sources_api) = SourceTree::new(tx, project_test.project_deets.clone());
     sources_api.refresh_routes().await.unwrap();
 
-    let lambda_fns = source_tree.lock().unwrap().lambda_fns();
+    let mut source_tree = source_tree.lock().unwrap();
+    let lambda_fns = source_tree.lambda_fns();
     assert_eq!(1, lambda_fns.len());
-    let lambda_fn_by_route_key = source_tree
-        .lock()
-        .unwrap()
-        .lambda_fn_by_route_key(&route_key);
-    assert!(lambda_fn_by_route_key.is_some());
+    assert!(source_tree.lambda_fn_by_route_key(&route_key).is_some());
+    assert!(source_tree
+        .source_file(&PathBuf::from("routes/data/lambda.js"))
+        .is_some());
+    assert!(source_tree
+        .source_file(&PathBuf::from("routes/data/../../lib/data.js"))
+        .is_some());
 }
 
 // todo test compilation error sends LambdaNotification

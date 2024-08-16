@@ -2,11 +2,12 @@ use crate::code::env::EnvVarSources;
 use crate::code::read::parallel::recursively_read_dirs;
 use crate::code::source::path::SourcePath;
 use crate::code::source::tree::SourceTreeMessage::*;
-use crate::code::source::{Language, SourceFile};
+use crate::code::source::{Language, ModuleImport, ModuleImports, SourceFile};
 use crate::lambda::{LambdaFn, RouteKey};
 use crate::notification::LambdaNotification;
 use crate::project::Lx3ProjectDeets;
 use std::collections::HashMap;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 use tokio::sync::oneshot;
@@ -104,23 +105,36 @@ impl SourceTreeEventLoop {
                 }
             }
 
-            // todo process ModuleImports::Unprocessed
             // todo prevent circular imports cause infinite queueing
-            // let mut processing: Vec<oneshot::Receiver<bool>> = Vec::new();
-            // for import in &source_file.imports {
-            //     match import {
-            //         ModuleImport::PackageDependency { .. } => todo!(),
-            //         ModuleImport::RelativeSource(source_path) => {
-            //             let (sender, receiver) = oneshot::channel();
-            //             processing.push(receiver);
-            //             msg_tx.send(ProcessSourcePath {
-            //                 source_path: source_path.clone(),
-            //                 processed: Some(sender),
-            //             })?
-            //         }
-            //         ModuleImport::Unknown(_) => todo!(),
-            //     }
-            // }
+            let import_resolver = {
+                project_deets
+                    .runtime_config
+                    .lock()
+                    .unwrap()
+                    .import_resolver(&source_file.language)
+            };
+            let mut processing_imports: Vec<oneshot::Receiver<bool>> = Vec::new();
+            let mut source_file = source_file;
+            if let ModuleImports::Unprocessed(imports) = &source_file.imports {
+                let mut processed_imports: Vec<ModuleImport> = Vec::new();
+                for import_specifier in imports {
+                    let import = import_resolver.resolve(&source_file.path, import_specifier);
+                    match &import {
+                        ModuleImport::PackageDependency { .. } => todo!(),
+                        ModuleImport::RelativeSource(source_path) => {
+                            let (tx, rx) = oneshot::channel();
+                            processing_imports.push(rx);
+                            msg_tx.send(ProcessSourcePath {
+                                source_path: source_path.clone(),
+                                processed: Some(tx),
+                            })?;
+                        }
+                        ModuleImport::Unknown(_) => todo!(),
+                    };
+                    processed_imports.push(import);
+                }
+                source_file.imports = ModuleImports::Processed(processed_imports);
+            }
 
             {
                 let mut source_tree = source_tree.lock().unwrap();
@@ -129,9 +143,9 @@ impl SourceTreeEventLoop {
                     source_tree.add_lambda_fn(lambda_fn);
                 }
             }
-            // for completed in processing {
-            //     completed.await?;
-            // }
+            for completed in processing_imports {
+                completed.await?;
+            }
             if let Some(processed) = processed {
                 processed.send(true).unwrap();
             }
@@ -204,7 +218,8 @@ impl SourcesApi {
 pub struct SourceTree {
     lambdas: HashMap<RouteKey, Arc<LambdaFn>>,
     project_deets: Arc<Lx3ProjectDeets>,
-    sources: Vec<Arc<SourceFile>>,
+    /// Project source SourceFile instances mapped by relative path
+    sources: HashMap<PathBuf, Arc<SourceFile>>,
 }
 
 impl SourceTree {
@@ -216,7 +231,7 @@ impl SourceTree {
         let source_tree = Arc::new(Mutex::new(SourceTree {
             lambdas: HashMap::new(),
             project_deets: project_deets.clone(),
-            sources: Vec::new(),
+            sources: HashMap::new(),
         }));
         let mut event_loop = SourceTreeEventLoop::new(
             msg_rx,
@@ -235,7 +250,8 @@ impl SourceTree {
     }
 
     fn add_source_file(&mut self, source_file: SourceFile) {
-        self.sources.push(Arc::new(source_file));
+        self.sources
+            .insert(source_file.path.rel.clone(), Arc::new(source_file));
     }
 
     pub fn lambda_fns(&mut self) -> Vec<Arc<LambdaFn>> {
@@ -244,5 +260,10 @@ impl SourceTree {
 
     pub fn lambda_fn_by_route_key(&mut self, route_key: &RouteKey) -> Option<Arc<LambdaFn>> {
         self.lambdas.get(route_key).cloned()
+    }
+
+    pub fn source_file(&self, path: &Path) -> Option<Arc<SourceFile>> {
+        debug_assert!(path.is_relative());
+        self.sources.get(path).cloned()
     }
 }

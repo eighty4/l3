@@ -12,11 +12,13 @@ use tokio::time::{interval, Interval};
 struct SourceTrackerEventLoop {
     file_rx: Receiver<FileUpdate>,
     file_watcher: Arc<Mutex<FileWatcher>>,
-    interval: Interval,
+    /// Interval used to debounce FileWatcher updates
+    update_interval: Interval,
     project_deets: Arc<Lx3ProjectDeets>,
     runtime_config_api: Arc<RuntimeConfigApi>,
     sources_api: Arc<SourcesApi>,
-    updates: Vec<FileUpdate>,
+    /// FileUpdate events queued until the next syncing interval
+    update_queue: Vec<FileUpdate>,
 }
 
 impl SourceTrackerEventLoop {
@@ -30,26 +32,26 @@ impl SourceTrackerEventLoop {
         Self {
             file_rx,
             file_watcher,
-            interval: interval(Duration::from_secs(1)),
+            update_interval: interval(Duration::from_secs(1)),
             project_deets,
             runtime_config_api,
             sources_api,
-            updates: Vec::new(),
+            update_queue: Vec::new(),
         }
     }
 
     async fn start(&mut self) {
         loop {
             select! {
-                opt = self.file_rx.recv() => self.updates.push(opt.unwrap()),
-                _ = self.interval.tick() => self.sync_file_updates(),
+                opt = self.file_rx.recv() => self.update_queue.push(opt.unwrap()),
+                _ = self.update_interval.tick() => self.sync_file_updates(),
             }
         }
     }
 
     fn sync_file_updates(&mut self) {
-        if !self.updates.is_empty() {
-            for file_update in &self.updates {
+        if !self.update_queue.is_empty() {
+            for file_update in &self.update_queue {
                 match &file_update.file {
                     None => match &file_update.kind {
                         FileUpdateKind::ContentChanged => {
