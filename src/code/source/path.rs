@@ -1,9 +1,8 @@
-use std::path::{Path, PathBuf};
-use std::sync::Arc;
-
 use crate::code::build::BuildMode;
 use crate::code::source::Language;
 use crate::project::Lx3ProjectDeets;
+use std::path::{Path, PathBuf, MAIN_SEPARATOR_STR};
+use std::sync::Arc;
 
 /// FunctionBuildDir paths are tokenized by the build's cloud destination (AWS), API Gateway ID,
 /// Lambda function name and BuildMode.
@@ -97,37 +96,45 @@ impl SourcePath {
                 .strip_suffix(&self.rel.to_string_lossy().to_string())
                 .unwrap(),
         );
+        let abs_path = match self.abs.file_name() {
+            None => &self.abs,
+            Some(_) => self.abs.parent().unwrap(),
+        }
+        .join(path);
         SourcePath::from_abs(
             &project_dir,
-            match self.abs.file_name() {
-                None => &self.abs,
-                Some(_) => self.abs.parent().unwrap(),
-            }
-            .join(path),
+            match rewrite_current_and_parent_in_path(&abs_path) {
+                Ok(maybe_rewritten) => maybe_rewritten.unwrap_or_else(|| abs_path),
+                Err(err) => {
+                    panic!(
+                        "error collapsing parent path segments in path {}: {err}",
+                        abs_path.to_string_lossy()
+                    )
+                }
+            },
         )
     }
+}
 
-    // todo rewrite . and .. path parts
-    // pub fn to_relative_source(&self, path: &PathBuf) -> Result<Self, anyhow::Error> {
-    //     debug_assert!(path.starts_with(".") || path.starts_with(".."));
-    //     let project_dir = PathBuf::from(
-    //         self.abs
-    //             .to_string_lossy()
-    //             .strip_suffix(&self.rel.to_string_lossy().to_string())
-    //             .unwrap(),
-    //     );
-    //     let mut prefix = match self.abs.file_name() {
-    //         None => &self.abs,
-    //         Some(_) => self.abs.parent().unwrap(),
-    //     };
-    //     let mut suffix = PathBuf::new();
-    //     for component in path.components() {
-    //         match component.as_os_str().to_string_lossy().as_ref() {
-    //             "." => continue,
-    //             ".." => prefix = prefix.parent().unwrap(),
-    //             &_ => suffix.push(component),
-    //         }
-    //     }
-    //     Ok(SourcePath::from_abs(&project_dir, prefix.join(suffix)))
-    // }
+/// Removes `.` and `..` segments from paths, rewriting `..` to the parent directory
+/// This fn returns Ok(None) if it's a noop (path does not have any current or parent segments)
+pub fn rewrite_current_and_parent_in_path(p: &Path) -> Result<Option<PathBuf>, anyhow::Error> {
+    let mut stack: Vec<String> = Vec::new();
+    let mut changed = false;
+    for path_component_os_str in p {
+        let path_component = path_component_os_str.to_string_lossy();
+        match path_component.as_ref() {
+            "." => changed = true,
+            ".." => {
+                stack.pop();
+                changed = true;
+            }
+            _ => stack.push(path_component.to_string()),
+        }
+    }
+    if changed {
+        Ok(Some(PathBuf::from(stack.join(MAIN_SEPARATOR_STR))))
+    } else {
+        Ok(None)
+    }
 }

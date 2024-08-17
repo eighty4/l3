@@ -30,7 +30,7 @@ async fn test_sources_api_refresh_routes() {
         .source_file(&PathBuf::from("routes/data/lambda.js"))
         .is_some());
     assert!(source_tree
-        .source_file(&PathBuf::from("routes/data/../../lib/data.js"))
+        .source_file(&PathBuf::from("lib/data.js"))
         .is_some());
 }
 

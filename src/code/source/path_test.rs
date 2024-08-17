@@ -1,5 +1,5 @@
 use crate::code::build::BuildMode;
-use crate::code::source::path::{FunctionBuildDir, SourcePath};
+use crate::code::source::path::{rewrite_current_and_parent_in_path, FunctionBuildDir, SourcePath};
 use crate::testing::ProjectTest;
 use std::path::PathBuf;
 
@@ -46,11 +46,37 @@ async fn test_source_path_to_relative_source() {
     let rel = PathBuf::from("routes/data/lambda.js");
     let lambda_src = SourcePath::from_rel(&project_test.project_dir, rel);
     let data_src = lambda_src.to_relative_source(&PathBuf::from("../../src/data.js"));
-    assert_eq!(
-        data_src.abs,
-        project_test
-            .project_dir
-            .join("routes/data/../../src/data.js")
-    );
-    assert_eq!(data_src.rel, PathBuf::from("routes/data/../../src/data.js"));
+    assert_eq!(data_src.abs, project_test.project_dir.join("src/data.js"));
+    assert_eq!(data_src.rel, PathBuf::from("src/data.js"));
+}
+
+#[test]
+fn test_rewrite_current_and_parent_path_components_with_absolute_path() {
+    let result = rewrite_current_and_parent_in_path(&PathBuf::from(
+        "/user/project/routes/data/../../src/data.js",
+    ));
+    assert!(result.is_ok());
+    let option = result.unwrap();
+    assert!(option.is_some());
+    let value = option.unwrap();
+    assert_eq!(value, PathBuf::from("/user/project/src/data.js"));
+}
+
+#[test]
+fn test_rewrite_current_and_parent_path_components_with_relative_path() {
+    let result =
+        rewrite_current_and_parent_in_path(&PathBuf::from("routes/data/../../src/data.js"));
+    assert!(result.is_ok());
+    let option = result.unwrap();
+    assert!(option.is_some());
+    let value = option.unwrap();
+    assert_eq!(value, PathBuf::from("src/data.js"));
+}
+
+#[test]
+fn test_rewrite_current_and_parent_path_components_for_noop() {
+    let result = rewrite_current_and_parent_in_path(&PathBuf::from("routes/data/lambda.js"));
+    assert!(result.is_ok());
+    let option = result.unwrap();
+    assert!(option.is_none());
 }
