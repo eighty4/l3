@@ -3,7 +3,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::code::env::EnvVarSources;
-use crate::code::read::recursively_read_dirs;
+use crate::code::read::parallel::recursively_read_dirs;
 use crate::code::sha256::make_checksum;
 
 /// Manages checksum diffing for sources packaged with a Lambda Function
@@ -26,7 +26,7 @@ impl ChecksumTree {
             .join("checksums")
     }
 
-    pub fn new(
+    pub async fn new(
         project_dir: PathBuf,
         api_id: &String,
         fn_name: &String,
@@ -34,7 +34,7 @@ impl ChecksumTree {
         let mut checksums = HashMap::new();
         let checksum_dir = Self::dir_path(&project_dir, api_id, fn_name);
         if checksum_dir.is_dir() {
-            for abs_path in recursively_read_dirs(&checksum_dir)? {
+            for abs_path in recursively_read_dirs(&checksum_dir).await? {
                 checksums.insert(
                     PathBuf::from(&abs_path.strip_prefix(&checksum_dir)?),
                     fs::read_to_string(&abs_path)?,

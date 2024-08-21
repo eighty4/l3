@@ -25,6 +25,7 @@ async fn test_checksum_tree_do_checksums_match_clean_checksum() {
         &project_test.api_id,
         &route_key.to_fn_name(&project_test.project_name),
     )
+    .await
     .unwrap();
 
     assert!(checksum_tree
@@ -50,6 +51,7 @@ async fn test_checksum_tree_do_checksums_match_dirty_checksum() {
         &project_test.api_id,
         &route_key.to_fn_name(&project_test.project_name),
     )
+    .await
     .unwrap();
 
     assert!(!checksum_tree
@@ -75,6 +77,7 @@ async fn test_checksum_tree_do_checksums_match_without_checksum() {
         &project_test.api_id,
         &route_key.to_fn_name(&project_test.project_name),
     )
+    .await
     .unwrap();
 
     assert!(!checksum_tree
@@ -105,6 +108,7 @@ async fn test_checksum_tree_do_all_checksums_match_clean_checksums() {
         &project_test.api_id,
         &route_key.to_fn_name(&project_test.project_name),
     )
+    .await
     .unwrap();
 
     assert!(checksum_tree
@@ -141,6 +145,7 @@ async fn test_checksum_tree_do_all_checksums_match_dirty_checksum() {
         &project_test.api_id,
         &route_key.to_fn_name(&project_test.project_name),
     )
+    .await
     .unwrap();
 
     assert!(!checksum_tree
@@ -177,6 +182,7 @@ async fn test_checksum_tree_do_all_checksums_match_without_checksum() {
         &project_test.api_id,
         &route_key.to_fn_name(&project_test.project_name),
     )
+    .await
     .unwrap();
 
     assert!(!checksum_tree
@@ -208,6 +214,7 @@ async fn test_checksum_tree_do_env_checksums_match_with_clean_method_env_checksu
         &project_test.api_id,
         &route_key.to_fn_name(&project_test.project_name),
     )
+    .await
     .unwrap();
 
     let env_var_sources = EnvVarSources::new(&project_test.project_dir, &route_key).unwrap();
@@ -235,6 +242,7 @@ async fn test_checksum_tree_do_env_checksums_match_with_clean_path_env_checksum(
         &project_test.api_id,
         &route_key.to_fn_name(&project_test.project_name),
     )
+    .await
     .unwrap();
 
     let env_var_sources = EnvVarSources::new(&project_test.project_dir, &route_key).unwrap();
@@ -262,6 +270,7 @@ async fn test_checksum_tree_do_env_checksums_match_with_dirty_method_env_checksu
         &project_test.api_id,
         &route_key.to_fn_name(&project_test.project_name),
     )
+    .await
     .unwrap();
 
     let env_var_sources = EnvVarSources::new(&project_test.project_dir, &route_key).unwrap();
@@ -289,6 +298,7 @@ async fn test_checksum_tree_do_env_checksums_match_with_dirty_path_env_checksum(
         &project_test.api_id,
         &route_key.to_fn_name(&project_test.project_name),
     )
+    .await
     .unwrap();
 
     let env_var_sources = EnvVarSources::new(&project_test.project_dir, &route_key).unwrap();
@@ -316,6 +326,7 @@ async fn test_checksum_tree_do_env_checksums_match_with_method_env_checksum_with
         &project_test.api_id,
         &route_key.to_fn_name(&project_test.project_name),
     )
+    .await
     .unwrap();
 
     fs::remove_file(
@@ -351,6 +362,7 @@ async fn test_checksum_tree_do_env_checksums_match_with_path_env_checksum_withou
         &project_test.api_id,
         &route_key.to_fn_name(&project_test.project_name),
     )
+    .await
     .unwrap();
 
     fs::remove_file(
@@ -391,6 +403,7 @@ async fn test_checksum_tree_update_env_var_checksums_updates_checksums() {
         &project_test.api_id,
         &route_key.to_fn_name(&project_test.project_name),
     )
+    .await
     .unwrap();
 
     let env_var_sources = EnvVarSources::new(&project_test.project_dir, &route_key).unwrap();
@@ -428,6 +441,7 @@ async fn test_checksum_tree_update_env_var_checksums_removes_checksums() {
         &project_test.api_id,
         &route_key.to_fn_name(&project_test.project_name),
     )
+    .await
     .unwrap();
 
     let env_var_sources = EnvVarSources::new(&project_test.project_dir, &route_key).unwrap();
@@ -482,6 +496,7 @@ async fn test_checksum_tree_remove_checksum_removes_from_cache_and_fs() {
         &project_test.api_id,
         &route_key.to_fn_name(&project_test.project_name),
     )
+    .await
     .unwrap();
 
     let p = PathBuf::from("routes/data/lambda.js");
@@ -509,6 +524,7 @@ async fn test_checksum_tree_update_checksum() {
         &project_test.api_id,
         &route_key.to_fn_name(&project_test.project_name),
     )
+    .await
     .unwrap();
     let p = PathBuf::from("routes/data/lambda.js");
     assert!(!checksum_tree.do_checksums_match(&p).unwrap());
@@ -539,6 +555,7 @@ async fn test_checksum_tree_update_all_checksums() {
         &project_test.api_id,
         &route_key.to_fn_name(&project_test.project_name),
     )
+    .await
     .unwrap();
     let p = vec![
         PathBuf::from("routes/data/lambda.js"),

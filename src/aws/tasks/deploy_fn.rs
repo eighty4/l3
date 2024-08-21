@@ -34,7 +34,8 @@ pub async fn perform_deploy_fn(
         params.project_deets.project_dir.clone(),
         &params.project_deets.aws.api.id,
         &params.lambda_fn.fn_name,
-    )?;
+    )
+    .await?;
     let env_vars = params.lambda_fn.env_var_sources.read_env_variables()?;
     let synced_fn_arn = match &params.components.function_arn {
         None => {
