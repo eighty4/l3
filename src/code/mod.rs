@@ -9,6 +9,8 @@ pub(crate) mod sha256;
 pub(crate) mod source;
 
 #[cfg(test)]
+mod checksum_env_test;
+#[cfg(test)]
 mod checksum_test;
 #[cfg(test)]
 mod env_test;

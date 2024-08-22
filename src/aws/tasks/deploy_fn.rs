@@ -60,7 +60,10 @@ pub async fn perform_deploy_fn(
             if !does_api_gateway_have_invoke_permission(sdk_clients, params).await? {
                 add_api_gateway_invoke_permission(sdk_clients, params, updating_fn_arn).await?;
             }
-            if !checksums.do_env_checksums_match(&params.lambda_fn.env_var_sources)? {
+            if !checksums.do_env_checksums_match(
+                &params.components.function_env,
+                &params.lambda_fn.env_var_sources,
+            )? {
                 sdk_clients
                     .lambda
                     .update_function_configuration()

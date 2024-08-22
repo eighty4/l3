@@ -1,5 +1,6 @@
 use aws_sdk_apigatewayv2::types::{Integration, Route};
-use aws_sdk_lambda::types::FunctionConfiguration;
+use aws_sdk_lambda::types::{EnvironmentResponse, FunctionConfiguration};
+use std::collections::HashMap;
 
 use crate::aws::state::DeployedProjectState;
 use crate::code::env::EnvVarSources;
@@ -33,6 +34,14 @@ async fn test_deployed_state_resolves_lambda_components_by_route_key() {
                 .build(),
             FunctionConfiguration::builder()
                 .function_arn("arn:aws:lambda:region:account:l3-this_project-some-function-get")
+                .environment(
+                    EnvironmentResponse::builder()
+                        .set_variables(Some(HashMap::from([(
+                            "KEY".to_string(),
+                            "VAL".to_string(),
+                        )])))
+                        .build(),
+                )
                 .function_name("l3-this_project-some-function-get")
                 .build(),
         ],
@@ -70,6 +79,10 @@ async fn test_deployed_state_resolves_lambda_components_by_route_key() {
     assert_eq!(
         components.function_arn.unwrap(),
         "arn:aws:lambda:region:account:l3-this_project-some-function-get"
+    );
+    assert_eq!(
+        components.function_env.get(&"KEY".to_string()).unwrap(),
+        &"VAL".to_string()
     );
     assert_eq!(
         components.function_name.unwrap(),

@@ -11,11 +11,11 @@ use crate::lambda::{LambdaFn, RouteKey};
 pub struct DeployedLambdaComponents {
     pub function_arn: Option<FunctionArn>,
     pub function_name: Option<FunctionName>,
+    pub function_env: HashMap<String, String>,
     pub integration: Option<(IntegrationId, FunctionArn)>,
     pub route: Option<RouteId>,
 }
 
-// todo diffing deployed components mutably, to remove dangling resources after sync
 pub struct DeployedProjectState {
     pub functions: HashMap<FunctionName, FunctionConfiguration>,
     pub integrations: HashMap<IntegrationId, Integration>,
@@ -114,6 +114,10 @@ impl DeployedProjectState {
         let function = self.functions.get(&lambda_fn.fn_name);
         DeployedLambdaComponents {
             function_arn: function.and_then(|f| f.function_arn.clone()),
+            function_env: function
+                .and_then(|f| f.environment.as_ref())
+                .and_then(|env| env.variables.clone())
+                .unwrap_or_default(),
             function_name: function.and_then(|f| f.function_name.clone()),
             integration: integration.map(|i| {
                 (
@@ -142,12 +146,17 @@ impl DeployedProjectState {
             }
         };
         let maybe_function = self.functions.remove(fn_name);
-        let (function_arn, function_name) = match maybe_function {
-            None => (None, None),
-            Some(fn_config) => (fn_config.function_arn.clone(), fn_config.function_name),
+        let (function_arn, function_name, function_env) = match maybe_function {
+            None => (None, None, HashMap::new()),
+            Some(fn_config) => (
+                fn_config.function_arn.clone(),
+                fn_config.function_name,
+                fn_config.environment.and_then(|env| env.variables).unwrap(),
+            ),
         };
         DeployedLambdaComponents {
             function_arn,
+            function_env,
             function_name,
             integration: integration.map(|i| {
                 (
@@ -182,15 +191,20 @@ impl DeployedProjectState {
                 .and_then(|i| i.integration_uri)
                 .map(|fn_arn| parse_fn_name_from_arn(&fn_arn));
             let maybe_fn = fn_name.and_then(|fn_name| self.functions.remove(&fn_name));
-            let (function_arn, function_name) = match maybe_fn {
-                None => (None, None),
-                Some(fn_config) => (fn_config.function_name.clone(), fn_config.function_name),
+            let (function_arn, function_name, function_env) = match maybe_fn {
+                None => (None, None, HashMap::new()),
+                Some(fn_config) => (
+                    fn_config.function_name.clone(),
+                    fn_config.function_name,
+                    fn_config.environment.and_then(|env| env.variables).unwrap(),
+                ),
             };
             let integration = removed_integration
                 .map(|i| (i.integration_id.unwrap(), i.integration_uri.unwrap()));
             components.push(DeployedLambdaComponents {
-                function_name,
                 function_arn,
+                function_env,
+                function_name,
                 integration,
                 route: None,
             });
@@ -200,10 +214,11 @@ impl DeployedProjectState {
                 .functions
                 .into_values()
                 .map(|fn_config| DeployedLambdaComponents {
+                    function_arn: fn_config.function_arn.clone(),
+                    function_env: fn_config.environment.and_then(|env| env.variables).unwrap(),
+                    function_name: fn_config.function_name,
                     integration: None,
                     route: None,
-                    function_arn: fn_config.function_arn.clone(),
-                    function_name: fn_config.function_name,
                 })
                 .collect(),
         );
@@ -211,4 +226,12 @@ impl DeployedProjectState {
         assert!(self.integrations.is_empty());
         components
     }
+}
+
+fn does_function_have_env_vars(fn_config: &FunctionConfiguration) -> bool {
+    fn_config
+        .environment
+        .as_ref()
+        .and_then(|env| env.variables.as_ref().map(|env| !env.is_empty()))
+        .unwrap_or(false)
 }

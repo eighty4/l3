@@ -48,6 +48,11 @@ impl ProjectTest {
         )
     }
 
+    /// Creates absolute path to Lambda source directory
+    pub fn lambda_route_dir(&self, route_key: &RouteKey) -> PathBuf {
+        self.project_dir.join(route_key.to_route_dir_path())
+    }
+
     pub fn path(&self, path: &str) -> PathBuf {
         self.project_dir.join(path)
     }

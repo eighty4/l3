@@ -104,7 +104,7 @@ impl SourcePath {
         SourcePath::from_abs(
             &project_dir,
             match rewrite_current_and_parent_in_path(&abs_path) {
-                Ok(maybe_rewritten) => maybe_rewritten.unwrap_or_else(|| abs_path),
+                Ok(maybe_rewritten) => maybe_rewritten.unwrap_or(abs_path),
                 Err(err) => {
                     panic!(
                         "error collapsing parent path segments in path {}: {err}",

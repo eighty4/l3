@@ -62,6 +62,7 @@ impl RouteKey {
         create_fn_name(project_name, self)
     }
 
+    /// Creates relative path to Lambda route directory
     pub fn to_route_dir_path(&self) -> PathBuf {
         PathBuf::from("routes").join(&self.http_path)
     }
