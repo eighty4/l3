@@ -1,6 +1,6 @@
-use std::path::PathBuf;
 use std::sync::Arc;
 
+use crate::code::build::archiver::Archive;
 use crate::code::build::swc::SwcBuilder;
 use crate::code::parse::SourceParser;
 use crate::code::source::path::{FunctionBuildDir, SourcePath};
@@ -75,16 +75,35 @@ impl LambdaFnBuild {
     }
 
     pub async fn build(&self) -> Result<Vec<SourcePath>, anyhow::Error> {
-        let source_file = self.source_parser.parse(self.entrypoint.clone())?;
-        self.builder.build(&source_file, &self.build_dir)?;
-        Ok(vec![source_file.path])
+        let mut sources = vec![self.builder.build(
+            &self.source_parser.parse(self.entrypoint.clone())?,
+            &self.build_dir,
+        )?];
+        let runtime_sources = {
+            self.project_details
+                .runtime_config
+                .lock()
+                .unwrap()
+                .runtime_sources(&self.lambda_fn.language)
+        };
+        for runtime_source in runtime_sources {
+            if let Some(language) = runtime_source.language() {
+                if language == self.lambda_fn.language {
+                    sources.push(self.builder.build(
+                        &self.source_parser.parse(self.entrypoint.clone())?,
+                        &self.build_dir,
+                    )?);
+                    continue;
+                }
+            }
+            if runtime_source.abs.is_file() {
+                sources.push(runtime_source);
+            }
+        }
+        Ok(sources)
     }
 
-    pub async fn create_code_archive(&self) -> Result<PathBuf, anyhow::Error> {
-        Archiver::new(
-            self.project_details.project_dir.clone(),
-            self.build().await?,
-        )
-        .write()
+    pub async fn create_code_archive(&self) -> Result<Archive, anyhow::Error> {
+        Archiver::new(self.build_dir.abs.clone(), self.build().await?).write()
     }
 }

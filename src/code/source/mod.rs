@@ -16,7 +16,7 @@ mod tree_test;
 #[cfg(test)]
 mod watcher_test;
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub enum Language {
     JavaScript,
     TypeScript,

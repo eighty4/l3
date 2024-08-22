@@ -15,15 +15,15 @@ async fn test_archiver_write_zipped_source_file() {
         .build();
     let build_dir =
         FunctionBuildDir::new(&project_test.project_deets, &"l3-get-data-fn".to_string());
-    let archive_path = Archiver::new(
+    let archive = Archiver::new(
         build_dir.abs.clone(),
         vec![project_test.source_path("routes/data/lambda.js")],
     )
     .write()
     .unwrap();
-    assert_eq!(archive_path, build_dir.abs.join("code.zip"));
+    assert_eq!(archive.path, build_dir.abs.join("code.zip"));
 
-    unzip(&archive_path, &project_test.project_dir.join("result")).unwrap();
+    unzip(&archive.path, &project_test.project_dir.join("result")).unwrap();
     assert_eq!(
         fs::read_to_string(project_test.path("routes/data/lambda.js")).unwrap(),
         fs::read_to_string(project_test.path("result/routes/data/lambda.js")).unwrap(),
@@ -45,11 +45,11 @@ async fn test_archiver_write_zipped_build_output() {
             .to_build_dir(build_dir.clone());
     _ = fs::create_dir_all(&built_source_path.abs.parent().unwrap());
     fs::write(&built_source_path.abs, "hooty hoo").unwrap();
-    let archive_path = Archiver::new(build_dir.abs.clone(), vec![source_path, built_source_path])
+    let archive = Archiver::new(build_dir.abs.clone(), vec![source_path, built_source_path])
         .write()
         .unwrap();
 
-    unzip(&archive_path, &project_test.project_dir.join("result")).unwrap();
+    unzip(&archive.path, &project_test.project_dir.join("result")).unwrap();
     assert_eq!(
         fs::read_to_string(project_test.path("routes/data/lambda.js")).unwrap(),
         fs::read_to_string(project_test.path("result/routes/data/lambda.js")).unwrap(),
@@ -75,7 +75,7 @@ async fn test_archiver_write_does_not_append_to_existing_archive() {
     )
     .write()
     .unwrap();
-    let archive_path = Archiver::new(
+    let archive = Archiver::new(
         build_dir.abs.clone(),
         vec![project_test.source_path("routes/data/lambda.js")],
     )
@@ -83,9 +83,9 @@ async fn test_archiver_write_does_not_append_to_existing_archive() {
     .unwrap();
     println!();
 
-    assert_eq!(archive_path, build_dir.abs.join("code.zip"));
+    assert_eq!(archive.path, build_dir.abs.join("code.zip"));
 
-    unzip(&archive_path, &project_test.project_dir.join("result")).unwrap();
+    unzip(&archive.path, &project_test.project_dir.join("result")).unwrap();
     assert_eq!(
         fs::read_to_string(project_test.path("routes/data/lambda.js")).unwrap(),
         fs::read_to_string(project_test.path("result/routes/data/lambda.js")).unwrap(),

@@ -5,6 +5,7 @@ use crate::code::parse::SourceParser;
 use crate::code::runtime::node::{read_node_config, NodeConfig};
 use crate::code::runtime::typescript::{read_typescript_config, TypeScriptConfig};
 use crate::code::runtime::RuntimeConfigMessage::*;
+use crate::code::source::path::SourcePath;
 use crate::code::source::{Language, Language::*};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
@@ -136,6 +137,7 @@ pub struct RuntimeConfig {
     javascript_source_parser: Arc<Box<dyn SourceParser>>,
     node_config: Arc<NodeConfig>,
     node_import_resolver: Arc<Box<dyn ImportResolver>>,
+    project_dir: Arc<PathBuf>,
     typescript_config: Arc<TypeScriptConfig>,
     // typescript_import_resolver: Arc<Box<dyn ImportResolver>>,
     typescript_source_parser: Arc<Box<dyn SourceParser>>,
@@ -143,6 +145,7 @@ pub struct RuntimeConfig {
 
 impl RuntimeConfig {
     pub fn new(project_dir: PathBuf) -> (Arc<Mutex<RuntimeConfig>>, Arc<RuntimeConfigApi>) {
+        let project_dir = Arc::new(project_dir);
         let (msg_tx, msg_rx) = unbounded_channel();
         let node_config: Arc<NodeConfig> = Default::default();
         let javascript_source_parser: Arc<Box<dyn SourceParser>> =
@@ -156,11 +159,12 @@ impl RuntimeConfig {
             javascript_source_parser,
             node_config,
             node_import_resolver,
+            project_dir: project_dir.clone(),
             typescript_config,
             typescript_source_parser,
         }));
         let mut event_loop =
-            RuntimeConfigEventLoop::new(msg_rx, Arc::new(project_dir), runtime_config.clone());
+            RuntimeConfigEventLoop::new(msg_rx, project_dir, runtime_config.clone());
         tokio::spawn(async move { event_loop.start().await });
         (runtime_config, RuntimeConfigApi::new(msg_tx))
     }
@@ -175,6 +179,17 @@ impl RuntimeConfig {
 
     pub fn node_config(&self) -> Arc<NodeConfig> {
         self.node_config.clone()
+    }
+
+    /// Additional sources to include in lambda archives
+    pub fn runtime_sources(&self, language: &Language) -> Vec<SourcePath> {
+        match language {
+            JavaScript | TypeScript => vec![SourcePath::from_rel(
+                self.project_dir.as_ref(),
+                PathBuf::from("package.json"),
+            )],
+            _ => Vec::new(),
+        }
     }
 
     pub fn set_node_config(&mut self, node_config: NodeConfig) {

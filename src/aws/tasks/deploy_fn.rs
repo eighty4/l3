@@ -240,14 +240,14 @@ async fn add_api_gateway_invoke_permission(
 }
 
 async fn build_and_zip_sources(params: &DeployFnParams) -> Result<PathBuf, anyhow::Error> {
-    let archive_path = LambdaFnBuild::new(params.lambda_fn.clone(), params.project_deets.clone())
+    let archive = LambdaFnBuild::new(params.lambda_fn.clone(), params.project_deets.clone())
         .create_code_archive()
         .await?;
     println!(
         "  ✔ Built code archive for Lambda Function {}",
         params.lambda_fn.fn_name
     );
-    Ok(archive_path)
+    Ok(archive.path)
 }
 
 async fn create_route(
