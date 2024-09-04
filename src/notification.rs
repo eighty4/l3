@@ -9,8 +9,8 @@ pub enum LambdaNotification {
 }
 
 pub struct LambdaEvent {
-    lambda_fn: Arc<LambdaFn>,
-    kind: LambdaEventKind,
+    pub lambda_fn: Arc<LambdaFn>,
+    pub kind: LambdaEventKind,
 }
 
 pub enum LambdaEventKind {
@@ -19,13 +19,13 @@ pub enum LambdaEventKind {
     Removing,
     Removed(LambdaUpdateResult),
     Updating(LambdaUpdateKind),
-    Updated(LambdaUpdateKind),
+    Updated(LambdaUpdateKind, LambdaUpdateResult),
 }
 
 pub enum LambdaUpdateKind {
-    Code(LambdaUpdateResult),
-    Dependencies(LambdaUpdateResult),
-    Env(LambdaUpdateResult),
+    Code,
+    Dependencies,
+    Env,
 }
 
 pub enum LambdaUpdateResult {
@@ -34,9 +34,9 @@ pub enum LambdaUpdateResult {
 }
 
 pub struct LogEvent {
-    lambda_fn: Arc<LambdaFn>,
-    message: String,
-    timestamp: Instant,
+    pub lambda_fn: Arc<LambdaFn>,
+    pub message: String,
+    pub timestamp: Instant,
 }
 
 pub enum SourcesEvent {}
