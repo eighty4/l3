@@ -16,6 +16,7 @@ mod lambda;
 mod notification;
 mod project;
 mod sync;
+mod task;
 mod ui;
 
 #[cfg(test)]

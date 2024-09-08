@@ -1,13 +1,16 @@
 use crate::aws::preflight::AwsPreflightData;
+use crate::aws::tasks::AwsTaskTranslation;
 use crate::aws::{AwsApiConfig, AwsDataDir, AwsDeets};
 use crate::code::runtime::RuntimeConfig;
 use crate::code::source::tracker::SourceTracker;
 use crate::code::source::tree::SourceTree;
 use crate::notification::{LambdaEvent, LambdaEventKind, LambdaNotification, LambdaUpdateResult};
 use crate::project::Lx3ProjectDeets;
+use crate::task::executor::TaskExecutor;
+use crate::task::pool::TaskPool;
 use crate::ui::confirm::confirm;
 use crate::ui::dev::print_notification;
-use crate::ui::exit::exit;
+use crate::ui::exit::err_exit;
 use std::path::PathBuf;
 use std::process;
 use std::sync::Arc;
@@ -64,26 +67,41 @@ pub async fn develop_project(dev_options: DevOptions) -> Result<(), anyhow::Erro
     let (notification_tx, mut notification_rx) = unbounded_channel::<LambdaNotification>();
     let (source_tree, sources_api) =
         SourceTree::new(notification_tx.clone(), project_deets.clone());
-    let source_tracker = SourceTracker::new(project_deets, runtime_config_api, sources_api.clone());
+    let _source_tracker = SourceTracker::new(
+        project_deets.clone(),
+        runtime_config_api,
+        sources_api.clone(),
+    );
     sources_api.refresh_routes().await?;
+    let task_executor = TaskExecutor::new(
+        notification_tx.clone(),
+        project_deets,
+        source_tree.clone(),
+        Box::new(AwsTaskTranslation {}),
+    );
+    let _build_pool = TaskPool::new(task_executor);
 
     loop {
         match notification_rx.recv().await {
             None => break,
             Some(notification) => {
                 print_notification(&notification);
-                if let LambdaNotification::Lambda(LambdaEvent {
-                    kind:
-                        LambdaEventKind::Created(LambdaUpdateResult::Failure(_))
-                        | LambdaEventKind::Removed(LambdaUpdateResult::Failure(_))
-                        | LambdaEventKind::Updated(_, LambdaUpdateResult::Failure(_)),
-                    ..
-                }) = notification
-                {
-                    exit(1);
-                }
+                exit_on_task_failure(&notification);
             }
         }
     }
     Ok(())
+}
+
+fn exit_on_task_failure(notification: &LambdaNotification) {
+    if let LambdaNotification::Lambda(LambdaEvent {
+        kind:
+            LambdaEventKind::Created(LambdaUpdateResult::Failure(_))
+            | LambdaEventKind::Removed(LambdaUpdateResult::Failure(_))
+            | LambdaEventKind::Updated(_, LambdaUpdateResult::Failure(_)),
+        ..
+    }) = notification
+    {
+        err_exit("task failure");
+    }
 }

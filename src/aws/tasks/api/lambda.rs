@@ -1,21 +1,21 @@
+use crate::aws::lambda::FunctionArn;
+use anyhow::anyhow;
+use aws_sdk_apigatewayv2::primitives::Blob;
+use aws_sdk_lambda::operation::create_function::CreateFunctionError;
+use aws_sdk_lambda::types::{
+    Environment, FunctionCode, FunctionConfiguration, LastUpdateStatus, Runtime, State,
+};
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 use std::process::exit;
 use std::time::Duration;
 
-use anyhow::anyhow;
-use aws_sdk_lambda::operation::create_function::CreateFunctionError;
-use aws_sdk_lambda::primitives::Blob;
-use aws_sdk_lambda::types::{
-    Environment, FunctionCode, FunctionConfiguration, LastUpdateStatus, Runtime, State,
-};
-
-use crate::aws::lambda::FunctionArn;
+// todo refactor println debug messages to tracing
 
 const ROLE_NOT_READY: &str = "role defined for the function cannot be assumed by";
 
-pub async fn create_fn(
+pub async fn create_fn_w_retry_for_role_not_ready(
     lambda: &aws_sdk_lambda::Client,
     function_name: &str,
     code_path: &PathBuf,
@@ -124,7 +124,7 @@ pub async fn wait_for_fn_update_successful(
     }
 }
 
-pub async fn get_function(
+async fn get_function(
     lambda: &aws_sdk_lambda::Client,
     fn_name: &String,
 ) -> Result<FunctionConfiguration, anyhow::Error> {
@@ -139,7 +139,7 @@ pub async fn get_function(
 }
 
 #[allow(unused)]
-pub async fn does_fn_exist(
+async fn does_fn_exist(
     lambda: &aws_sdk_lambda::Client,
     function_name: &str,
 ) -> Result<bool, anyhow::Error> {

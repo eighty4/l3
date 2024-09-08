@@ -2,12 +2,11 @@ use std::path::Path;
 
 use anyhow::anyhow;
 use aws_config::Region;
+use aws_sdk_apigatewayv2::types::ProtocolType;
 use aws_sdk_iam::types::Role;
 
 use crate::aws::clients::AwsClients;
 use crate::aws::config::load_sdk_config;
-use crate::aws::operations::api_gateway::{create_api, does_api_exist};
-use crate::aws::operations::iam::{create_lambda_role, get_account_id};
 use crate::aws::{AwsApiConfig, AwsApiDeets, AwsDataDir, DEFAULT_STAGE_NAME};
 
 pub struct AwsPreflightData {
@@ -41,7 +40,7 @@ impl AwsPreflightData {
     }
 }
 
-pub async fn validate_or_create_api(
+async fn validate_or_create_api(
     api_config: &AwsApiConfig,
     project_dir: &Path,
     project_name: &String,
@@ -72,4 +71,91 @@ pub async fn validate_or_create_api(
         },
     }?;
     Ok(AwsApiDeets { id, stage_name })
+}
+
+async fn create_api(
+    api_gateway: &aws_sdk_apigatewayv2::Client,
+    project_name: &String,
+    stage_name: &String,
+) -> Result<String, anyhow::Error> {
+    let create_api_output = api_gateway
+        .create_api()
+        .name(format!("l3-{project_name}-api"))
+        .description(format!("L3 API for project {project_name}"))
+        .protocol_type(ProtocolType::Http)
+        .send()
+        .await?;
+    let api_id = create_api_output.api_id.unwrap();
+    api_gateway
+        .create_stage()
+        .api_id(&api_id)
+        .stage_name(stage_name)
+        .auto_deploy(true)
+        .send()
+        .await?;
+    Ok(api_id)
+}
+
+async fn does_api_exist(
+    api_gateway: &aws_sdk_apigatewayv2::Client,
+    api_id: &String,
+) -> Result<bool, anyhow::Error> {
+    match api_gateway.get_api().api_id(api_id).send().await {
+        Ok(_) => Ok(true),
+        Err(err) => {
+            let service_error = err.as_service_error();
+            if service_error.is_some() && service_error.unwrap().is_not_found_exception() {
+                Ok(false)
+            } else {
+                Err(anyhow!("does_api_exist error from aws sdk {}", err))
+            }
+        }
+    }
+}
+
+async fn get_account_id(iam: &aws_sdk_iam::Client) -> Result<String, anyhow::Error> {
+    let user_arn = iam.get_user().send().await.unwrap().user.unwrap().arn;
+    Ok(user_arn.split(':').nth(4).unwrap().to_string())
+}
+
+async fn create_lambda_role(
+    iam: &aws_sdk_iam::Client,
+    project_name: &String,
+) -> Result<Role, anyhow::Error> {
+    let role_name = format!("l3-{project_name}-lambda-role");
+    let mut role = get_role(iam, &role_name).await?;
+    if role.is_none() {
+        role = iam
+            .create_role()
+            .role_name(&role_name)
+            .assume_role_policy_document(include_str!("l3-trust.json"))
+            .send()
+            .await?
+            .role;
+    }
+    iam.attach_role_policy()
+        .role_name(&role_name)
+        .policy_arn("arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole")
+        .send()
+        .await?;
+    Ok(role.unwrap())
+}
+
+async fn get_role(
+    iam: &aws_sdk_iam::Client,
+    role_name: &String,
+) -> Result<Option<Role>, anyhow::Error> {
+    match iam.get_role().role_name(role_name).send().await {
+        Ok(get_role_output) => Ok(get_role_output.role),
+        Err(err) => match err.as_service_error() {
+            None => Err(anyhow!(err)),
+            Some(service_error) => {
+                if service_error.is_no_such_entity_exception() {
+                    Ok(None)
+                } else {
+                    Err(anyhow!(err))
+                }
+            }
+        },
+    }
 }

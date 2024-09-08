@@ -1,18 +1,21 @@
+use crate::aws::clients::AwsClients;
 use crate::aws::preflight::AwsPreflightData;
 use crate::aws::state::DeployedProjectState;
-use crate::aws::tasks::SyncTask::RemoveFn;
-use crate::aws::tasks::{exec_tasks, DeployFnParams, RemoveFnParams, SyncTask};
+use crate::aws::tasks::sync::deploy_fn::{perform_deploy_fn, DeployFnParams};
+use crate::aws::tasks::sync::remove_fn::{perform_remove_fn, RemoveFnParams};
 use crate::aws::{AwsApiConfig, AwsDataDir, AwsDeets};
 use crate::code::build::BuildMode;
 use crate::code::runtime::RuntimeConfig;
 use crate::code::source::tree::SourceTree;
 use crate::notification::LambdaNotification;
 use crate::project::Lx3ProjectDeets;
+use crate::sync::SyncTask::RemoveFn;
 use crate::ui::confirm::confirm;
 use std::path::PathBuf;
 use std::process;
 use std::sync::Arc;
 use tokio::sync::mpsc::unbounded_channel;
+use tokio::task::JoinSet;
 
 pub struct SyncOptions {
     pub aws: AwsApiConfig,
@@ -120,4 +123,32 @@ pub(crate) async fn sync_project(sync_options: SyncOptions) -> Result<(), anyhow
     }
 
     Ok(())
+}
+
+enum SyncTask {
+    DeployFn(Box<DeployFnParams>),
+    RemoveFn(Box<RemoveFnParams>),
+}
+
+async fn exec_tasks(
+    sdk_clients: &AwsClients,
+    sync_tasks: Vec<SyncTask>,
+) -> Result<(), anyhow::Error> {
+    let mut join_set = JoinSet::new();
+    for sync_task in sync_tasks {
+        join_set.spawn(exec_task(sdk_clients.clone(), sync_task));
+    }
+    while let Some(result) = join_set.join_next().await {
+        // todo handle sync errors
+        result??;
+    }
+    Ok(())
+}
+
+async fn exec_task(sdk_clients: AwsClients, sync_task: SyncTask) -> Result<(), anyhow::Error> {
+    match sync_task {
+        SyncTask::DeployFn(params) => perform_deploy_fn(&sdk_clients, params.as_ref()).await?,
+        SyncTask::RemoveFn(params) => perform_remove_fn(&sdk_clients, params.as_ref()).await?,
+    }
+    Ok::<(), anyhow::Error>(())
 }

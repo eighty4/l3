@@ -227,11 +227,3 @@ impl DeployedProjectState {
         components
     }
 }
-
-fn does_function_have_env_vars(fn_config: &FunctionConfiguration) -> bool {
-    fn_config
-        .environment
-        .as_ref()
-        .and_then(|env| env.variables.as_ref().map(|env| !env.is_empty()))
-        .unwrap_or(false)
-}

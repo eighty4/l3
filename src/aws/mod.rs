@@ -11,7 +11,6 @@ use crate::aws::preflight::AwsPreflightData;
 pub(crate) mod clients;
 mod config;
 pub(crate) mod lambda;
-mod operations;
 pub(crate) mod preflight;
 pub(crate) mod state;
 pub(crate) mod tasks;

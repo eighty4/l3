@@ -103,7 +103,7 @@ impl RuntimeConfigApi {
 
     pub async fn initialize_runtime_configs(&self) {
         for language in [JavaScript, TypeScript] {
-            let (tx, mut rx) = oneshot::channel();
+            let (tx, rx) = oneshot::channel();
             self.msg_tx
                 .send(RuntimeConfigMessage::RefreshConfig {
                     completed: Some(tx),

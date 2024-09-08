@@ -1,6 +1,14 @@
 use crate::aws::clients::AwsClients;
-use crate::aws::tasks::RemoveFnParams;
+use crate::aws::state::DeployedLambdaComponents;
 
+pub struct RemoveFnParams {
+    pub api_id: String,
+    pub components: DeployedLambdaComponents,
+}
+
+/// Clean up task for `l3 sync` to remove any AWS components related to no longer needed functions.
+/// Could be called to remove a fully deployed and integrated Lambda or lingering individual
+/// components.
 pub async fn perform_remove_fn(
     sdk_clients: &AwsClients,
     params: &RemoveFnParams,

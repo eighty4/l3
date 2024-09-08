@@ -1,56 +1,24 @@
-use std::sync::Arc;
+use crate::aws::tasks::dev::create_fn::create_fn;
+use crate::aws::tasks::dev::delete_fn::delete_fn;
+use crate::aws::tasks::dev::update_code::update_code;
+use crate::aws::tasks::dev::update_env::update_env;
+use crate::task::launch::LambdaTaskLaunch;
+use crate::task::translation::TaskTranslation;
+use crate::task::{LambdaTask, LambdaTaskKind};
 
-use tokio::task::JoinSet;
+mod api;
+mod dev;
+pub mod sync;
 
-use deploy_fn::perform_deploy_fn;
-use remove_fn::perform_remove_fn;
+pub struct AwsTaskTranslation {}
 
-use crate::aws::clients::AwsClients;
-use crate::aws::state::DeployedLambdaComponents;
-use crate::lambda::LambdaFn;
-use crate::project::Lx3ProjectDeets;
-
-mod deploy_fn;
-mod remove_fn;
-mod update_code;
-mod update_env;
-
-pub struct DeployFnParams {
-    pub components: DeployedLambdaComponents,
-    pub lambda_fn: Arc<LambdaFn>,
-    pub project_deets: Arc<Lx3ProjectDeets>,
-    pub publish_fn_updates: bool,
-}
-
-pub struct RemoveFnParams {
-    pub api_id: String,
-    pub components: DeployedLambdaComponents,
-}
-
-pub enum SyncTask {
-    DeployFn(Box<DeployFnParams>),
-    RemoveFn(Box<RemoveFnParams>),
-}
-
-pub async fn exec_tasks(
-    sdk_clients: &AwsClients,
-    sync_tasks: Vec<SyncTask>,
-) -> Result<(), anyhow::Error> {
-    let mut join_set = JoinSet::new();
-    for sync_task in sync_tasks {
-        join_set.spawn(exec_task(sdk_clients.clone(), sync_task));
+impl TaskTranslation for AwsTaskTranslation {
+    fn translate(&self, lambda_task: LambdaTask) -> LambdaTaskLaunch {
+        match lambda_task.kind {
+            LambdaTaskKind::CreateFunction => create_fn,
+            LambdaTaskKind::DeleteFunction => delete_fn,
+            LambdaTaskKind::UpdateCode => update_code,
+            LambdaTaskKind::UpdateEnvironment => update_env,
+        }
     }
-    while let Some(result) = join_set.join_next().await {
-        // todo handle sync errors
-        result??;
-    }
-    Ok(())
-}
-
-async fn exec_task(sdk_clients: AwsClients, sync_task: SyncTask) -> Result<(), anyhow::Error> {
-    match sync_task {
-        SyncTask::DeployFn(params) => perform_deploy_fn(&sdk_clients, params.as_ref()).await?,
-        SyncTask::RemoveFn(params) => perform_remove_fn(&sdk_clients, params.as_ref()).await?,
-    }
-    Ok::<(), anyhow::Error>(())
 }
