@@ -4,7 +4,6 @@ use crate::code::source::path::SourcePath;
 use crate::code::source::tree::SourceTreeMessage::*;
 use crate::code::source::{Language, ModuleImport, ModuleImports, SourceFile};
 use crate::lambda::{LambdaFn, RouteKey};
-use crate::notification::LambdaNotification;
 use crate::project::Lx3ProjectDeets;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -27,7 +26,6 @@ enum SourceTreeMessage {
 struct SourceTreeEventLoop {
     msg_rx: UnboundedReceiver<SourceTreeMessage>,
     msg_tx: UnboundedSender<SourceTreeMessage>,
-    notification_tx: UnboundedSender<LambdaNotification>,
     project_deets: Arc<Lx3ProjectDeets>,
     source_tree: Arc<Mutex<SourceTree>>,
 }
@@ -36,14 +34,12 @@ impl SourceTreeEventLoop {
     fn new(
         msg_rx: UnboundedReceiver<SourceTreeMessage>,
         msg_tx: UnboundedSender<SourceTreeMessage>,
-        notification_tx: UnboundedSender<LambdaNotification>,
         project_deets: Arc<Lx3ProjectDeets>,
         source_tree: Arc<Mutex<SourceTree>>,
     ) -> Self {
         Self {
             msg_rx,
             msg_tx,
-            notification_tx,
             project_deets,
             source_tree,
         }
@@ -78,7 +74,6 @@ impl SourceTreeEventLoop {
         processed: Option<oneshot::Sender<bool>>,
     ) {
         let msg_tx = self.msg_tx.clone();
-        let notification_tx = self.notification_tx.clone();
         let project_deets = self.project_deets.clone();
         let source_tree = self.source_tree.clone();
         tokio::spawn(async move {
@@ -223,10 +218,7 @@ pub struct SourceTree {
 }
 
 impl SourceTree {
-    pub fn new(
-        notification_tx: UnboundedSender<LambdaNotification>,
-        project_deets: Arc<Lx3ProjectDeets>,
-    ) -> (Arc<Mutex<Self>>, Arc<SourcesApi>) {
+    pub fn new(project_deets: Arc<Lx3ProjectDeets>) -> (Arc<Mutex<Self>>, Arc<SourcesApi>) {
         let (msg_tx, msg_rx) = unbounded_channel();
         let source_tree = Arc::new(Mutex::new(SourceTree {
             lambdas: HashMap::new(),
@@ -236,7 +228,6 @@ impl SourceTree {
         let mut event_loop = SourceTreeEventLoop::new(
             msg_rx,
             msg_tx.clone(),
-            notification_tx,
             project_deets.clone(),
             source_tree.clone(),
         );

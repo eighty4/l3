@@ -1,12 +1,16 @@
 use crate::aws::AwsDeets;
 use crate::code::build::BuildMode;
 use crate::code::runtime::RuntimeConfig;
+use crate::lambda::LambdaFn;
+use crate::notification::{LambdaEvent, LambdaEventKind, LambdaNotification};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
+use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 
 pub struct Lx3ProjectDeets {
     pub aws: AwsDeets,
     pub build_mode: BuildMode,
+    pub notification_tx: UnboundedSender<LambdaNotification>,
     pub project_dir: PathBuf,
     pub project_name: String,
     pub runtime_config: Arc<Mutex<RuntimeConfig>>,
@@ -15,6 +19,12 @@ pub struct Lx3ProjectDeets {
 impl Lx3ProjectDeets {
     pub fn builder() -> Lx3ProjectDeetsBuilder {
         Lx3ProjectDeetsBuilder::new()
+    }
+
+    pub fn send_lambda_event(&self, lambda_fn: Arc<LambdaFn>, kind: LambdaEventKind) {
+        self.notification_tx
+            .send(LambdaNotification::Lambda(LambdaEvent { lambda_fn, kind }))
+            .unwrap();
     }
 }
 
@@ -45,14 +55,23 @@ impl Lx3ProjectDeetsBuilder {
         self
     }
 
-    pub fn build(self, project_dir: PathBuf, project_name: String) -> Lx3ProjectDeets {
+    pub fn build(
+        self,
+        project_dir: PathBuf,
+        project_name: String,
+    ) -> (Arc<Lx3ProjectDeets>, UnboundedReceiver<LambdaNotification>) {
         debug_assert!(self.aws.is_some() && self.runtime_config.is_some());
-        Lx3ProjectDeets {
-            aws: self.aws.unwrap(),
-            build_mode: self.build_mode.unwrap_or(BuildMode::Debug),
-            project_dir,
-            project_name,
-            runtime_config: self.runtime_config.unwrap(),
-        }
+        let (notification_tx, notification_rx) = unbounded_channel::<LambdaNotification>();
+        (
+            Arc::new(Lx3ProjectDeets {
+                aws: self.aws.unwrap(),
+                build_mode: self.build_mode.unwrap_or(BuildMode::Debug),
+                notification_tx,
+                project_dir,
+                project_name,
+                runtime_config: self.runtime_config.unwrap(),
+            }),
+            notification_rx,
+        )
     }
 }

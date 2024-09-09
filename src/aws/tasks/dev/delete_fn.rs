@@ -1,22 +1,30 @@
 use crate::aws::state::DeployedProjectState;
 use crate::lambda::LambdaFn;
-use crate::notification::LambdaNotification;
+use crate::notification::{LambdaEventKind, LambdaUpdateResult};
 use crate::project::Lx3ProjectDeets;
 use crate::task::launch::LaunchedTask;
 use std::sync::Arc;
-use tokio::sync::mpsc::UnboundedSender;
 
-pub fn delete_fn(
-    notification_tx: UnboundedSender<LambdaNotification>,
-    project_deets: Arc<Lx3ProjectDeets>,
-    lambda_fn: Arc<LambdaFn>,
-) -> LaunchedTask {
-    Box::pin(delete_fn_inner(notification_tx, project_deets, lambda_fn))
+pub fn delete_fn(project_deets: Arc<Lx3ProjectDeets>, lambda_fn: Arc<LambdaFn>) -> LaunchedTask {
+    Box::pin(delete_fn_inner(project_deets, lambda_fn))
 }
 
 async fn delete_fn_inner(
-    notification_tx: UnboundedSender<LambdaNotification>,
     project_deets: Arc<Lx3ProjectDeets>,
+    lambda_fn: Arc<LambdaFn>,
+) -> Result<(), anyhow::Error> {
+    project_deets.send_lambda_event(lambda_fn.clone(), LambdaEventKind::Removing);
+    let result =
+        match delete_api_gateway_and_lambda_fn_resources(&project_deets, lambda_fn.clone()).await {
+            Ok(_) => LambdaUpdateResult::Success,
+            Err(err) => LambdaUpdateResult::Failure(err.to_string()),
+        };
+    project_deets.send_lambda_event(lambda_fn.clone(), LambdaEventKind::Removed(result));
+    Ok(())
+}
+
+async fn delete_api_gateway_and_lambda_fn_resources(
+    project_deets: &Arc<Lx3ProjectDeets>,
     lambda_fn: Arc<LambdaFn>,
 ) -> Result<(), anyhow::Error> {
     let mut project_state = DeployedProjectState::fetch_from_aws(

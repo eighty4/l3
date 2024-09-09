@@ -1,46 +1,38 @@
 use crate::code::build::LambdaFnBuild;
 use crate::lambda::LambdaFn;
-use crate::notification::{
-    LambdaEvent, LambdaEventKind, LambdaNotification, LambdaUpdateKind, LambdaUpdateResult,
-};
+use crate::notification::{LambdaEventKind, LambdaUpdateKind, LambdaUpdateResult};
 use crate::project::Lx3ProjectDeets;
 use crate::task::launch::LaunchedTask;
 use anyhow::anyhow;
 use aws_sdk_lambda::primitives::Blob;
 use std::fs;
 use std::sync::Arc;
-use tokio::sync::mpsc::UnboundedSender;
 
-pub fn update_code(
-    notification_tx: UnboundedSender<LambdaNotification>,
-    project_deets: Arc<Lx3ProjectDeets>,
-    lambda_fn: Arc<LambdaFn>,
-) -> LaunchedTask {
-    Box::pin(update_code_inner(notification_tx, project_deets, lambda_fn))
+pub fn update_code(project_deets: Arc<Lx3ProjectDeets>, lambda_fn: Arc<LambdaFn>) -> LaunchedTask {
+    Box::pin(update_code_inner(project_deets, lambda_fn))
 }
 
 async fn update_code_inner(
-    notification_tx: UnboundedSender<LambdaNotification>,
     project_deets: Arc<Lx3ProjectDeets>,
     lambda_fn: Arc<LambdaFn>,
 ) -> Result<(), anyhow::Error> {
-    notification_tx.send(LambdaNotification::Lambda(LambdaEvent {
-        lambda_fn: lambda_fn.clone(),
-        kind: LambdaEventKind::Updating(LambdaUpdateKind::Code),
-    }))?;
-    let result = match build_and_update(project_deets, lambda_fn.clone()).await {
+    project_deets.send_lambda_event(
+        lambda_fn.clone(),
+        LambdaEventKind::Updating(LambdaUpdateKind::Code),
+    );
+    let result = match build_and_update_fn_code(&project_deets, lambda_fn.clone()).await {
         Ok(_) => LambdaUpdateResult::Success,
         Err(err) => LambdaUpdateResult::Failure(err.to_string()),
     };
-    notification_tx.send(LambdaNotification::Lambda(LambdaEvent {
-        lambda_fn,
-        kind: LambdaEventKind::Updated(LambdaUpdateKind::Code, result),
-    }))?;
+    project_deets.send_lambda_event(
+        lambda_fn.clone(),
+        LambdaEventKind::Updated(LambdaUpdateKind::Code, result),
+    );
     Ok(())
 }
 
-async fn build_and_update(
-    project_deets: Arc<Lx3ProjectDeets>,
+async fn build_and_update_fn_code(
+    project_deets: &Arc<Lx3ProjectDeets>,
     lambda_fn: Arc<LambdaFn>,
 ) -> Result<(), anyhow::Error> {
     let archive = LambdaFnBuild::new(lambda_fn.clone(), project_deets.clone())

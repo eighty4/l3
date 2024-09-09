@@ -3,7 +3,6 @@ use crate::code::source::Language;
 use crate::lambda::{HttpMethod, RouteKey};
 use crate::testing::{ProjectTest, TestSource};
 use std::path::PathBuf;
-use tokio::sync::mpsc::unbounded_channel;
 
 #[tokio::test]
 async fn test_sources_api_refresh_routes() {
@@ -18,8 +17,7 @@ async fn test_sources_api_refresh_routes() {
         )
         .build();
 
-    let (tx, mut rx) = unbounded_channel();
-    let (source_tree, sources_api) = SourceTree::new(tx, project_test.project_deets.clone());
+    let (source_tree, sources_api) = SourceTree::new(project_test.project_deets.clone());
     sources_api.refresh_routes().await.unwrap();
 
     let mut source_tree = source_tree.lock().unwrap();

@@ -9,7 +9,7 @@ use crate::aws::tasks::api::lambda::{
 use crate::code::build::LambdaFnBuild;
 use crate::code::checksum::ChecksumTree;
 use crate::lambda::LambdaFn;
-use crate::notification::LambdaNotification;
+use crate::notification::{LambdaEventKind, LambdaUpdateResult};
 use crate::project::Lx3ProjectDeets;
 use crate::task::launch::LaunchedTask;
 use anyhow::anyhow;
@@ -18,19 +18,27 @@ use aws_sdk_lambda::types::Environment;
 use std::fs;
 use std::path::PathBuf;
 use std::sync::Arc;
-use tokio::sync::mpsc::UnboundedSender;
 
-pub fn create_fn(
-    notification_tx: UnboundedSender<LambdaNotification>,
-    project_deets: Arc<Lx3ProjectDeets>,
-    lambda_fn: Arc<LambdaFn>,
-) -> LaunchedTask {
-    Box::pin(create_fn_inner(notification_tx, project_deets, lambda_fn))
+pub fn create_fn(project_deets: Arc<Lx3ProjectDeets>, lambda_fn: Arc<LambdaFn>) -> LaunchedTask {
+    Box::pin(create_fn_inner(project_deets, lambda_fn))
 }
 
 async fn create_fn_inner(
-    notification_tx: UnboundedSender<LambdaNotification>,
     project_deets: Arc<Lx3ProjectDeets>,
+    lambda_fn: Arc<LambdaFn>,
+) -> Result<(), anyhow::Error> {
+    project_deets.send_lambda_event(lambda_fn.clone(), LambdaEventKind::Creating);
+    let result =
+        match create_api_gateway_and_lambda_fn_resources(&project_deets, lambda_fn.clone()).await {
+            Ok(_) => LambdaUpdateResult::Success,
+            Err(err) => LambdaUpdateResult::Failure(err.to_string()),
+        };
+    project_deets.send_lambda_event(lambda_fn.clone(), LambdaEventKind::Created(result));
+    Ok(())
+}
+
+async fn create_api_gateway_and_lambda_fn_resources(
+    project_deets: &Arc<Lx3ProjectDeets>,
     lambda_fn: Arc<LambdaFn>,
 ) -> Result<(), anyhow::Error> {
     let mut project_state = DeployedProjectState::fetch_from_aws(

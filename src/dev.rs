@@ -13,8 +13,6 @@ use crate::ui::dev::print_notification;
 use crate::ui::exit::err_exit;
 use std::path::PathBuf;
 use std::process;
-use std::sync::Arc;
-use tokio::sync::mpsc::unbounded_channel;
 
 pub struct DevOptions {
     pub aws: AwsApiConfig,
@@ -33,15 +31,13 @@ pub async fn develop_project(dev_options: DevOptions) -> Result<(), anyhow::Erro
     .await?;
     let (runtime_config, runtime_config_api) = RuntimeConfig::new(dev_options.project_dir.clone());
     runtime_config_api.initialize_runtime_configs().await;
-    let project_deets = Arc::new(
-        Lx3ProjectDeets::builder()
-            .aws_deets(AwsDeets::from(aws_preflight_data))
-            .runtime_config(runtime_config)
-            .build(
-                dev_options.project_dir.clone(),
-                dev_options.project_name.clone(),
-            ),
-    );
+    let (project_deets, mut notification_rx) = Lx3ProjectDeets::builder()
+        .aws_deets(AwsDeets::from(aws_preflight_data))
+        .runtime_config(runtime_config)
+        .build(
+            dev_options.project_dir.clone(),
+            dev_options.project_name.clone(),
+        );
 
     println!("λλλ dev");
     println!("  project: {}", &project_deets.project_name);
@@ -64,9 +60,7 @@ pub async fn develop_project(dev_options: DevOptions) -> Result<(), anyhow::Erro
 
     AwsDataDir::cache_api_id(&project_deets.project_dir, &project_deets.aws.api.id)?;
 
-    let (notification_tx, mut notification_rx) = unbounded_channel::<LambdaNotification>();
-    let (source_tree, sources_api) =
-        SourceTree::new(notification_tx.clone(), project_deets.clone());
+    let (source_tree, sources_api) = SourceTree::new(project_deets.clone());
     let _source_tracker = SourceTracker::new(
         project_deets.clone(),
         runtime_config_api,
@@ -74,12 +68,11 @@ pub async fn develop_project(dev_options: DevOptions) -> Result<(), anyhow::Erro
     );
     sources_api.refresh_routes().await?;
     let task_executor = TaskExecutor::new(
-        notification_tx.clone(),
         project_deets,
         source_tree.clone(),
         Box::new(AwsTaskTranslation {}),
     );
-    let _build_pool = TaskPool::new(task_executor);
+    let _task_pool = TaskPool::new(task_executor);
 
     loop {
         match notification_rx.recv().await {

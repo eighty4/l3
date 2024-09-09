@@ -7,14 +7,11 @@ use crate::aws::{AwsApiConfig, AwsDataDir, AwsDeets};
 use crate::code::build::BuildMode;
 use crate::code::runtime::RuntimeConfig;
 use crate::code::source::tree::SourceTree;
-use crate::notification::LambdaNotification;
 use crate::project::Lx3ProjectDeets;
 use crate::sync::SyncTask::RemoveFn;
 use crate::ui::confirm::confirm;
 use std::path::PathBuf;
 use std::process;
-use std::sync::Arc;
-use tokio::sync::mpsc::unbounded_channel;
 use tokio::task::JoinSet;
 
 pub struct SyncOptions {
@@ -42,16 +39,14 @@ pub(crate) async fn sync_project(sync_options: SyncOptions) -> Result<(), anyhow
     .await?;
     let (runtime_config, runtime_config_api) = RuntimeConfig::new(sync_options.project_dir.clone());
     runtime_config_api.initialize_runtime_configs().await;
-    let project_deets = Arc::new(
-        Lx3ProjectDeets::builder()
-            .aws_deets(AwsDeets::from(aws_preflight_data))
-            .build_mode(sync_options.build_mode.clone())
-            .runtime_config(runtime_config)
-            .build(
-                sync_options.project_dir.clone(),
-                sync_options.project_name.clone(),
-            ),
-    );
+    let (project_deets, _notification_rx) = Lx3ProjectDeets::builder()
+        .aws_deets(AwsDeets::from(aws_preflight_data))
+        .build_mode(sync_options.build_mode.clone())
+        .runtime_config(runtime_config)
+        .build(
+            sync_options.project_dir.clone(),
+            sync_options.project_name.clone(),
+        );
 
     println!("λλλ sync");
     println!("  project: {}", &project_deets.project_name);
@@ -73,8 +68,7 @@ pub(crate) async fn sync_project(sync_options: SyncOptions) -> Result<(), anyhow
 
     AwsDataDir::cache_api_id(&project_deets.project_dir, &project_deets.aws.api.id)?;
 
-    let (notification_tx, _notification_rx) = unbounded_channel::<LambdaNotification>();
-    let (source_tree, sources_api) = SourceTree::new(notification_tx, project_deets.clone());
+    let (source_tree, sources_api) = SourceTree::new(project_deets.clone());
     sources_api.refresh_routes().await?;
 
     let mut deployed_state = DeployedProjectState::fetch_from_aws(

@@ -115,33 +115,31 @@ impl ProjectTestBuilder {
             .map(|s| s.build(&project_name, &project_dir, &api_id))
             .collect();
         let (runtime_config, _) = RuntimeConfig::new(project_dir.clone());
-        let project_deets = Arc::new(
-            Lx3ProjectDeets::builder()
-                .aws_deets(AwsDeets {
-                    account_id: "account_id".to_string(),
-                    api: AwsApiDeets {
-                        id: api_id.clone(),
-                        stage_name: "development".to_string(),
-                    },
-                    region: Region::new("us-east-1"),
-                    sdk_clients: AwsClients::from(
-                        &SdkConfig::builder()
-                            .behavior_version(BehaviorVersion::v2024_03_28())
-                            .build(),
-                    ),
-                    lambda_role: Role::builder()
-                        .arn("arn")
-                        .create_date(DateTime::from_secs(1))
-                        .path("path")
-                        .role_id("role_id")
-                        .role_name("role_name")
-                        .build()
-                        .unwrap(),
-                })
-                .build_mode(self.build_mode.unwrap_or(BuildMode::Debug))
-                .runtime_config(runtime_config)
-                .build(project_dir.clone(), project_name.clone()),
-        );
+        let (project_deets, _notification_rx) = Lx3ProjectDeets::builder()
+            .aws_deets(AwsDeets {
+                account_id: "account_id".to_string(),
+                api: AwsApiDeets {
+                    id: api_id.clone(),
+                    stage_name: "development".to_string(),
+                },
+                region: Region::new("us-east-1"),
+                sdk_clients: AwsClients::from(
+                    &SdkConfig::builder()
+                        .behavior_version(BehaviorVersion::v2024_03_28())
+                        .build(),
+                ),
+                lambda_role: Role::builder()
+                    .arn("arn")
+                    .create_date(DateTime::from_secs(1))
+                    .path("path")
+                    .role_id("role_id")
+                    .role_name("role_name")
+                    .build()
+                    .unwrap(),
+            })
+            .build_mode(self.build_mode.unwrap_or(BuildMode::Debug))
+            .runtime_config(runtime_config)
+            .build(project_dir.clone(), project_name.clone());
         ProjectTest {
             api_id,
             project_deets,
