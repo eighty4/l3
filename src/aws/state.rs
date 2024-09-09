@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 
-use anyhow::anyhow;
 use aws_sdk_apigatewayv2::types::{Integration, Route};
 use aws_sdk_lambda::types::FunctionConfiguration;
 
 use crate::aws::clients::AwsClients;
+use crate::aws::fetch::fetch_project_state;
 use crate::aws::lambda::*;
 use crate::lambda::{LambdaFn, RouteKey};
 
@@ -58,38 +58,12 @@ impl DeployedProjectState {
         }
     }
 
-    // todo handle pagination across multiple requests for functions, integrations and routes
     pub async fn fetch_from_aws(
         sdk_clients: &AwsClients,
         project_name: &String,
         api_id: &String,
     ) -> Result<Self, anyhow::Error> {
-        let functions = sdk_clients
-            .lambda
-            .list_functions()
-            .send()
-            .await
-            .map_err(|err| anyhow!("{}", err.into_service_error().to_string()))?
-            .functions
-            .unwrap();
-        let routes = sdk_clients
-            .api_gateway
-            .get_routes()
-            .api_id(api_id)
-            .send()
-            .await
-            .map_err(|err| anyhow!("{}", err.into_service_error().to_string()))?
-            .items
-            .unwrap();
-        let integrations = sdk_clients
-            .api_gateway
-            .get_integrations()
-            .api_id(api_id)
-            .send()
-            .await
-            .map_err(|err| anyhow!("{}", err.into_service_error().to_string()))?
-            .items
-            .unwrap();
+        let (functions, integrations, routes) = fetch_project_state(sdk_clients, api_id).await?;
         Ok(DeployedProjectState::new(
             project_name,
             functions,

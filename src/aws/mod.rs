@@ -10,6 +10,7 @@ use crate::aws::preflight::AwsPreflightData;
 
 pub(crate) mod clients;
 mod config;
+mod fetch;
 pub(crate) mod lambda;
 pub(crate) mod preflight;
 pub(crate) mod state;
