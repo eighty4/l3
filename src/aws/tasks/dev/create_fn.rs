@@ -74,7 +74,7 @@ async fn create_api_gateway_and_lambda_fn_resources(
                 env_vars,
             )
             .await?;
-            add_api_gateway_invoke_permission(&project_deets, &lambda_fn, &created_fn_arn).await?;
+            add_api_gateway_invoke_permission(project_deets, &lambda_fn, &created_fn_arn).await?;
             checksums.update_checksum(lambda_fn.path.rel.clone())?;
             checksums.update_env_var_checksums(&lambda_fn.env_var_sources)?;
             wait_for_fn_state_active(&project_deets.aws.sdk_clients.lambda, &lambda_fn.fn_name)
@@ -82,8 +82,8 @@ async fn create_api_gateway_and_lambda_fn_resources(
             created_fn_arn
         }
         Some(updating_fn_arn) => {
-            if !does_api_gateway_have_invoke_permission(&project_deets, &lambda_fn).await? {
-                add_api_gateway_invoke_permission(&project_deets, &lambda_fn, updating_fn_arn)
+            if !does_api_gateway_have_invoke_permission(project_deets, &lambda_fn).await? {
+                add_api_gateway_invoke_permission(project_deets, &lambda_fn, updating_fn_arn)
                     .await?;
             }
             if !checksums

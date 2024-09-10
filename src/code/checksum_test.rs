@@ -1,9 +1,6 @@
-use std::collections::HashMap;
-use std::fs;
 use std::path::PathBuf;
 
 use crate::code::checksum::ChecksumTree;
-use crate::code::env::EnvVarSources;
 use crate::code::source::Language;
 use crate::lambda::{HttpMethod, RouteKey};
 use crate::testing::{ProjectTest, TestSource};

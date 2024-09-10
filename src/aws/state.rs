@@ -61,7 +61,7 @@ impl DeployedProjectState {
     pub async fn fetch_from_aws(
         sdk_clients: &AwsClients,
         project_name: &String,
-        api_id: &String,
+        api_id: &str,
     ) -> Result<Self, anyhow::Error> {
         let (functions, integrations, routes) = fetch_project_state(sdk_clients, api_id).await?;
         Ok(DeployedProjectState::new(
