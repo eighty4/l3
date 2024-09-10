@@ -1,36 +1,63 @@
+use crossterm::{event, terminal, QueueableCommand};
 use std::io;
 use std::io::Write;
 
-use crossterm::{event, terminal, QueueableCommand};
+use crate::ui::exit::exit;
 
-use crate::ui::exit::{err_exit, exit};
+pub fn confirm(prompt: &str) -> bool {
+    terminal::enable_raw_mode().unwrap();
+    match confirm_inner(prompt) {
+        Ok(confirm) => {
+            terminal::disable_raw_mode().unwrap();
+            confirm
+        }
+        Err(err) => {
+            terminal::disable_raw_mode().unwrap();
+            panic!("{}", err);
+        }
+    }
+}
 
-pub fn confirm(prompt: &str) -> Result<bool, anyhow::Error> {
+fn confirm_inner(prompt: &str) -> Result<bool, anyhow::Error> {
     let mut stdout = io::stdout();
     stdout.write_all(format!("{} ", prompt).as_bytes())?;
     stdout.flush()?;
-    terminal::enable_raw_mode()?;
-    match event::read()? {
-        event::Event::Key(event::KeyEvent {
-            modifiers: event::KeyModifiers::CONTROL,
-            code: event::KeyCode::Char('c'),
-            ..
-        }) => exit(0),
-        event::Event::Key(event::KeyEvent {
-            code: event::KeyCode::Char(c),
-            ..
-        }) => {
-            let confirmed = c == 'y' || c == 'Y';
-            if confirmed {
-                stdout.queue(terminal::Clear(terminal::ClearType::CurrentLine))?;
-            } else {
-                stdout.write_all(format!("{c}\n").as_bytes())?;
+    let confirmed;
+    loop {
+        match event::read()? {
+            event::Event::Key(event::KeyEvent {
+                modifiers: event::KeyModifiers::CONTROL,
+                code: event::KeyCode::Char('c'),
+                ..
+            }) => exit(0),
+            event::Event::Key(event::KeyEvent {
+                code: event::KeyCode::Char(c),
+                ..
+            }) => {
+                confirmed = c == 'y' || c == 'Y';
+                break;
             }
-            stdout.queue(crossterm::cursor::MoveToColumn(0))?;
-            stdout.flush()?;
-            terminal::disable_raw_mode()?;
-            Ok(confirmed)
+            event::Event::Key(event::KeyEvent {
+                code: event::KeyCode::Enter,
+                ..
+            }) => {
+                confirmed = true;
+                break;
+            }
+            event::Event::Key(event::KeyEvent {
+                code: event::KeyCode::Esc,
+                ..
+            }) => {
+                confirmed = false;
+                break;
+            }
+            _ => {}
         }
-        _ => err_exit("when the fuck does this happen!"),
     }
+    if confirmed {
+        stdout.queue(terminal::Clear(terminal::ClearType::CurrentLine))?;
+    }
+    stdout.queue(crossterm::cursor::MoveToColumn(0))?;
+    stdout.flush()?;
+    Ok(confirmed)
 }

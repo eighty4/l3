@@ -45,8 +45,24 @@ pub async fn develop_project(dev_options: DevOptions) -> Result<(), anyhow::Erro
     println!("  api id: {}", &project_deets.aws.api.id);
     println!();
 
-    if !dev_options.auto_confirm && !confirm("\n  Continue with syncing?")? {
-        println!("  Cancelling sync operations!");
+    let (source_tree, sources_api) = SourceTree::new(project_deets.clone());
+    let _source_tracker = SourceTracker::new(
+        project_deets.clone(),
+        runtime_config_api,
+        sources_api.clone(),
+    );
+    sources_api.refresh_routes().await?;
+
+    {
+        let lambda_fns = source_tree.lock().unwrap().lambda_fns();
+        println!("{} lambdas", lambda_fns.len());
+        for lambda_fn in lambda_fns {
+            println!("  {}", lambda_fn.route_key.to_route_key_string());
+        }
+    }
+
+    if !dev_options.auto_confirm && !confirm("\n  Start dev mode?") {
+        println!("  Cancelling dev mode!");
         process::exit(0);
     }
 
@@ -60,13 +76,6 @@ pub async fn develop_project(dev_options: DevOptions) -> Result<(), anyhow::Erro
 
     AwsDataDir::cache_api_id(&project_deets.project_dir, &project_deets.aws.api.id)?;
 
-    let (source_tree, sources_api) = SourceTree::new(project_deets.clone());
-    let _source_tracker = SourceTracker::new(
-        project_deets.clone(),
-        runtime_config_api,
-        sources_api.clone(),
-    );
-    sources_api.refresh_routes().await?;
     let task_executor = TaskExecutor::new(
         project_deets,
         source_tree.clone(),
