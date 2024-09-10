@@ -1,4 +1,3 @@
-use crate::code::env::EnvVarSources;
 use crate::code::read::parallel::recursively_read_dirs;
 use crate::code::source::path::SourcePath;
 use crate::code::source::tree::SourceTreeMessage::*;
@@ -77,29 +76,6 @@ impl SourceTreeEventLoop {
         let project_deets = self.project_deets.clone();
         let source_tree = self.source_tree.clone();
         tokio::spawn(async move {
-            let mut lambda_fns = Vec::new();
-            if source_file.path.rel.starts_with("routes") {
-                let handler_fns = source_file.collect_http_handler_fn_names();
-                if handler_fns.is_empty() {
-                    // todo send LambdaNotification
-                } else {
-                    let http_path = RouteKey::extract_http_path(&source_file.path.rel).unwrap();
-                    // todo move to SourceFile?
-                    for (http_method, handler_fn) in handler_fns {
-                        let route_key = RouteKey::new(http_method, http_path.clone());
-                        let env_var_sources =
-                            EnvVarSources::new(&project_deets.project_dir, &route_key).unwrap();
-                        lambda_fns.push(LambdaFn::new(
-                            env_var_sources,
-                            handler_fn,
-                            source_file.path.clone(),
-                            project_deets.clone(),
-                            route_key,
-                        ));
-                    }
-                }
-            }
-
             // todo prevent circular imports cause infinite queueing
             let import_resolver = {
                 project_deets
@@ -131,11 +107,19 @@ impl SourceTreeEventLoop {
                 source_file.imports = ModuleImports::Processed(processed_imports);
             }
 
+            let lambda_fns = if source_file.path.rel.starts_with("routes") {
+                // todo send LambdaNotification src warning if routes dir src without lambda handler
+                source_file.collect_lambda_fns(&project_deets)
+            } else {
+                None
+            };
             {
                 let mut source_tree = source_tree.lock().unwrap();
                 source_tree.add_source_file(source_file);
-                for lambda_fn in lambda_fns {
-                    source_tree.add_lambda_fn(lambda_fn);
+                if let Some(lambda_fns) = lambda_fns {
+                    for lambda_fn in lambda_fns {
+                        source_tree.add_lambda_fn(lambda_fn);
+                    }
                 }
             }
             for completed in processing_imports {
