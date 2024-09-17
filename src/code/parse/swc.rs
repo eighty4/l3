@@ -65,11 +65,17 @@ fn create_ast(language: &Language, path: &SourcePath) -> Result<Module, anyhow::
                 )
             })
         })
-        .map_err(|err| anyhow!("error from compiler parsing JS: {}", err.to_string()))?;
+        .map_err(|err| {
+            anyhow!(
+                "error from compiler parsing source file {}: {}",
+                path.rel.to_string_lossy(),
+                err.to_string()
+            )
+        })?;
     match program {
         Program::Module(module) => Ok(module),
         Program::Script(_) => Err(anyhow!(
-            "unable to parse CJS format for source file {}",
+            "L3 does not support CJS format used in source file {}",
             path.rel.to_string_lossy()
         )),
     }
