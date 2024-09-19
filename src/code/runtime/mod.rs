@@ -1,4 +1,5 @@
 use crate::code::parse::imports::node::NodeImportResolver;
+use crate::code::parse::imports::typescript::TypescriptImportResolver;
 use crate::code::parse::imports::ImportResolver;
 use crate::code::parse::swc::SwcSourceParser;
 use crate::code::parse::SourceParser;
@@ -139,7 +140,7 @@ pub struct RuntimeConfig {
     node_import_resolver: Arc<Box<dyn ImportResolver>>,
     project_dir: Arc<PathBuf>,
     typescript_config: Arc<TypeScriptConfig>,
-    // typescript_import_resolver: Arc<Box<dyn ImportResolver>>,
+    typescript_import_resolver: Arc<Box<dyn ImportResolver>>,
     typescript_source_parser: Arc<Box<dyn SourceParser>>,
 }
 
@@ -153,6 +154,8 @@ impl RuntimeConfig {
         let node_import_resolver: Arc<Box<dyn ImportResolver>> =
             Arc::new(Box::new(NodeImportResolver::new(node_config.clone())));
         let typescript_config: Arc<TypeScriptConfig> = Default::default();
+        let typescript_import_resolver: Arc<Box<dyn ImportResolver>> =
+            Arc::new(Box::new(TypescriptImportResolver::new()));
         let typescript_source_parser: Arc<Box<dyn SourceParser>> =
             Arc::new(Box::new(SwcSourceParser::for_typescript()));
         let runtime_config: Arc<Mutex<RuntimeConfig>> = Arc::new(Mutex::new(RuntimeConfig {
@@ -161,6 +164,7 @@ impl RuntimeConfig {
             node_import_resolver,
             project_dir: project_dir.clone(),
             typescript_config,
+            typescript_import_resolver,
             typescript_source_parser,
         }));
         let mut event_loop =
@@ -173,7 +177,7 @@ impl RuntimeConfig {
         match language {
             JavaScript => self.node_import_resolver.clone(),
             Python => todo!(),
-            TypeScript => todo!(),
+            TypeScript => self.typescript_import_resolver.clone(),
         }
     }
 
@@ -196,6 +200,7 @@ impl RuntimeConfig {
         self.node_config = Arc::new(node_config);
         self.node_import_resolver =
             Arc::new(Box::new(NodeImportResolver::new(self.node_config.clone())));
+        self.typescript_import_resolver = Arc::new(Box::new(TypescriptImportResolver::new()));
     }
 
     pub fn set_typescript_config(&mut self, typescript_config: TypeScriptConfig) {

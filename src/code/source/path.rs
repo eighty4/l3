@@ -1,6 +1,7 @@
 use crate::code::build::BuildMode;
 use crate::code::source::Language;
 use crate::project::Lx3ProjectDeets;
+use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf, MAIN_SEPARATOR_STR};
 use std::sync::Arc;
 
@@ -44,6 +45,20 @@ pub struct SourcePath {
     pub abs: PathBuf,
     /// Relative path to source from project or build output root
     pub rel: PathBuf,
+}
+
+impl Eq for SourcePath {}
+
+impl Hash for SourcePath {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.abs.hash(state);
+    }
+}
+
+impl PartialEq<Self> for SourcePath {
+    fn eq(&self, other: &Self) -> bool {
+        self.abs.eq(&other.abs)
+    }
 }
 
 impl SourcePath {

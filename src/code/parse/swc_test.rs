@@ -66,7 +66,7 @@ async fn test_parse_source_file_errors_for_cjs() {
         .err()
         .unwrap()
         .to_string()
-        .starts_with("unable to parse CJS format for source file "));
+        .starts_with("L3 does not support CJS format used in source file lambda.js"));
 }
 
 #[tokio::test]

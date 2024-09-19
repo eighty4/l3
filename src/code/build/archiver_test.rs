@@ -81,7 +81,6 @@ async fn test_archiver_write_does_not_append_to_existing_archive() {
     )
     .write()
     .unwrap();
-    println!();
 
     assert_eq!(archive.path, build_dir.abs.join("code.zip"));
 

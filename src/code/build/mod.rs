@@ -1,10 +1,12 @@
+use std::collections::HashSet;
 use std::sync::Arc;
 
 use crate::code::build::archiver::Archive;
 use crate::code::build::swc::SwcBuilder;
+use crate::code::parse::imports::ImportResolver;
 use crate::code::parse::SourceParser;
 use crate::code::source::path::{FunctionBuildDir, SourcePath};
-use crate::code::source::{Language, SourceFile};
+use crate::code::source::{Language, ModuleImport, ModuleImports, SourceFile};
 use crate::lambda::LambdaFn;
 use crate::project::Lx3ProjectDeets;
 use archiver::Archiver;
@@ -15,7 +17,11 @@ mod swc;
 #[cfg(test)]
 mod archiver_test;
 #[cfg(test)]
+mod js_test;
+#[cfg(test)]
 mod swc_test;
+#[cfg(test)]
+mod ts_test;
 
 trait Builder {
     fn build(
@@ -75,10 +81,41 @@ impl LambdaFnBuild {
     }
 
     pub async fn build(&self) -> Result<Vec<SourcePath>, anyhow::Error> {
-        let mut sources = vec![self.builder.build(
-            &self.source_parser.parse(self.entrypoint.clone())?,
-            &self.build_dir,
-        )?];
+        let import_resolver = {
+            self.project_details
+                .runtime_config
+                .lock()
+                .unwrap()
+                .import_resolver(&self.lambda_fn.language)
+        };
+        let fn_sources = parse_fn_sources(
+            &self.entrypoint,
+            self.source_parser.clone(),
+            import_resolver,
+        )
+        .await?;
+        let mut sources = self.build_fn_sources(fn_sources)?;
+        sources.append(&mut self.build_runtime_sources()?);
+        Ok(sources)
+    }
+
+    // todo optimize with parallelism
+    fn build_fn_sources(
+        &self,
+        fn_sources: HashSet<SourcePath>,
+    ) -> Result<Vec<SourcePath>, anyhow::Error> {
+        let mut result = Vec::new();
+        for fn_source in fn_sources {
+            result.push(
+                self.builder
+                    .build(&self.source_parser.parse(fn_source)?, &self.build_dir)?,
+            );
+        }
+        Ok(result)
+    }
+
+    // todo optimize with parallelism
+    fn build_runtime_sources(&self) -> Result<Vec<SourcePath>, anyhow::Error> {
         let runtime_sources = {
             self.project_details
                 .runtime_config
@@ -86,10 +123,11 @@ impl LambdaFnBuild {
                 .unwrap()
                 .runtime_sources(&self.lambda_fn.language)
         };
+        let mut result = Vec::new();
         for runtime_source in runtime_sources {
             if let Some(language) = runtime_source.language() {
                 if language == self.lambda_fn.language {
-                    sources.push(self.builder.build(
+                    result.push(self.builder.build(
                         &self.source_parser.parse(self.entrypoint.clone())?,
                         &self.build_dir,
                     )?);
@@ -97,13 +135,44 @@ impl LambdaFnBuild {
                 }
             }
             if runtime_source.abs.is_file() {
-                sources.push(runtime_source);
+                result.push(runtime_source);
             }
         }
-        Ok(sources)
+        Ok(result)
     }
 
     pub async fn create_code_archive(&self) -> Result<Archive, anyhow::Error> {
         Archiver::new(self.build_dir.abs.clone(), self.build().await?).write()
     }
+}
+
+// todo recursively parse sources
+// todo prevent circular dependency infinite loop
+// todo optimize with parallelism
+// todo LambdaFnBuild could be generified to have a runtime language's intermediary AST type as the
+//  signature to build and parse APIs, optimizing a parse -> build workflow having to parse the AST
+//  a second time for the build step
+async fn parse_fn_sources(
+    entrypoint_path: &SourcePath,
+    source_parser: Arc<Box<dyn SourceParser>>,
+    import_resolver: Arc<Box<dyn ImportResolver>>,
+) -> Result<HashSet<SourcePath>, anyhow::Error> {
+    let entrypoint = source_parser.parse(entrypoint_path.clone())?;
+    let mut result: HashSet<SourcePath> = HashSet::new();
+    match entrypoint.imports {
+        ModuleImports::Unprocessed(imports) => {
+            for import in imports {
+                match import_resolver.resolve(&entrypoint.path, import.as_str()) {
+                    ModuleImport::RelativeSource(relative_source) => {
+                        result.insert(relative_source);
+                    }
+                    ModuleImport::Unknown(_) => panic!(),
+                    ModuleImport::PackageDependency { .. } => todo!(),
+                }
+            }
+        }
+        _ => panic!(),
+    }
+    result.insert(entrypoint.path);
+    Ok(result)
 }

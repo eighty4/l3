@@ -1,6 +1,7 @@
-use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+use std::process::{Command, Stdio};
 use std::sync::{Arc, Mutex};
+use std::{fs, io};
 
 use aws_config::{BehaviorVersion, Region, SdkConfig};
 use aws_sdk_iam::primitives::DateTime;
@@ -27,6 +28,8 @@ pub struct ProjectTest {
     temp_dir: TempDir,
     #[allow(unused)]
     sources: Vec<TestSource>,
+    verify_with_runtime: bool,
+    write_project_sources: Option<String>,
 }
 
 impl ProjectTest {
@@ -85,6 +88,57 @@ impl ProjectTest {
             .map(|s| self.source_path(s.rel_path.to_string_lossy().as_ref()))
             .collect()
     }
+
+    pub fn verify_runtime(&self) -> Result<(), anyhow::Error> {
+        for source in &self.sources {
+            if source.rel_path.starts_with("routes") {
+                match Language::from_extension(&source.rel_path) {
+                    Some(Language::JavaScript) => {
+                        let completed_command = Command::new("node")
+                            .arg(&source.abs_path)
+                            .stdout(Stdio::piped())
+                            .stderr(Stdio::piped())
+                            .spawn()?
+                            .wait_with_output()?;
+                        if completed_command.status.code().unwrap() != 0 {
+                            println!(
+                                "!!! `node {}`\n!!! stdout:\n{}\n!!! stderr:\n{}",
+                                &source.abs_path.to_string_lossy(),
+                                String::from_utf8_lossy(completed_command.stdout.as_slice()),
+                                String::from_utf8_lossy(completed_command.stderr.as_slice()),
+                            );
+                            panic!();
+                        }
+                    }
+                    _ => todo!(),
+                }
+            }
+        }
+        Ok(())
+    }
+
+    fn write_project_sources(&self, test_dir: &str) {
+        let out_dir = PathBuf::from("target").join("test").join(test_dir);
+        _ = fs::remove_dir(&out_dir);
+        _ = fs::create_dir_all(&out_dir);
+        for source in &self.sources {
+            let out_file = out_dir.join(&source.rel_path);
+            _ = fs::create_dir_all(out_file.parent().unwrap());
+            fs::copy(&source.abs_path, out_file).unwrap();
+        }
+        recursively_copy_dir(self.project_dir.join(".l3"), out_dir.join(".l3")).unwrap();
+    }
+}
+
+impl Drop for ProjectTest {
+    fn drop(&mut self) {
+        if self.verify_with_runtime {
+            self.verify_runtime().unwrap();
+        }
+        if let Some(test_dir) = &self.write_project_sources {
+            self.write_project_sources(test_dir.as_str());
+        }
+    }
 }
 
 pub struct ProjectTestBuilder {
@@ -92,6 +146,8 @@ pub struct ProjectTestBuilder {
     build_mode: Option<BuildMode>,
     project_name: Option<String>,
     sources: Vec<TestSourceBuilder>,
+    verify_with_runtime: bool,
+    write_project_sources: Option<String>,
 }
 
 impl ProjectTestBuilder {
@@ -101,6 +157,8 @@ impl ProjectTestBuilder {
             build_mode: None,
             project_name: None,
             sources: Vec::new(),
+            verify_with_runtime: false,
+            write_project_sources: None,
         }
     }
 
@@ -147,6 +205,8 @@ impl ProjectTestBuilder {
             temp_dir,
             project_dir,
             sources,
+            verify_with_runtime: self.verify_with_runtime,
+            write_project_sources: self.write_project_sources,
         }
     }
 
@@ -165,8 +225,23 @@ impl ProjectTestBuilder {
         self
     }
 
+    pub fn verify_with_runtime(mut self) -> Self {
+        self.verify_with_runtime = true;
+        self
+    }
+
     pub fn with_source(mut self, source: TestSourceBuilder) -> Self {
         self.sources.push(source);
+        self
+    }
+
+    pub fn with_sources(mut self, mut sources: Vec<TestSourceBuilder>) -> Self {
+        self.sources.append(&mut sources);
+        self
+    }
+
+    pub fn write_project_sources(mut self, test_dir: &str) -> Self {
+        self.write_project_sources = Some(String::from(test_dir));
         self
     }
 }
@@ -302,4 +377,18 @@ impl TestSourceBuilder {
         self.checksum = TestSourceChecksum::None;
         self
     }
+}
+
+fn recursively_copy_dir(src: impl AsRef<Path>, dest: impl AsRef<Path>) -> io::Result<()> {
+    fs::create_dir_all(&dest)?;
+    for entry in fs::read_dir(src)? {
+        let entry = entry?;
+        let file_type = entry.file_type()?;
+        if file_type.is_dir() {
+            recursively_copy_dir(entry.path(), dest.as_ref().join(entry.file_name()))?;
+        } else {
+            fs::copy(entry.path(), dest.as_ref().join(entry.file_name()))?;
+        }
+    }
+    Ok(())
 }

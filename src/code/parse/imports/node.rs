@@ -22,9 +22,11 @@ impl NodeImportResolver {
 impl ImportResolver for NodeImportResolver {
     fn resolve(&self, from: &SourcePath, import: &str) -> ModuleImport {
         if import.starts_with('.') {
-            ModuleImport::RelativeSource(from.to_relative_source(&PathBuf::from(import)))
-        } else {
-            ModuleImport::Unknown(import.to_string())
+            let maybe_source_path = from.to_relative_source(&PathBuf::from(import));
+            if maybe_source_path.rel.extension().is_some() && maybe_source_path.abs.is_file() {
+                return ModuleImport::RelativeSource(maybe_source_path);
+            }
         }
+        ModuleImport::Unknown(import.to_string())
     }
 }
