@@ -41,7 +41,7 @@ pub async fn develop_project(dev_options: DevOptions) -> Result<(), anyhow::Erro
 
     println!("λλλ dev");
     println!("  project: {}", &project_deets.project_name);
-    println!("  region: {}", &project_deets.aws.region);
+    println!("  region: {}", &project_deets.aws.sdk_clients.region());
     println!("  api id: {}", &project_deets.aws.api.id);
     println!();
 

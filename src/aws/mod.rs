@@ -2,14 +2,12 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use anyhow::anyhow;
-use aws_config::Region;
 use aws_sdk_iam::types::Role;
 
 use crate::aws::clients::AwsClients;
 use crate::aws::preflight::AwsPreflightData;
 
 pub(crate) mod clients;
-mod config;
 mod fetch;
 pub(crate) mod lambda;
 pub(crate) mod preflight;
@@ -41,7 +39,6 @@ pub struct AwsDeets {
     pub api: AwsApiDeets,
     pub lambda_role: Role,
     pub sdk_clients: AwsClients,
-    pub region: Region,
 }
 
 impl From<AwsPreflightData> for AwsDeets {
@@ -50,7 +47,6 @@ impl From<AwsPreflightData> for AwsDeets {
             account_id: v.account_id,
             api: v.api,
             lambda_role: v.lambda_role,
-            region: v.region,
             sdk_clients: v.sdk_clients,
         }
     }

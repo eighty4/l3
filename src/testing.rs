@@ -180,10 +180,10 @@ impl ProjectTestBuilder {
                     id: api_id.clone(),
                     stage_name: "development".to_string(),
                 },
-                region: Region::new("us-east-1"),
                 sdk_clients: AwsClients::from(
-                    &SdkConfig::builder()
+                    SdkConfig::builder()
                         .behavior_version(BehaviorVersion::v2024_03_28())
+                        .region(Region::new("us-east-1"))
                         .build(),
                 ),
                 lambda_role: Role::builder()

@@ -119,7 +119,7 @@ pub async fn add_api_gateway_invoke_permission(
 ) -> Result<(), anyhow::Error> {
     let source_arn = format!(
         "arn:aws:execute-api:{}:{}:{}/{}/{}/{}",
-        project_deets.aws.region,
+        project_deets.aws.sdk_clients.region(),
         project_deets.aws.account_id,
         project_deets.aws.api.id,
         project_deets.aws.api.stage_name,

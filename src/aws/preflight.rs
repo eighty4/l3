@@ -1,19 +1,16 @@
 use std::path::Path;
 
 use anyhow::anyhow;
-use aws_config::Region;
 use aws_sdk_apigatewayv2::types::ProtocolType;
 use aws_sdk_iam::types::Role;
 
 use crate::aws::clients::AwsClients;
-use crate::aws::config::load_sdk_config;
 use crate::aws::{AwsApiConfig, AwsApiDeets, AwsDataDir, DEFAULT_STAGE_NAME};
 
 pub struct AwsPreflightData {
     pub account_id: String,
     pub api: AwsApiDeets,
     pub lambda_role: Role,
-    pub region: Region,
     pub sdk_clients: AwsClients,
 }
 
@@ -23,18 +20,16 @@ impl AwsPreflightData {
         project_dir: &Path,
         project_name: &String,
     ) -> Result<Self, anyhow::Error> {
-        let sdk_config = load_sdk_config().await;
-        let sdk_clients = AwsClients::from(&sdk_config);
+        let sdk_clients = AwsClients::new(project_name).await?;
+        sdk_clients.expect_credentials().await?;
         let api =
             validate_or_create_api(api_config, project_dir, project_name, &sdk_clients).await?;
         let account_id = get_account_id(&sdk_clients.iam).await?;
         let lambda_role = create_lambda_role(&sdk_clients.iam, project_name).await?;
-        let region = sdk_config.region().cloned().unwrap();
         Ok(Self {
             account_id,
             api,
             lambda_role,
-            region,
             sdk_clients,
         })
     }
@@ -114,7 +109,7 @@ async fn does_api_exist(
 }
 
 async fn get_account_id(iam: &aws_sdk_iam::Client) -> Result<String, anyhow::Error> {
-    let user_arn = iam.get_user().send().await.unwrap().user.unwrap().arn;
+    let user_arn = iam.get_user().send().await?.user.unwrap().arn;
     Ok(user_arn.split(':').nth(4).unwrap().to_string())
 }
 

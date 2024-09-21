@@ -50,7 +50,7 @@ pub(crate) async fn sync_project(sync_options: SyncOptions) -> Result<(), anyhow
 
     println!("λλλ sync");
     println!("  project: {}", &project_deets.project_name);
-    println!("  region: {}", &project_deets.aws.region);
+    println!("  region: {}", &project_deets.aws.sdk_clients.region());
     println!("  api id: {}", &project_deets.aws.api.id);
 
     if !sync_options.auto_confirm && !prompt_for_confirmation("\n  Continue with syncing?") {
@@ -111,7 +111,7 @@ pub(crate) async fn sync_project(sync_options: SyncOptions) -> Result<(), anyhow
             "{} https://{}.execute-api.{}.amazonaws.com/development/{}",
             lambda_fn.route_key.http_method,
             &project_deets.aws.api.id,
-            &project_deets.aws.region,
+            &project_deets.aws.sdk_clients.region(),
             lambda_fn.route_key.http_path,
         );
     }
