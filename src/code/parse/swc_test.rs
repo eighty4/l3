@@ -21,7 +21,6 @@ async fn test_parse_source_file_parses_es_export_fn() {
     }
 }
 
-#[ignore]
 #[tokio::test]
 async fn test_parse_source_file_parses_es_export_fn_assignment() {
     for path in &["lambda.js", "lambda.mjs"] {
@@ -51,9 +50,13 @@ async fn test_parse_source_file_parses_es_import_module() {
         let project_test =
             ProjectTest::with_file(path, "import {dbHelper} from '../db.js'\nconst string = ''");
         let module = project_test.source_file(path);
-        let imports = ModuleImports::Unprocessed(vec!["../db.js".to_string()]);
         assert!(module.exported_fns.is_empty());
-        assert!(matches!(module.imports, imports));
+        match module.imports {
+            ModuleImports::Unprocessed(imports) => {
+                assert_eq!(imports, vec!["../db.js".to_string()]);
+            }
+            _ => panic!(),
+        }
     }
 }
 
@@ -77,9 +80,13 @@ async fn test_parse_source_file_parses_ts_import_module() {
         "import {dbHelper} from '../db.js'\nconst v: string = ''",
     );
     let module = project_test.source_file(path);
-    let imports = ModuleImports::Unprocessed(vec!["../db.js".to_string()]);
     assert!(module.exported_fns.is_empty());
-    assert!(matches!(module.imports, imports));
+    match module.imports {
+        ModuleImports::Unprocessed(imports) => {
+            assert_eq!(imports, vec!["../db.js".to_string()]);
+        }
+        _ => panic!(),
+    }
 }
 
 #[tokio::test]
@@ -100,7 +107,6 @@ async fn test_parse_source_file_parses_ts_export_fn() {
     assert!(matches!(module.imports, ModuleImports::Empty));
 }
 
-#[ignore]
 #[tokio::test]
 async fn test_parse_source_file_parses_ts_export_fn_assignment() {
     let path = "lambda.ts";

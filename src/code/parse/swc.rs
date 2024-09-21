@@ -81,6 +81,7 @@ fn create_ast(language: &Language, path: &SourcePath) -> Result<Module, anyhow::
     }
 }
 
+// todo use visitor pattern to find import declarations in classes and fns
 fn parse_ast(module: Module) -> (Vec<String>, Vec<String>) {
     let mut exported_fns: Vec<String> = Vec::new();
     let mut imports: Vec<String> = Vec::new();
@@ -98,7 +99,7 @@ fn parse_ast(module: Module) -> (Vec<String>, Vec<String>) {
                 }) => {
                     for var_declarator in var_decl.decls {
                         if let Some(expr) = var_declarator.init {
-                            if expr.as_arrow().is_some() {
+                            if expr.as_arrow().is_some() || expr.as_fn_expr().is_some() {
                                 exported_fns.push(parse_identifier_name(
                                     var_declarator.name.ident().unwrap().as_ref(),
                                 ))
