@@ -1,6 +1,6 @@
-use std::fs;
-
 use anyhow::anyhow;
+use std::fs;
+use std::path::Path;
 use yaml_rust::{Yaml, YamlLoader};
 
 pub struct Config {
@@ -38,4 +38,32 @@ pub fn read_config() -> Result<Option<Config>, anyhow::Error> {
     } else {
         Ok(None)
     }
+}
+
+pub fn is_valid_project_name(project_name: &str) -> bool {
+    if project_name.len() < 3 || project_name.len() > 16 {
+        return false;
+    }
+    let mut chars = project_name.chars();
+    if !chars.next().map(|c| c.is_alphabetic()).unwrap() {
+        return false;
+    }
+    for c in chars {
+        let valid = c.is_alphanumeric() || c == '-' || c == '_';
+        if !valid {
+            return false;
+        }
+    }
+    !project_name
+        .chars()
+        .last()
+        .map(|c| c == '-' || c == '_')
+        .unwrap()
+}
+
+// todo rewrite invalid dir name into a valid project name
+pub fn suggested_project_name_from_directory(p: &Path) -> String {
+    debug_assert!(p.is_absolute());
+    debug_assert!(p.is_dir());
+    p.file_name().unwrap().to_string_lossy().to_string()
 }

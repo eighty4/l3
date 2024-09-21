@@ -1,21 +1,13 @@
+use crate::ui::exit::clean_exit;
+use crate::ui::prompt::terminal::match_prompt_result;
+use crossterm::terminal::enable_raw_mode;
 use crossterm::{event, terminal, QueueableCommand};
 use std::io;
 use std::io::Write;
 
-use crate::ui::exit::exit;
-
-pub fn confirm(prompt: &str) -> bool {
-    terminal::enable_raw_mode().unwrap();
-    match confirm_inner(prompt) {
-        Ok(confirm) => {
-            terminal::disable_raw_mode().unwrap();
-            confirm
-        }
-        Err(err) => {
-            terminal::disable_raw_mode().unwrap();
-            panic!("{}", err);
-        }
-    }
+pub fn prompt_for_confirmation(prompt: &str) -> bool {
+    enable_raw_mode().unwrap();
+    match_prompt_result(confirm_inner(prompt))
 }
 
 fn confirm_inner(prompt: &str) -> Result<bool, anyhow::Error> {
@@ -29,7 +21,7 @@ fn confirm_inner(prompt: &str) -> Result<bool, anyhow::Error> {
                 modifiers: event::KeyModifiers::CONTROL,
                 code: event::KeyCode::Char('c'),
                 ..
-            }) => exit(0),
+            }) => clean_exit(),
             event::Event::Key(event::KeyEvent {
                 code: event::KeyCode::Char(c),
                 ..

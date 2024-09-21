@@ -1,11 +1,12 @@
-use std::{env, process};
-
 use crate::aws::AwsApiConfig;
 use crate::code::build::BuildMode;
+use crate::code::source::Language;
 use crate::dev::{develop_project, DevOptions};
 use crate::init::{init_project, InitOptions};
 use crate::sync::{sync_project, SyncOptions};
+use crate::ui::exit::cmd_err_exit;
 use clap::{Parser, Subcommand};
+use std::env;
 
 mod aws;
 mod code;
@@ -20,8 +21,11 @@ mod task;
 mod ui;
 
 #[cfg(test)]
+mod config_test;
+#[cfg(test)]
+mod init_test;
+#[cfg(test)]
 mod lambda_test;
-
 #[cfg(test)]
 mod testing;
 
@@ -46,24 +50,34 @@ enum LambdaX3Command {
 struct InitArgs {
     #[clap(
         long,
+        help = "Runtime language for Lambda project",
+        value_parser = clap::builder::PossibleValuesParser::new([
+            "javascript", "js", "python", "py", "typescript", "ts"
+        ])
+    )]
+    language: Option<String>,
+    #[clap(
+        long,
         value_name = "PROJECT_NAME",
         help = "Defaults to current directory name"
     )]
     project_name: Option<String>,
 }
 
-impl From<InitArgs> for InitOptions {
-    fn from(args: InitArgs) -> Self {
-        Self {
-            project_name: args.project_name.unwrap_or_else(|| {
-                env::current_dir()
-                    .unwrap()
-                    .file_name()
-                    .unwrap()
-                    .to_string_lossy()
-                    .to_string()
+impl TryFrom<InitArgs> for InitOptions {
+    type Error = anyhow::Error;
+
+    fn try_from(args: InitArgs) -> Result<Self, Self::Error> {
+        Ok(Self {
+            language: args.language.and_then(|arg| match arg.as_str() {
+                "js" | "javascript" => Some(Language::JavaScript),
+                "py" | "python" => Some(Language::Python),
+                "ts" | "typescript" => Some(Language::TypeScript),
+                _ => None,
             }),
-        }
+            project_dir: env::current_dir()?,
+            project_name: args.project_name,
+        })
     }
 }
 
@@ -164,14 +178,13 @@ impl TryFrom<DevArgs> for DevOptions {
 #[tokio::main]
 async fn main() {
     if let Err(err) = exec_cmd(LambdaX3Cli::parse().command).await {
-        println!("error: {err}");
-        process::exit(1);
+        cmd_err_exit(err.to_string().as_str());
     }
 }
 
 async fn exec_cmd(cmd: LambdaX3Command) -> Result<(), anyhow::Error> {
     match cmd {
-        LambdaX3Command::Init(args) => init_project(InitOptions::from(args)),
+        LambdaX3Command::Init(args) => init_project(InitOptions::try_from(args)?),
         LambdaX3Command::Sync(args) => sync_project(SyncOptions::try_from(args)?).await,
         LambdaX3Command::Dev(args) => develop_project(DevOptions::try_from(args)?).await,
     }

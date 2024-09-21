@@ -1,7 +1,6 @@
 use crate::notification::{
     LambdaEventKind, LambdaNotification, LambdaUpdateKind, LambdaUpdateResult,
 };
-use crate::ui::exit::exit;
 
 pub fn print_notification(notification: &LambdaNotification) {
     match notification {
@@ -24,7 +23,6 @@ pub fn print_notification(notification: &LambdaNotification) {
                         "Failed creating lambda fn {}: {error_msg}",
                         lambda_event.lambda_fn.route_key.to_route_key_string()
                     );
-                    exit(1);
                 }
             },
             LambdaEventKind::Removing => {
@@ -45,7 +43,6 @@ pub fn print_notification(notification: &LambdaNotification) {
                         "Failed removing lambda fn {}: {error_msg}",
                         lambda_event.lambda_fn.route_key.to_route_key_string()
                     );
-                    exit(1);
                 }
             },
             LambdaEventKind::Updating(kind) => {
@@ -81,7 +78,6 @@ pub fn print_notification(notification: &LambdaNotification) {
                             LambdaUpdateKind::Env => "env",
                         }
                     );
-                    exit(1);
                 }
             },
         },

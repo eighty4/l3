@@ -8,9 +8,9 @@ use crate::notification::{LambdaEvent, LambdaEventKind, LambdaNotification, Lamb
 use crate::project::Lx3ProjectDeets;
 use crate::task::executor::TaskExecutor;
 use crate::task::pool::TaskPool;
-use crate::ui::confirm::confirm;
 use crate::ui::dev::print_notification;
 use crate::ui::exit::err_exit;
+use crate::ui::prompt::confirm::prompt_for_confirmation;
 use std::path::PathBuf;
 use std::process;
 
@@ -61,7 +61,7 @@ pub async fn develop_project(dev_options: DevOptions) -> Result<(), anyhow::Erro
         }
     }
 
-    if !dev_options.auto_confirm && !confirm("\n  Start dev mode?") {
+    if !dev_options.auto_confirm && !prompt_for_confirmation("\n  Start dev mode?") {
         println!("  Cancelling dev mode!");
         process::exit(0);
     }

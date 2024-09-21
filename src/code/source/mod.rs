@@ -3,6 +3,7 @@ use crate::code::source::path::{SourceKind, SourcePath};
 use crate::lambda::{HttpMethod, LambdaFn, RouteKey};
 use crate::project::Lx3ProjectDeets;
 use std::collections::HashMap;
+use std::fmt::{Display, Formatter};
 use std::path::Path;
 use std::sync::Arc;
 
@@ -32,6 +33,16 @@ impl Language {
             "py" => Some(Language::Python),
             "ts" => Some(Language::TypeScript),
             &_ => None,
+        }
+    }
+}
+
+impl Display for Language {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Language::JavaScript => write!(f, "JavaScript"),
+            Language::TypeScript => write!(f, "TypeScript"),
+            Language::Python => write!(f, "Python"),
         }
     }
 }

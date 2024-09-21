@@ -9,7 +9,7 @@ use crate::code::runtime::RuntimeConfig;
 use crate::code::source::tree::SourceTree;
 use crate::project::Lx3ProjectDeets;
 use crate::sync::SyncTask::RemoveFn;
-use crate::ui::confirm::confirm;
+use crate::ui::prompt::confirm::prompt_for_confirmation;
 use std::path::PathBuf;
 use std::process;
 use tokio::task::JoinSet;
@@ -53,7 +53,7 @@ pub(crate) async fn sync_project(sync_options: SyncOptions) -> Result<(), anyhow
     println!("  region: {}", &project_deets.aws.region);
     println!("  api id: {}", &project_deets.aws.api.id);
 
-    if !sync_options.auto_confirm && !confirm("\n  Continue with syncing?") {
+    if !sync_options.auto_confirm && !prompt_for_confirmation("\n  Continue with syncing?") {
         println!("  Cancelling sync operations!");
         process::exit(0);
     }
