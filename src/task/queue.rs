@@ -1,5 +1,6 @@
 use crate::task::executor::TaskExecutor;
 use crate::task::LambdaTask;
+use crate::ui::exit::err_exit;
 use std::collections::VecDeque;
 use std::sync::Arc;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
@@ -65,7 +66,12 @@ impl BuildQueueEventLoop {
         let task_executor = self.task_executor.clone();
         let msg_tx = self.msg_tx.clone();
         self.build = Some(spawn(async move {
-            task_executor.start_task(lambda_task).await;
+            if let Err(err) = task_executor.start_lambda_task(&lambda_task).await.unwrap() {
+                err_exit(format!("lambda task failure: {err}").as_str())
+            }
+            if let Some(completed) = lambda_task.completed {
+                let _ = completed.send(());
+            }
             msg_tx.send(TaskQueueMessage::Dequeue).unwrap();
         }));
     }

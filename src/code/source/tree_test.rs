@@ -1,7 +1,8 @@
 use crate::code::source::tree::SourceTree;
 use crate::code::source::Language;
 use crate::lambda::{HttpMethod, RouteKey};
-use crate::testing::{ProjectTest, TestSource};
+use crate::testing::project::ProjectTest;
+use crate::testing::source::TestSource;
 use std::path::PathBuf;
 
 #[tokio::test]
@@ -17,7 +18,7 @@ async fn test_sources_api_refresh_routes() {
         )
         .build();
 
-    let (source_tree, sources_api) = SourceTree::new(project_test.project_deets.clone());
+    let (source_tree, sources_api) = SourceTree::new(project_test.project.clone());
     sources_api.refresh_routes().await.unwrap();
 
     let mut source_tree = source_tree.lock().unwrap();

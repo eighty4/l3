@@ -1,11 +1,12 @@
 use aws_sdk_apigatewayv2::types::{Integration, Route};
-use aws_sdk_lambda::types::{EnvironmentResponse, FunctionConfiguration};
+use aws_sdk_lambda::types::{EnvironmentResponse, FunctionConfiguration, Runtime};
 use std::collections::HashMap;
 
-use crate::aws::state::DeployedProjectState;
+use crate::aws::resources::state::DeployedProjectState;
 use crate::code::env::EnvVarSources;
 use crate::lambda::{HttpMethod, LambdaFn, RouteKey};
-use crate::testing::{ProjectTest, TestSource};
+use crate::testing::project::ProjectTest;
+use crate::testing::source::TestSource;
 
 #[tokio::test]
 async fn test_deployed_state_resolves_lambda_components_by_route_key() {
@@ -22,7 +23,7 @@ async fn test_deployed_state_resolves_lambda_components_by_route_key() {
         EnvVarSources::new(&project_test.project_dir, &route_key).unwrap(),
         "GET".to_string(),
         project_test.source_path("routes/some/function/lambda.js"),
-        project_test.project_deets.clone(),
+        project_test.project.clone(),
         route_key,
     );
     let state = DeployedProjectState::new(
@@ -31,9 +32,11 @@ async fn test_deployed_state_resolves_lambda_components_by_route_key() {
             FunctionConfiguration::builder()
                 .function_arn("not the function arn")
                 .function_name("l3-other_project-not the function name")
+                .handler("")
+                .role("")
+                .runtime(Runtime::Nodejs20x)
                 .build(),
             FunctionConfiguration::builder()
-                .function_arn("arn:aws:lambda:region:account:l3-this_project-some-function-get")
                 .environment(
                     EnvironmentResponse::builder()
                         .set_variables(Some(HashMap::from([(
@@ -42,7 +45,11 @@ async fn test_deployed_state_resolves_lambda_components_by_route_key() {
                         )])))
                         .build(),
                 )
+                .function_arn("arn:aws:lambda:region:account:l3-this_project-some-function-get")
                 .function_name("l3-this_project-some-function-get")
+                .handler("")
+                .role("")
+                .runtime(Runtime::Python312)
                 .build(),
         ],
         vec![
@@ -69,23 +76,26 @@ async fn test_deployed_state_resolves_lambda_components_by_route_key() {
         ],
     );
     let components = state.get_deployed_components(&lambda_fn);
-    assert_eq!(components.route.unwrap(), "route id");
-    let (integration_id, integration_uri) = components.integration.unwrap();
-    assert_eq!(integration_id, "integration id");
+    assert_eq!(components.route.unwrap().id, "route id");
+    let integration = components.integration.unwrap();
+    assert_eq!(integration.id, "integration id");
     assert_eq!(
-        integration_uri,
+        integration.integration_uri,
+        "arn:aws:lambda:region:account:l3-this_project-some-function-get"
+    );
+    let function = components.function.unwrap();
+    assert_eq!(
+        &function.arn,
         "arn:aws:lambda:region:account:l3-this_project-some-function-get"
     );
     assert_eq!(
-        components.function_arn.unwrap(),
-        "arn:aws:lambda:region:account:l3-this_project-some-function-get"
-    );
-    assert_eq!(
-        components.function_env.get(&"KEY".to_string()).unwrap(),
+        &function
+            .env
+            .as_ref()
+            .and_then(|env| env.get(&"KEY".to_string()))
+            .cloned()
+            .unwrap(),
         &"VAL".to_string()
     );
-    assert_eq!(
-        components.function_name.unwrap(),
-        "l3-this_project-some-function-get"
-    );
+    assert_eq!(&function.name, "l3-this_project-some-function-get");
 }

@@ -1,4 +1,5 @@
 use crate::lambda::RouteKey;
+use tokio::sync::oneshot;
 
 pub mod executor;
 pub mod launch;
@@ -7,6 +8,7 @@ mod queue;
 pub mod translation;
 
 pub struct LambdaTask {
+    pub completed: Option<oneshot::Sender<()>>,
     pub kind: LambdaTaskKind,
     pub route_key: RouteKey,
 }

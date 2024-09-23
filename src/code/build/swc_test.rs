@@ -3,7 +3,8 @@ use std::fs;
 use crate::code::build::swc::{compile_ts, compile_ts_file, minify_js, minify_js_file, SwcBuilder};
 use crate::code::build::{BuildMode, Builder};
 use crate::code::source::path::{FunctionBuildDir, SourceKind};
-use crate::testing::{ProjectTest, TestSource};
+use crate::testing::project::ProjectTest;
+use crate::testing::source::TestSource;
 
 #[tokio::test]
 async fn test_swc_builder_development_mode_returns_original_source_path() {
@@ -13,9 +14,8 @@ async fn test_swc_builder_development_mode_returns_original_source_path() {
         )
         .build();
     let source_file = &project_test.source_file("routes/data/lambda.js");
-    let build_dir =
-        FunctionBuildDir::new(&project_test.project_deets, &"l3-get-data-fn".to_string());
-    let built_path = SwcBuilder::new(project_test.project_deets.clone())
+    let build_dir = FunctionBuildDir::new(&project_test.project, &"l3-get-data-fn".to_string());
+    let built_path = SwcBuilder::new(project_test.project.clone())
         .build(source_file, &build_dir)
         .unwrap();
     assert!(matches!(built_path.kind, SourceKind::OriginalSource));
@@ -38,9 +38,8 @@ async fn test_swc_builder_development_mode_writes_ts_to_build_dir() {
         )
         .build();
     let source_file = &project_test.source_file("routes/data/lambda.ts");
-    let build_dir =
-        FunctionBuildDir::new(&project_test.project_deets, &"l3-get-data-fn".to_string());
-    let built_path = SwcBuilder::new(project_test.project_deets.clone())
+    let build_dir = FunctionBuildDir::new(&project_test.project, &"l3-get-data-fn".to_string());
+    let built_path = SwcBuilder::new(project_test.project.clone())
         .build(source_file, &build_dir)
         .unwrap();
     assert!(matches!(built_path.kind, SourceKind::FunctionBuild(_)));

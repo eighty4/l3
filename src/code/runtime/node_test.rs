@@ -1,6 +1,7 @@
 use crate::code::runtime::node::NodePackageManager::{Npm, Pnpm};
 use crate::code::runtime::node::{read_node_config, NodeConditionalImportKind};
-use crate::testing::{ProjectTest, TestSource};
+use crate::testing::project::ProjectTest;
+use crate::testing::source::TestSource;
 use std::path::PathBuf;
 
 #[tokio::test]

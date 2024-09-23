@@ -1,52 +1,53 @@
-use std::fs;
-use std::path::{Path, PathBuf};
-
 use anyhow::anyhow;
 use aws_sdk_iam::types::Role;
+use std::fs;
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use crate::aws::clients::AwsClients;
 use crate::aws::preflight::AwsPreflightData;
+use crate::aws::resources::repository::AwsResources;
 
 pub(crate) mod clients;
-mod fetch;
-pub(crate) mod lambda;
 pub(crate) mod preflight;
-pub(crate) mod state;
+pub(crate) mod resources;
 pub(crate) mod tasks;
-
-#[cfg(test)]
-mod lambda_test;
-
-#[cfg(test)]
-mod state_test;
 
 pub const DEFAULT_STAGE_NAME: &str = "development";
 
 /// Program inputs specifying AWS Api Gateway resources and names.
-pub struct AwsApiConfig {
+pub struct AwsApiGatewayConfig {
     pub api_id: Option<String>,
     pub stage_name: Option<String>,
 }
 
-/// API Gateway API and Stage identities.
-pub struct AwsApiDeets {
+/// API Gateway id and Stage identities.
+pub struct AwsApiGateway {
     pub id: String,
     pub stage_name: String,
 }
 
-pub struct AwsDeets {
-    pub account_id: String,
-    pub api: AwsApiDeets,
-    pub lambda_role: Role,
-    pub sdk_clients: AwsClients,
+impl AwsApiGateway {
+    pub fn new(id: String, stage_name: String) -> Arc<Self> {
+        Arc::new(Self { id, stage_name })
+    }
 }
 
-impl From<AwsPreflightData> for AwsDeets {
+pub struct AwsProject {
+    pub account_id: String,
+    pub api: Arc<AwsApiGateway>,
+    pub lambda_role: Role,
+    pub resources: Arc<AwsResources>,
+    pub sdk_clients: Arc<AwsClients>,
+}
+
+impl From<AwsPreflightData> for AwsProject {
     fn from(v: AwsPreflightData) -> Self {
         Self {
             account_id: v.account_id,
             api: v.api,
             lambda_role: v.lambda_role,
+            resources: v.resources,
             sdk_clients: v.sdk_clients,
         }
     }

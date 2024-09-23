@@ -1,22 +1,24 @@
-use std::path::Path;
-
 use anyhow::anyhow;
 use aws_sdk_apigatewayv2::types::ProtocolType;
 use aws_sdk_iam::types::Role;
+use std::path::Path;
+use std::sync::Arc;
 
 use crate::aws::clients::AwsClients;
-use crate::aws::{AwsApiConfig, AwsApiDeets, AwsDataDir, DEFAULT_STAGE_NAME};
+use crate::aws::resources::repository::AwsResources;
+use crate::aws::{AwsApiGateway, AwsApiGatewayConfig, AwsDataDir, DEFAULT_STAGE_NAME};
 
 pub struct AwsPreflightData {
     pub account_id: String,
-    pub api: AwsApiDeets,
+    pub api: Arc<AwsApiGateway>,
     pub lambda_role: Role,
-    pub sdk_clients: AwsClients,
+    pub resources: Arc<AwsResources>,
+    pub sdk_clients: Arc<AwsClients>,
 }
 
 impl AwsPreflightData {
     pub async fn initialize(
-        api_config: &AwsApiConfig,
+        api_config: &AwsApiGatewayConfig,
         project_dir: &Path,
         project_name: &String,
     ) -> Result<Self, anyhow::Error> {
@@ -26,21 +28,23 @@ impl AwsPreflightData {
             validate_or_create_api(api_config, project_dir, project_name, &sdk_clients).await?;
         let account_id = get_account_id(&sdk_clients.iam).await?;
         let lambda_role = create_lambda_role(&sdk_clients.iam, project_name).await?;
+        let resources = AwsResources::new(api.clone(), project_name.clone(), sdk_clients.clone());
         Ok(Self {
             account_id,
             api,
             lambda_role,
+            resources,
             sdk_clients,
         })
     }
 }
 
 async fn validate_or_create_api(
-    api_config: &AwsApiConfig,
+    api_config: &AwsApiGatewayConfig,
     project_dir: &Path,
     project_name: &String,
     sdk_clients: &AwsClients,
-) -> Result<AwsApiDeets, anyhow::Error> {
+) -> Result<Arc<AwsApiGateway>, anyhow::Error> {
     let maybe_api_id = match &api_config.api_id {
         None => AwsDataDir::read_cached_api_id(project_dir)?,
         Some(api_id) => Some(api_id.clone()),
@@ -65,7 +69,7 @@ async fn validate_or_create_api(
             Err(err) => Err(anyhow!("error verifying api {api_id} exists: {err}")),
         },
     }?;
-    Ok(AwsApiDeets { id, stage_name })
+    Ok(AwsApiGateway::new(id, stage_name))
 }
 
 async fn create_api(
@@ -128,6 +132,7 @@ async fn create_lambda_role(
             .await?
             .role;
     }
+    // todo check if attach-role_policy is idempotent?
     iam.attach_role_policy()
         .role_name(&role_name)
         .policy_arn("arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole")

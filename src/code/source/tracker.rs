@@ -1,7 +1,7 @@
 use crate::code::runtime::RuntimeConfigApi;
 use crate::code::source::tree::SourcesApi;
 use crate::code::source::watcher::{FileUpdate, FileUpdateKind, FileWatcher, SpecialFile};
-use crate::project::Lx3ProjectDeets;
+use crate::project::Lx3Project;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -14,7 +14,7 @@ struct SourceTrackerEventLoop {
     file_watcher: Arc<Mutex<FileWatcher>>,
     /// Interval used to debounce FileWatcher updates
     update_interval: Interval,
-    project_deets: Arc<Lx3ProjectDeets>,
+    project: Arc<Lx3Project>,
     runtime_config_api: Arc<RuntimeConfigApi>,
     sources_api: Arc<SourcesApi>,
     /// FileUpdate events queued until the next syncing interval
@@ -25,7 +25,7 @@ impl SourceTrackerEventLoop {
     fn new(
         file_rx: Receiver<FileUpdate>,
         file_watcher: Arc<Mutex<FileWatcher>>,
-        project_deets: Arc<Lx3ProjectDeets>,
+        project: Arc<Lx3Project>,
         runtime_config_api: Arc<RuntimeConfigApi>,
         sources_api: Arc<SourcesApi>,
     ) -> Self {
@@ -33,7 +33,7 @@ impl SourceTrackerEventLoop {
             file_rx,
             file_watcher,
             update_interval: interval(Duration::from_secs(1)),
-            project_deets,
+            project,
             runtime_config_api,
             sources_api,
             update_queue: Vec::new(),
@@ -86,19 +86,16 @@ pub struct SourceTracker {
 
 impl SourceTracker {
     pub fn new(
-        project_deets: Arc<Lx3ProjectDeets>,
+        project: Arc<Lx3Project>,
         runtime_config_api: Arc<RuntimeConfigApi>,
         sources_api: Arc<SourcesApi>,
     ) -> Self {
         let (tx, rx) = channel(10);
-        let file_watcher = Arc::new(Mutex::new(FileWatcher::new(
-            project_deets.project_dir.clone(),
-            tx,
-        )));
+        let file_watcher = Arc::new(Mutex::new(FileWatcher::new(project.dir.clone(), tx)));
         let mut event_loop = SourceTrackerEventLoop::new(
             rx,
             file_watcher.clone(),
-            project_deets,
+            project,
             runtime_config_api,
             sources_api.clone(),
         );

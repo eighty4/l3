@@ -9,7 +9,7 @@ pub fn match_prompt_result<T>(r: Result<T, anyhow::Error>) -> T {
             v
         }
         Err(e) => {
-            _ = disable_raw_mode();
+            let _ = disable_raw_mode();
             panic!("{}", e);
         }
     }

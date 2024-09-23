@@ -1,16 +1,16 @@
 #[derive(Clone)]
-pub struct PythonDeets {
+pub struct PythonConfig {
     #[allow(unused)]
     is_slow_runtime: bool,
 }
 
-impl PythonDeets {
-    fn read_is_slow_runtime() -> bool {
+impl PythonConfig {
+    pub fn read_is_slow_runtime() -> bool {
         true
     }
 }
 
-impl Default for PythonDeets {
+impl Default for PythonConfig {
     fn default() -> Self {
         Self {
             is_slow_runtime: true,

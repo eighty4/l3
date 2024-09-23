@@ -2,8 +2,8 @@ use anyhow::anyhow;
 use aws_config::meta::region::RegionProviderChain;
 use aws_config::{AppName, BehaviorVersion, Region, SdkConfig};
 use aws_sdk_iam::config::ProvideCredentials;
+use std::sync::Arc;
 
-#[derive(Clone)]
 pub struct AwsClients {
     pub api_gateway: aws_sdk_apigatewayv2::Client,
     pub iam: aws_sdk_iam::Client,
@@ -12,15 +12,14 @@ pub struct AwsClients {
 }
 
 impl AwsClients {
-    // todo parameterize region from config
-    pub async fn new(project_name: &str) -> Result<AwsClients, anyhow::Error> {
-        Ok(Self::from(
+    pub async fn new(project_name: &str) -> Result<Arc<AwsClients>, anyhow::Error> {
+        Ok(Arc::new(Self::from(
             aws_config::defaults(BehaviorVersion::v2024_03_28())
                 .app_name(AppName::new(Self::create_app_name(project_name))?)
                 .region(RegionProviderChain::default_provider().or_else("us-east-1"))
                 .load()
                 .await,
-        ))
+        )))
     }
 
     pub async fn expect_credentials(&self) -> Result<(), anyhow::Error> {

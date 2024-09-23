@@ -7,7 +7,7 @@ use anyhow::anyhow;
 use crate::code::env::EnvVarSources;
 use crate::code::source::path::{FunctionBuildDir, SourcePath};
 use crate::code::source::Language;
-use crate::project::Lx3ProjectDeets;
+use crate::project::Lx3Project;
 
 fn create_fn_name(project_name: &String, route_key: &RouteKey) -> String {
     format!(
@@ -125,13 +125,13 @@ impl LambdaFn {
         env_var_sources: EnvVarSources,
         handler_fn: String,
         path: SourcePath,
-        project_details: Arc<Lx3ProjectDeets>,
+        project: Arc<Lx3Project>,
         route_key: RouteKey,
     ) -> Self {
         debug_assert!(path.rel.starts_with("routes"));
         Self {
             env_var_sources,
-            fn_name: create_fn_name(&project_details.project_name, &route_key),
+            fn_name: create_fn_name(&project.name, &route_key),
             handler_fn,
             language: Language::from_extension(&path.rel).unwrap(),
             path,
@@ -139,8 +139,8 @@ impl LambdaFn {
         }
     }
 
-    pub fn build_dir(&self, project_deets: &Arc<Lx3ProjectDeets>) -> FunctionBuildDir {
-        FunctionBuildDir::new(project_deets, &self.fn_name)
+    pub fn build_dir(&self, project: &Arc<Lx3Project>) -> FunctionBuildDir {
+        FunctionBuildDir::new(project, &self.fn_name)
     }
 
     pub fn handler_path(&self) -> String {

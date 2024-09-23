@@ -69,7 +69,7 @@ impl FileWatcher {
                                         }
                                     }
                                 };
-                                _ = s.try_send(FileUpdate { file, kind, path });
+                                let _ = s.try_send(FileUpdate { file, kind, path });
                             },
                         };
                     }

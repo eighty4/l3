@@ -1,4 +1,5 @@
 use crate::aws::clients::AwsClients;
+use crate::aws::AwsApiGateway;
 use anyhow::anyhow;
 use aws_sdk_apigatewayv2::config::http::HttpResponse;
 use aws_sdk_apigatewayv2::error::SdkError;
@@ -7,6 +8,7 @@ use aws_sdk_apigatewayv2::operation::get_routes::GetRoutesError;
 use aws_sdk_apigatewayv2::types::{Integration, Route};
 use aws_sdk_lambda::operation::list_functions::ListFunctionsError;
 use aws_sdk_lambda::types::FunctionConfiguration;
+use std::sync::Arc;
 use tokio::task::JoinSet;
 
 const MAX_ITEMS_PER_PAGE: i32 = 20;
@@ -20,16 +22,16 @@ enum FetchResult {
 pub type FetchedData = (Vec<FunctionConfiguration>, Vec<Integration>, Vec<Route>);
 
 pub async fn fetch_project_state(
-    sdk_clients: &AwsClients,
-    api_id: &str,
+    sdk_clients: &Arc<AwsClients>,
+    api_gateway: &Arc<AwsApiGateway>,
 ) -> Result<FetchedData, anyhow::Error> {
     let mut join_set: JoinSet<Result<FetchResult, anyhow::Error>> = JoinSet::new();
     join_set.spawn(collect_functions(sdk_clients.clone()));
     join_set.spawn(collect_integrations(
         sdk_clients.clone(),
-        api_id.to_string(),
+        api_gateway.clone(),
     ));
-    join_set.spawn(collect_routes(sdk_clients.clone(), api_id.to_string()));
+    join_set.spawn(collect_routes(sdk_clients.clone(), api_gateway.clone()));
     let mut functions: Option<Vec<FunctionConfiguration>> = None;
     let mut integrations: Option<Vec<Integration>> = None;
     let mut routes: Option<Vec<Route>> = None;
@@ -58,7 +60,7 @@ pub async fn fetch_project_state(
     ))
 }
 
-async fn collect_functions(sdk_clients: AwsClients) -> Result<FetchResult, anyhow::Error> {
+async fn collect_functions(sdk_clients: Arc<AwsClients>) -> Result<FetchResult, anyhow::Error> {
     let mut functions: Vec<FunctionConfiguration> = Vec::new();
     let mut next_marker: Option<String> = None;
     loop {
@@ -81,8 +83,8 @@ async fn collect_functions(sdk_clients: AwsClients) -> Result<FetchResult, anyho
 }
 
 async fn collect_integrations(
-    sdk_clients: AwsClients,
-    api_id: String,
+    sdk_clients: Arc<AwsClients>,
+    api_gateway: Arc<AwsApiGateway>,
 ) -> Result<FetchResult, anyhow::Error> {
     let mut integrations: Vec<Integration> = Vec::new();
     let mut next_token: Option<String> = None;
@@ -90,7 +92,7 @@ async fn collect_integrations(
         let mut builder = sdk_clients
             .api_gateway
             .get_integrations()
-            .api_id(api_id.as_str())
+            .api_id(api_gateway.id.as_str())
             .max_results(MAX_ITEMS_PER_PAGE.to_string());
         if next_token.is_some() {
             builder = builder.next_token(next_token.unwrap())
@@ -107,8 +109,8 @@ async fn collect_integrations(
 }
 
 async fn collect_routes(
-    sdk_clients: AwsClients,
-    api_id: String,
+    sdk_clients: Arc<AwsClients>,
+    api_gateway: Arc<AwsApiGateway>,
 ) -> Result<FetchResult, anyhow::Error> {
     let mut routes: Vec<Route> = Vec::new();
     let mut next_token: Option<String> = None;
@@ -116,7 +118,7 @@ async fn collect_routes(
         let mut builder = sdk_clients
             .api_gateway
             .get_routes()
-            .api_id(api_id.as_str())
+            .api_id(api_gateway.id.as_str())
             .max_results(MAX_ITEMS_PER_PAGE.to_string());
         if next_token.is_some() {
             builder = builder.next_token(next_token.unwrap())

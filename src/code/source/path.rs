@@ -1,6 +1,6 @@
 use crate::code::build::BuildMode;
 use crate::code::source::Language;
-use crate::project::Lx3ProjectDeets;
+use crate::project::Lx3Project;
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf, MAIN_SEPARATOR_STR};
 use std::sync::Arc;
@@ -15,16 +15,16 @@ pub struct FunctionBuildDir {
 }
 
 impl FunctionBuildDir {
-    pub fn new(project_deets: &Arc<Lx3ProjectDeets>, fn_name: &String) -> Self {
+    pub fn new(project: &Arc<Lx3Project>, fn_name: &String) -> Self {
         let _rel = PathBuf::from(".l3")
             .join("aws")
-            .join(&project_deets.aws.api.id)
+            .join(&project.aws.api.id)
             .join(fn_name)
-            .join(match project_deets.build_mode {
+            .join(match project.build_mode {
                 BuildMode::Debug => "debug",
                 BuildMode::Release => "release",
             });
-        let abs = project_deets.project_dir.join(&_rel);
+        let abs = project.dir.join(&_rel);
         Self { abs, _rel }
     }
 }

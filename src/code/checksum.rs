@@ -73,7 +73,7 @@ impl ChecksumTree {
 
     pub fn do_env_checksums_match(
         &self,
-        deployed_env_vars: &HashMap<String, String>,
+        deployed_env_vars: &Option<HashMap<String, String>>,
         env_var_sources: &EnvVarSources,
     ) -> Result<bool, anyhow::Error> {
         let has_method_env_file = env_var_sources.method_env_file.is_some();
@@ -99,7 +99,11 @@ impl ChecksumTree {
             return Ok(false);
         }
         // only matching checksums if an env file exists or the deployed fn has no env vars
-        Ok(has_method_env_file || has_path_env_file || deployed_env_vars.is_empty())
+        Ok(has_method_env_file
+            || has_path_env_file
+            || deployed_env_vars
+                .as_ref()
+                .map_or(true, |env| env.is_empty()))
     }
 
     pub fn remove_checksum(&mut self, path: &PathBuf) {

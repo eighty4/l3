@@ -1,4 +1,4 @@
-use crate::aws::AwsApiConfig;
+use crate::aws::AwsApiGatewayConfig;
 use crate::code::build::BuildMode;
 use crate::code::source::Language;
 use crate::dev::{develop_project, DevOptions};
@@ -114,7 +114,7 @@ impl TryFrom<SyncArgs> for SyncOptions {
 
     fn try_from(args: SyncArgs) -> Result<Self, Self::Error> {
         Ok(Self {
-            aws: AwsApiConfig {
+            aws: AwsApiGatewayConfig {
                 api_id: args.api_id,
                 stage_name: None,
             },
@@ -160,7 +160,7 @@ impl TryFrom<DevArgs> for DevOptions {
 
     fn try_from(args: DevArgs) -> Result<Self, Self::Error> {
         Ok(Self {
-            aws: AwsApiConfig {
+            aws: AwsApiGatewayConfig {
                 api_id: args.api_id,
                 stage_name: None,
             },

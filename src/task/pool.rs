@@ -1,10 +1,11 @@
 use crate::lambda::RouteKey;
 use crate::task::executor::TaskExecutor;
 use crate::task::queue::BuildQueue;
-use crate::task::LambdaTask;
+use crate::task::{LambdaTask, LambdaTaskKind};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
+use tokio::sync::oneshot;
 
 struct TaskPoolEventLoop {
     lambda_task_rx: UnboundedReceiver<LambdaTask>,
@@ -61,5 +62,32 @@ impl TaskPool {
         let mut event_loop = TaskPoolEventLoop::new(Arc::new(task_executor), lambda_task_rx);
         tokio::spawn(async move { event_loop.start().await });
         Arc::new(Self { lambda_task_tx })
+    }
+
+    pub fn lambda_task(
+        &self,
+        kind: LambdaTaskKind,
+        route_key: RouteKey,
+    ) -> Result<(), anyhow::Error> {
+        self.lambda_task_tx.send(LambdaTask {
+            completed: None,
+            kind,
+            route_key,
+        })?;
+        Ok(())
+    }
+
+    pub fn lambda_task_with_reply(
+        &self,
+        kind: LambdaTaskKind,
+        route_key: RouteKey,
+    ) -> Result<oneshot::Receiver<()>, anyhow::Error> {
+        let (tx, rx) = oneshot::channel();
+        self.lambda_task_tx.send(LambdaTask {
+            completed: Some(tx),
+            kind,
+            route_key,
+        })?;
+        Ok(rx)
     }
 }

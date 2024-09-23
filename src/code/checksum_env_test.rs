@@ -1,7 +1,8 @@
 use crate::code::checksum::ChecksumTree;
 use crate::code::env::EnvVarSources;
 use crate::lambda::{HttpMethod, RouteKey};
-use crate::testing::{ProjectTest, TestSource};
+use crate::testing::project::ProjectTest;
+use crate::testing::source::TestSource;
 use std::collections::HashMap;
 use std::fs;
 
@@ -16,7 +17,7 @@ async fn test_checksum_tree_do_env_checksums_match(
     path_env: Option<HashMap<String, String>>,
     method_checksum: ChecksumState,
     path_checksum: ChecksumState,
-    deployed_env: HashMap<String, String>,
+    deployed_env: Option<HashMap<String, String>>,
     do_env_checksums_match: bool,
 ) {
     let route_key = RouteKey::new(HttpMethod::Get, "data".to_string());
@@ -93,80 +94,92 @@ fn env_map_to_string(env_map: &HashMap<String, String>) -> String {
 
 #[tokio::test]
 async fn test_with_clean_method_checksum() {
-    test_checksum_tree_do_env_checksums_match(
-        Some(HashMap::from([("KEY".to_string(), "VAL".to_string())])),
-        None,
-        ChecksumState::Clean,
-        ChecksumState::Absent,
-        HashMap::new(),
-        true,
-    )
-    .await;
+    for env in [None, Some(HashMap::new())] {
+        test_checksum_tree_do_env_checksums_match(
+            Some(HashMap::from([("KEY".to_string(), "VAL".to_string())])),
+            None,
+            ChecksumState::Clean,
+            ChecksumState::Absent,
+            env,
+            true,
+        )
+        .await;
+    }
 }
 
 #[tokio::test]
 async fn test_with_clean_path_checksum() {
-    test_checksum_tree_do_env_checksums_match(
-        None,
-        Some(HashMap::from([("KEY".to_string(), "VAL".to_string())])),
-        ChecksumState::Absent,
-        ChecksumState::Clean,
-        HashMap::new(),
-        true,
-    )
-    .await;
+    for env in [None, Some(HashMap::new())] {
+        test_checksum_tree_do_env_checksums_match(
+            None,
+            Some(HashMap::from([("KEY".to_string(), "VAL".to_string())])),
+            ChecksumState::Absent,
+            ChecksumState::Clean,
+            env,
+            true,
+        )
+        .await;
+    }
 }
 
 #[tokio::test]
 async fn test_with_dirty_method_checksum() {
-    test_checksum_tree_do_env_checksums_match(
-        Some(HashMap::from([("KEY".to_string(), "VAL".to_string())])),
-        None,
-        ChecksumState::Dirty,
-        ChecksumState::Absent,
-        HashMap::new(),
-        false,
-    )
-    .await;
+    for env in [None, Some(HashMap::new())] {
+        test_checksum_tree_do_env_checksums_match(
+            Some(HashMap::from([("KEY".to_string(), "VAL".to_string())])),
+            None,
+            ChecksumState::Dirty,
+            ChecksumState::Absent,
+            env,
+            false,
+        )
+        .await;
+    }
 }
 
 #[tokio::test]
 async fn test_with_dirty_path_checksum() {
-    test_checksum_tree_do_env_checksums_match(
-        None,
-        Some(HashMap::from([("KEY".to_string(), "VAL".to_string())])),
-        ChecksumState::Absent,
-        ChecksumState::Dirty,
-        HashMap::new(),
-        false,
-    )
-    .await;
+    for env in [None, Some(HashMap::new())] {
+        test_checksum_tree_do_env_checksums_match(
+            None,
+            Some(HashMap::from([("KEY".to_string(), "VAL".to_string())])),
+            ChecksumState::Absent,
+            ChecksumState::Dirty,
+            env,
+            false,
+        )
+        .await;
+    }
 }
 
 #[tokio::test]
 async fn test_without_method_checksum() {
-    test_checksum_tree_do_env_checksums_match(
-        Some(HashMap::from([("KEY".to_string(), "VAL".to_string())])),
-        None,
-        ChecksumState::Absent,
-        ChecksumState::Absent,
-        HashMap::new(),
-        false,
-    )
-    .await;
+    for env in [None, Some(HashMap::new())] {
+        test_checksum_tree_do_env_checksums_match(
+            Some(HashMap::from([("KEY".to_string(), "VAL".to_string())])),
+            None,
+            ChecksumState::Absent,
+            ChecksumState::Absent,
+            env,
+            false,
+        )
+        .await;
+    }
 }
 
 #[tokio::test]
 async fn test_without_path_checksum() {
-    test_checksum_tree_do_env_checksums_match(
-        None,
-        Some(HashMap::from([("KEY".to_string(), "VAL".to_string())])),
-        ChecksumState::Absent,
-        ChecksumState::Absent,
-        HashMap::new(),
-        false,
-    )
-    .await;
+    for env in [None, Some(HashMap::new())] {
+        test_checksum_tree_do_env_checksums_match(
+            None,
+            Some(HashMap::from([("KEY".to_string(), "VAL".to_string())])),
+            ChecksumState::Absent,
+            ChecksumState::Absent,
+            env,
+            false,
+        )
+        .await;
+    }
 }
 
 #[tokio::test]
@@ -176,7 +189,7 @@ async fn test_without_env_or_checksum_files_with_deployed_env() {
         None,
         ChecksumState::Absent,
         ChecksumState::Absent,
-        HashMap::from([("KEY".to_string(), "VAL".to_string())]),
+        Some(HashMap::from([("KEY".to_string(), "VAL".to_string())])),
         false,
     )
     .await;

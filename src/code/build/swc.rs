@@ -13,15 +13,15 @@ use swc_ecma_parser::{Syntax, TsSyntax};
 use crate::code::build::{BuildMode, Builder};
 use crate::code::source::path::{FunctionBuildDir, SourcePath};
 use crate::code::source::{Language, SourceFile};
-use crate::project::Lx3ProjectDeets;
+use crate::project::Lx3Project;
 
 pub struct SwcBuilder {
-    project_details: Arc<Lx3ProjectDeets>,
+    project: Arc<Lx3Project>,
 }
 
 impl SwcBuilder {
-    pub fn new(project_details: Arc<Lx3ProjectDeets>) -> Self {
-        Self { project_details }
+    pub fn new(project: Arc<Lx3Project>) -> Self {
+        Self { project }
     }
 }
 
@@ -38,10 +38,10 @@ impl Builder for SwcBuilder {
         let compiled_result = match source_file.language {
             Language::TypeScript => Some(compile_ts_file(
                 &source_file.path.abs,
-                &self.project_details.build_mode,
+                &self.project.build_mode,
             )?),
             _ => {
-                if self.project_details.build_mode.should_minify() {
+                if self.project.build_mode.should_minify() {
                     Some(minify_js_file(&source_file.path.abs)?)
                 } else {
                     None
@@ -51,7 +51,7 @@ impl Builder for SwcBuilder {
         match compiled_result {
             Some(compiled) => {
                 let build_dir_path = source_file.path.to_build_dir(build_dir.clone());
-                _ = fs::create_dir_all(build_dir_path.abs.parent().unwrap());
+                let _ = fs::create_dir_all(build_dir_path.abs.parent().unwrap());
                 fs::write(&build_dir_path.abs, compiled)?;
                 Ok(build_dir_path)
             }

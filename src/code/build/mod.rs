@@ -8,7 +8,7 @@ use crate::code::parse::SourceParser;
 use crate::code::source::path::{FunctionBuildDir, SourcePath};
 use crate::code::source::{Language, ModuleImport, ModuleImports, SourceFile};
 use crate::lambda::LambdaFn;
-use crate::project::Lx3ProjectDeets;
+use crate::project::Lx3Project;
 use archiver::Archiver;
 
 mod archiver;
@@ -52,37 +52,35 @@ pub struct LambdaFnBuild {
     builder: Box<dyn Builder + Send + Sync>,
     entrypoint: SourcePath,
     lambda_fn: Arc<LambdaFn>,
-    project_details: Arc<Lx3ProjectDeets>,
+    project: Arc<Lx3Project>,
     source_parser: Arc<Box<dyn SourceParser>>,
 }
 
 impl LambdaFnBuild {
-    pub fn new(lambda_fn: Arc<LambdaFn>, project_details: Arc<Lx3ProjectDeets>) -> Self {
+    pub fn new(lambda_fn: Arc<LambdaFn>, project: Arc<Lx3Project>) -> Self {
         let source_parser = {
-            project_details
+            project
                 .runtime_config
                 .lock()
                 .unwrap()
                 .source_parser(&lambda_fn.language)
         };
         Self {
-            build_dir: lambda_fn.build_dir(&project_details),
+            build_dir: lambda_fn.build_dir(&project),
             builder: Box::new(match &lambda_fn.language {
-                Language::JavaScript | Language::TypeScript => {
-                    SwcBuilder::new(project_details.clone())
-                }
+                Language::JavaScript | Language::TypeScript => SwcBuilder::new(project.clone()),
                 Language::Python => panic!(),
             }),
             entrypoint: lambda_fn.path.clone(),
             lambda_fn,
-            project_details,
+            project,
             source_parser,
         }
     }
 
     pub async fn build(&self) -> Result<Vec<SourcePath>, anyhow::Error> {
         let import_resolver = {
-            self.project_details
+            self.project
                 .runtime_config
                 .lock()
                 .unwrap()
@@ -117,7 +115,7 @@ impl LambdaFnBuild {
     // todo optimize with parallelism
     fn build_runtime_sources(&self) -> Result<Vec<SourcePath>, anyhow::Error> {
         let runtime_sources = {
-            self.project_details
+            self.project
                 .runtime_config
                 .lock()
                 .unwrap()

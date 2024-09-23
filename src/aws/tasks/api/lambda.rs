@@ -1,4 +1,5 @@
-use crate::aws::lambda::FunctionArn;
+use crate::aws::resources::{AwsLambdaConfig, FunctionName};
+use crate::code::source::Language;
 use anyhow::anyhow;
 use aws_sdk_apigatewayv2::primitives::Blob;
 use aws_sdk_lambda::operation::create_function::CreateFunctionError;
@@ -9,20 +10,21 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 use std::process::exit;
+use std::sync::Arc;
 use std::time::Duration;
-
 // todo refactor println debug messages to tracing
 
 const ROLE_NOT_READY: &str = "role defined for the function cannot be assumed by";
 
 pub async fn create_fn_w_retry_for_role_not_ready(
     lambda: &aws_sdk_lambda::Client,
-    function_name: &str,
+    language: &Language,
+    function_name: &FunctionName,
     code_path: &PathBuf,
     handler_path: &String,
     role_arn: &String,
     env_vars: Option<HashMap<String, String>>,
-) -> Result<FunctionArn, anyhow::Error> {
+) -> Result<Arc<AwsLambdaConfig>, anyhow::Error> {
     // todo fix uploading zip file blob in a loop when waiting for lambda role creation
     //  use s3 to only upload code archive once
     //  check for role active state
@@ -30,8 +32,11 @@ pub async fn create_fn_w_retry_for_role_not_ready(
     loop {
         let result = lambda
             .create_function()
-            .function_name(function_name)
-            .runtime(Runtime::Nodejs20x)
+            .function_name(function_name.as_str())
+            .runtime(match language {
+                Language::JavaScript | Language::TypeScript => Runtime::Nodejs20x,
+                Language::Python => Runtime::Python312,
+            })
             .role(role_arn)
             .handler(handler_path)
             .environment(
@@ -52,7 +57,7 @@ pub async fn create_fn_w_retry_for_role_not_ready(
                     "debug: deployed in {}ms",
                     (std::time::Instant::now() - start).as_millis()
                 );
-                Ok(result.function_arn.unwrap())
+                Ok(Arc::new(AwsLambdaConfig::from(result)))
             }
             Err(err) => {
                 if std::time::Instant::now() - start > Duration::from_secs(20) {
@@ -77,7 +82,7 @@ pub async fn create_fn_w_retry_for_role_not_ready(
 
 pub async fn wait_for_fn_state_active(
     lambda: &aws_sdk_lambda::Client,
-    fn_name: &String,
+    fn_name: &FunctionName,
 ) -> Result<bool, anyhow::Error> {
     let start = std::time::Instant::now();
     loop {
@@ -100,7 +105,7 @@ pub async fn wait_for_fn_state_active(
 
 pub async fn wait_for_fn_update_successful(
     lambda: &aws_sdk_lambda::Client,
-    fn_name: &String,
+    fn_name: &FunctionName,
 ) -> Result<bool, anyhow::Error> {
     let start = std::time::Instant::now();
     loop {
@@ -126,7 +131,7 @@ pub async fn wait_for_fn_update_successful(
 
 async fn get_function(
     lambda: &aws_sdk_lambda::Client,
-    fn_name: &String,
+    fn_name: &FunctionName,
 ) -> Result<FunctionConfiguration, anyhow::Error> {
     Ok(lambda
         .get_function()
@@ -141,14 +146,9 @@ async fn get_function(
 #[allow(unused)]
 async fn does_fn_exist(
     lambda: &aws_sdk_lambda::Client,
-    function_name: &str,
+    fn_name: &FunctionName,
 ) -> Result<bool, anyhow::Error> {
-    match lambda
-        .get_function()
-        .function_name(function_name)
-        .send()
-        .await
-    {
+    match lambda.get_function().function_name(fn_name).send().await {
         Ok(_) => Ok(true),
         Err(err) => {
             let service_error = err.as_service_error();

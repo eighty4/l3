@@ -2,7 +2,8 @@ use crate::code::env::{
     is_valid_env_file_name, parse_env_file_name_for_http_method, EnvVarSources,
 };
 use crate::lambda::{HttpMethod, RouteKey};
-use crate::testing::{ProjectTest, TestSource};
+use crate::testing::project::ProjectTest;
+use crate::testing::source::TestSource;
 
 #[test]
 fn test_is_valid_env_file_name() {

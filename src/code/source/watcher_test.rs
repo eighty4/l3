@@ -1,5 +1,5 @@
 use crate::code::source::watcher::{FileUpdate, FileUpdateKind, FileWatcher, SpecialFile};
-use crate::testing::ProjectTest;
+use crate::testing::project::ProjectTest;
 use std::fs;
 use std::fs::OpenOptions;
 use std::io::Write;

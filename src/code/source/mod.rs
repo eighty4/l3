@@ -1,7 +1,7 @@
 use crate::code::env::EnvVarSources;
 use crate::code::source::path::{SourceKind, SourcePath};
 use crate::lambda::{HttpMethod, LambdaFn, RouteKey};
-use crate::project::Lx3ProjectDeets;
+use crate::project::Lx3Project;
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 use std::path::Path;
@@ -101,10 +101,7 @@ impl SourceFile {
         handler_fns
     }
 
-    pub fn collect_lambda_fns(
-        &self,
-        project_deets: &Arc<Lx3ProjectDeets>,
-    ) -> Option<Vec<LambdaFn>> {
+    pub fn collect_lambda_fns(&self, project: &Arc<Lx3Project>) -> Option<Vec<LambdaFn>> {
         debug_assert!(self.path.rel.starts_with("routes"));
         let handler_fns = self.collect_http_handler_fn_names();
         if handler_fns.is_empty() {
@@ -114,13 +111,12 @@ impl SourceFile {
             let http_path = RouteKey::extract_http_path(&self.path.rel).unwrap();
             for (http_method, handler_fn) in handler_fns {
                 let route_key = RouteKey::new(http_method, http_path.clone());
-                let env_var_sources =
-                    EnvVarSources::new(&project_deets.project_dir, &route_key).unwrap();
+                let env_var_sources = EnvVarSources::new(&project.dir, &route_key).unwrap();
                 lambda_fns.push(LambdaFn::new(
                     env_var_sources,
                     handler_fn,
                     self.path.clone(),
-                    project_deets.clone(),
+                    project.clone(),
                     route_key,
                 ));
             }

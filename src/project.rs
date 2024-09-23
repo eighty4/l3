@@ -1,4 +1,4 @@
-use crate::aws::AwsDeets;
+use crate::aws::AwsProject;
 use crate::code::build::BuildMode;
 use crate::code::runtime::RuntimeConfig;
 use crate::lambda::LambdaFn;
@@ -7,18 +7,18 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 
-pub struct Lx3ProjectDeets {
-    pub aws: AwsDeets,
+pub struct Lx3Project {
+    pub aws: AwsProject,
     pub build_mode: BuildMode,
+    pub dir: PathBuf,
+    pub name: String,
     pub notification_tx: UnboundedSender<LambdaNotification>,
-    pub project_dir: PathBuf,
-    pub project_name: String,
     pub runtime_config: Arc<Mutex<RuntimeConfig>>,
 }
 
-impl Lx3ProjectDeets {
-    pub fn builder() -> Lx3ProjectDeetsBuilder {
-        Lx3ProjectDeetsBuilder::new()
+impl Lx3Project {
+    pub fn builder() -> Lx3ProjectBuilder {
+        Lx3ProjectBuilder::new()
     }
 
     pub fn send_lambda_event(&self, lambda_fn: Arc<LambdaFn>, kind: LambdaEventKind) {
@@ -29,18 +29,18 @@ impl Lx3ProjectDeets {
 }
 
 #[derive(Default)]
-pub struct Lx3ProjectDeetsBuilder {
-    aws: Option<AwsDeets>,
+pub struct Lx3ProjectBuilder {
+    aws: Option<AwsProject>,
     build_mode: Option<BuildMode>,
     runtime_config: Option<Arc<Mutex<RuntimeConfig>>>,
 }
 
-impl Lx3ProjectDeetsBuilder {
+impl Lx3ProjectBuilder {
     pub fn new() -> Self {
         Default::default()
     }
 
-    pub fn aws_deets(mut self, aws: AwsDeets) -> Self {
+    pub fn aws(mut self, aws: AwsProject) -> Self {
         self.aws = Some(aws);
         self
     }
@@ -59,16 +59,16 @@ impl Lx3ProjectDeetsBuilder {
         self,
         project_dir: PathBuf,
         project_name: String,
-    ) -> (Arc<Lx3ProjectDeets>, UnboundedReceiver<LambdaNotification>) {
+    ) -> (Arc<Lx3Project>, UnboundedReceiver<LambdaNotification>) {
         debug_assert!(self.aws.is_some() && self.runtime_config.is_some());
         let (notification_tx, notification_rx) = unbounded_channel::<LambdaNotification>();
         (
-            Arc::new(Lx3ProjectDeets {
+            Arc::new(Lx3Project {
                 aws: self.aws.unwrap(),
                 build_mode: self.build_mode.unwrap_or(BuildMode::Debug),
                 notification_tx,
-                project_dir,
-                project_name,
+                dir: project_dir,
+                name: project_name,
                 runtime_config: self.runtime_config.unwrap(),
             }),
             notification_rx,

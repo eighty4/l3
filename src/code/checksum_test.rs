@@ -3,7 +3,8 @@ use std::path::PathBuf;
 use crate::code::checksum::ChecksumTree;
 use crate::code::source::Language;
 use crate::lambda::{HttpMethod, RouteKey};
-use crate::testing::{ProjectTest, TestSource};
+use crate::testing::project::ProjectTest;
+use crate::testing::source::TestSource;
 
 #[tokio::test]
 async fn test_checksum_tree_do_checksums_match_clean_checksum() {

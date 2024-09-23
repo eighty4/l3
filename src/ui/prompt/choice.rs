@@ -78,7 +78,7 @@ fn write_choice(
     choice: &str,
     line_prefix: &str,
 ) -> Result<(), anyhow::Error> {
-    _ = stdout.write(format!("{line_prefix}{cursor} {choice}\n").as_bytes())?;
+    let _ = stdout.write(format!("{line_prefix}{cursor} {choice}\n").as_bytes())?;
     stdout.queue(crossterm::cursor::MoveToColumn(0))?;
     Ok(())
 }

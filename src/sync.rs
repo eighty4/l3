@@ -1,21 +1,22 @@
-use crate::aws::clients::AwsClients;
 use crate::aws::preflight::AwsPreflightData;
-use crate::aws::state::DeployedProjectState;
-use crate::aws::tasks::sync::deploy_fn::{perform_deploy_fn, DeployFnParams};
-use crate::aws::tasks::sync::remove_fn::{perform_remove_fn, RemoveFnParams};
-use crate::aws::{AwsApiConfig, AwsDataDir, AwsDeets};
+use crate::aws::tasks::AwsTaskTranslation;
+use crate::aws::{AwsApiGatewayConfig, AwsDataDir, AwsProject};
 use crate::code::build::BuildMode;
 use crate::code::runtime::RuntimeConfig;
 use crate::code::source::tree::SourceTree;
-use crate::project::Lx3ProjectDeets;
-use crate::sync::SyncTask::RemoveFn;
+use crate::project::Lx3Project;
+use crate::task::executor::TaskExecutor;
+use crate::task::pool::TaskPool;
+use crate::task::LambdaTaskKind;
+use crate::ui::dev::print_notification;
 use crate::ui::prompt::confirm::prompt_for_confirmation;
 use std::path::PathBuf;
 use std::process;
-use tokio::task::JoinSet;
+use std::time::Duration;
+use tokio::spawn;
 
 pub struct SyncOptions {
-    pub aws: AwsApiConfig,
+    pub aws: AwsApiGatewayConfig,
     pub auto_confirm: bool,
     pub build_mode: BuildMode,
     pub clear_cache: bool,
@@ -39,8 +40,8 @@ pub(crate) async fn sync_project(sync_options: SyncOptions) -> Result<(), anyhow
     .await?;
     let (runtime_config, runtime_config_api) = RuntimeConfig::new(sync_options.project_dir.clone());
     runtime_config_api.initialize_runtime_configs().await;
-    let (project_deets, _notification_rx) = Lx3ProjectDeets::builder()
-        .aws_deets(AwsDeets::from(aws_preflight_data))
+    let (project, mut notification_rx) = Lx3Project::builder()
+        .aws(AwsProject::from(aws_preflight_data))
         .build_mode(sync_options.build_mode.clone())
         .runtime_config(runtime_config)
         .build(
@@ -49,9 +50,9 @@ pub(crate) async fn sync_project(sync_options: SyncOptions) -> Result<(), anyhow
         );
 
     println!("λλλ sync");
-    println!("  project: {}", &project_deets.project_name);
-    println!("  region: {}", &project_deets.aws.sdk_clients.region());
-    println!("  api id: {}", &project_deets.aws.api.id);
+    println!("  project: {}", &project.name);
+    println!("  region: {}", &project.aws.sdk_clients.region());
+    println!("  api id: {}", &project.aws.api.id);
 
     if !sync_options.auto_confirm && !prompt_for_confirmation("\n  Continue with syncing?") {
         println!("  Cancelling sync operations!");
@@ -61,48 +62,57 @@ pub(crate) async fn sync_project(sync_options: SyncOptions) -> Result<(), anyhow
     if sync_options.clear_cache {
         println!(
             "\nClearing cache at .l3/aws/{} and re-syncing",
-            &project_deets.aws.api.id
+            &project.aws.api.id
         );
-        AwsDataDir::clear_cache(&project_deets.aws.api.id, &project_deets.project_dir);
+        AwsDataDir::clear_cache(&project.aws.api.id, &project.dir);
     }
 
-    AwsDataDir::cache_api_id(&project_deets.project_dir, &project_deets.aws.api.id)?;
+    AwsDataDir::cache_api_id(&project.dir, &project.aws.api.id)?;
 
-    let (source_tree, sources_api) = SourceTree::new(project_deets.clone());
+    spawn(async move {
+        while let Some(notification) = notification_rx.recv().await {
+            print_notification(&notification);
+        }
+    });
+
+    let (source_tree, sources_api) = SourceTree::new(project.clone());
     sources_api.refresh_routes().await?;
+    project.aws.resources.refresh_state().await?;
 
-    let mut deployed_state = DeployedProjectState::fetch_from_aws(
-        &project_deets.aws.sdk_clients,
-        &project_deets.project_name,
-        &project_deets.aws.api.id,
-    )
-    .await?;
-    let mut sync_tasks: Vec<SyncTask> = Vec::new();
     let lambda_fns = { source_tree.lock().unwrap().lambda_fns() };
 
+    let task_pool = TaskPool::new(TaskExecutor::new(
+        project.clone(),
+        source_tree.clone(),
+        Box::new(AwsTaskTranslation {}),
+    ));
+
     println!("Syncing {} lambdas", lambda_fns.len());
+    let mut tasks = Vec::new();
     for lambda_fn in &lambda_fns {
-        sync_tasks.push(SyncTask::DeployFn(Box::new(DeployFnParams {
-            components: deployed_state
-                .rm_deployed_components(&lambda_fn.route_key, &lambda_fn.fn_name),
-            lambda_fn: lambda_fn.clone(),
-            project_deets: project_deets.clone(),
-            publish_fn_updates: false,
-        })));
+        tasks.push(
+            task_pool.lambda_task_with_reply(
+                LambdaTaskKind::CreateFunction,
+                lambda_fn.route_key.clone(),
+            )?,
+        );
+    }
+    for task in tasks {
+        task.await?;
     }
 
-    let removing = deployed_state.collect_deployed_components(&project_deets.project_name);
-    if !removing.is_empty() {
-        println!("Removing {} lambdas", removing.len());
-        for components in removing {
-            sync_tasks.push(RemoveFn(Box::new(RemoveFnParams {
-                api_id: project_deets.aws.api.id.clone(),
-                components,
-            })))
-        }
-    }
+    tokio::time::sleep(Duration::from_millis(100)).await;
 
-    exec_tasks(&project_deets.aws.sdk_clients, sync_tasks).await?;
+    // let removing = deployed_state.collect_deployed_components(&project.name);
+    // if !removing.is_empty() {
+    //     println!("Removing {} lambdas", removing.len());
+    //     for components in removing {
+    //         sync_tasks.push(RemoveFn(Box::new(RemoveFnParams {
+    //             api_id: project.aws.api.id.clone(),
+    //             components,
+    //         })))
+    //     }
+    // }
 
     println!("\nLambdas deployed to API Gateway\n---");
 
@@ -110,39 +120,11 @@ pub(crate) async fn sync_project(sync_options: SyncOptions) -> Result<(), anyhow
         println!(
             "{} https://{}.execute-api.{}.amazonaws.com/development/{}",
             lambda_fn.route_key.http_method,
-            &project_deets.aws.api.id,
-            &project_deets.aws.sdk_clients.region(),
+            &project.aws.api.id,
+            &project.aws.sdk_clients.region(),
             lambda_fn.route_key.http_path,
         );
     }
 
     Ok(())
-}
-
-enum SyncTask {
-    DeployFn(Box<DeployFnParams>),
-    RemoveFn(Box<RemoveFnParams>),
-}
-
-async fn exec_tasks(
-    sdk_clients: &AwsClients,
-    sync_tasks: Vec<SyncTask>,
-) -> Result<(), anyhow::Error> {
-    let mut join_set = JoinSet::new();
-    for sync_task in sync_tasks {
-        join_set.spawn(exec_task(sdk_clients.clone(), sync_task));
-    }
-    while let Some(result) = join_set.join_next().await {
-        // todo handle sync errors
-        result??;
-    }
-    Ok(())
-}
-
-async fn exec_task(sdk_clients: AwsClients, sync_task: SyncTask) -> Result<(), anyhow::Error> {
-    match sync_task {
-        SyncTask::DeployFn(params) => perform_deploy_fn(&sdk_clients, params.as_ref()).await?,
-        SyncTask::RemoveFn(params) => perform_remove_fn(&sdk_clients, params.as_ref()).await?,
-    }
-    Ok::<(), anyhow::Error>(())
 }

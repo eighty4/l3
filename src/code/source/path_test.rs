@@ -1,6 +1,6 @@
 use crate::code::build::BuildMode;
 use crate::code::source::path::{rewrite_current_and_parent_in_path, FunctionBuildDir, SourcePath};
-use crate::testing::ProjectTest;
+use crate::testing::project::ProjectTest;
 use std::path::PathBuf;
 
 #[test]
@@ -21,8 +21,7 @@ fn test_source_path_is_lambda_file_name() {
 #[tokio::test]
 async fn test_function_build_dir_for_debug_build() {
     let project_test = ProjectTest::builder().build_mode(BuildMode::Debug).build();
-    let build_dir =
-        FunctionBuildDir::new(&project_test.project_deets, &"l3-get-data-fn".to_string());
+    let build_dir = FunctionBuildDir::new(&project_test.project, &"l3-get-data-fn".to_string());
     let expected_rel = ".l3/aws/API_ID/l3-get-data-fn/debug";
     assert_eq!(build_dir._rel.to_string_lossy().as_ref(), expected_rel);
     assert_eq!(build_dir.abs, project_test.project_dir.join(expected_rel));
@@ -33,8 +32,7 @@ async fn test_function_build_dir_for_release_build() {
     let project_test = ProjectTest::builder()
         .build_mode(BuildMode::Release)
         .build();
-    let build_dir =
-        FunctionBuildDir::new(&project_test.project_deets, &"l3-get-data-fn".to_string());
+    let build_dir = FunctionBuildDir::new(&project_test.project, &"l3-get-data-fn".to_string());
     let expected_rel = ".l3/aws/API_ID/l3-get-data-fn/release";
     assert_eq!(build_dir._rel.to_string_lossy().as_ref(), expected_rel);
     assert_eq!(build_dir.abs, project_test.project_dir.join(expected_rel));

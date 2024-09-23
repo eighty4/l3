@@ -2,7 +2,8 @@ use std::path::PathBuf;
 
 use crate::code::env::EnvVarSources;
 use crate::lambda::{HttpMethod, LambdaFn, RouteKey};
-use crate::testing::{ProjectTest, TestSource};
+use crate::testing::project::ProjectTest;
+use crate::testing::source::TestSource;
 
 #[test]
 fn test_route_key_extract_http_path_not_a_routes_dir_path() {
@@ -82,7 +83,7 @@ async fn test_lambda_fn_fn_name() {
         EnvVarSources::new(&project_test.project_dir, &route_key).unwrap(),
         "DELETE".to_string(),
         project_test.source_path("routes/data/lambda.js"),
-        project_test.project_deets.clone(),
+        project_test.project.clone(),
         route_key,
     );
     assert_eq!(lambda_fn.fn_name, "l3-my_proj-data-delete");
@@ -100,7 +101,7 @@ async fn test_lambda_fn_handler_path() {
         EnvVarSources::new(&project_test.project_dir, &route_key).unwrap(),
         "GET".to_string(),
         project_test.source_path("routes/data/lambda.js"),
-        project_test.project_deets.clone(),
+        project_test.project.clone(),
         route_key,
     );
     assert_eq!(

@@ -31,8 +31,8 @@ impl Archiver {
     }
 
     pub fn write(self) -> Result<Archive, anyhow::Error> {
-        _ = fs::create_dir_all(self.dest.parent().unwrap());
-        _ = fs::remove_file(&self.dest);
+        let _ = fs::create_dir_all(self.dest.parent().unwrap());
+        let _ = fs::remove_file(&self.dest);
         let zip_file = File::create(&self.dest)?;
         let mut zip_writer = ZipWriter::new(zip_file);
         let compress_options: FileOptions<'static, ()> =

@@ -72,7 +72,7 @@ impl RuntimeConfigEventLoop {
             let node_config = read_node_config(project_dir.as_ref());
             runtime_config.lock().unwrap().set_node_config(node_config);
             if let Some(completed) = completed {
-                _ = completed.send(JavaScript);
+                let _ = completed.send(JavaScript);
             }
         });
     }
@@ -87,7 +87,7 @@ impl RuntimeConfigEventLoop {
                 .unwrap()
                 .set_typescript_config(typescript_config);
             if let Some(completed) = completed {
-                _ = completed.send(TypeScript);
+                let _ = completed.send(TypeScript);
             }
         });
     }
@@ -111,7 +111,7 @@ impl RuntimeConfigApi {
                     language,
                 })
                 .unwrap();
-            _ = rx.await;
+            let _ = rx.await;
         }
     }
 

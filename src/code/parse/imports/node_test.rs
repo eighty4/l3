@@ -2,7 +2,7 @@ use crate::code::parse::imports::node::NodeImportResolver;
 use crate::code::parse::imports::ImportResolver;
 use crate::code::runtime::node::NodeConfig;
 use crate::code::source::ModuleImport;
-use crate::testing::ProjectTest;
+use crate::testing::project::ProjectTest;
 use std::path::PathBuf;
 use std::sync::Arc;
 

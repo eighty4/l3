@@ -1,7 +1,7 @@
 use crate::code::parse::imports::typescript::TypescriptImportResolver;
 use crate::code::parse::imports::ImportResolver;
 use crate::code::source::ModuleImport;
-use crate::testing::ProjectTest;
+use crate::testing::project::ProjectTest;
 use std::path::PathBuf;
 
 #[tokio::test]

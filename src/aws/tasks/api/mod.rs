@@ -1,2 +1,2 @@
-pub mod api_gateway;
-pub mod lambda;
+pub(crate) mod api_gateway;
+pub(crate) mod lambda;

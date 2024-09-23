@@ -1,5 +1,6 @@
 use crate::code::sha256::make_checksum;
-use crate::testing::{ProjectTest, TestSource};
+use crate::testing::project::ProjectTest;
+use crate::testing::source::TestSource;
 
 #[tokio::test]
 async fn test() {

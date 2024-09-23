@@ -1,5 +1,5 @@
 use crate::code::source::ModuleImports;
-use crate::testing::ProjectTest;
+use crate::testing::project::ProjectTest;
 
 #[tokio::test]
 async fn test_parse_source_file_parses_es_export_arrow_fn() {

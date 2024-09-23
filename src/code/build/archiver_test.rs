@@ -4,7 +4,8 @@ use std::process::Command;
 
 use crate::code::build::archiver::Archiver;
 use crate::code::source::path::{FunctionBuildDir, SourcePath};
-use crate::testing::{ProjectTest, TestSource};
+use crate::testing::project::ProjectTest;
+use crate::testing::source::TestSource;
 
 #[tokio::test]
 async fn test_archiver_write_zipped_source_file() {
@@ -13,8 +14,7 @@ async fn test_archiver_write_zipped_source_file() {
             TestSource::with_path("routes/data/lambda.js").content("export const GET = () => {}"),
         )
         .build();
-    let build_dir =
-        FunctionBuildDir::new(&project_test.project_deets, &"l3-get-data-fn".to_string());
+    let build_dir = FunctionBuildDir::new(&project_test.project, &"l3-get-data-fn".to_string());
     let archive = Archiver::new(
         build_dir.abs.clone(),
         vec![project_test.source_path("routes/data/lambda.js")],
@@ -37,13 +37,12 @@ async fn test_archiver_write_zipped_build_output() {
             TestSource::with_path("routes/data/lambda.js").content("export const GET = () => {}"),
         )
         .build();
-    let build_dir =
-        FunctionBuildDir::new(&project_test.project_deets, &"l3-get-data-fn".to_string());
+    let build_dir = FunctionBuildDir::new(&project_test.project, &"l3-get-data-fn".to_string());
     let source_path = project_test.source_path("routes/data/lambda.js");
     let built_source_path =
         SourcePath::from_rel(&project_test.project_dir, PathBuf::from("src/data.js"))
             .to_build_dir(build_dir.clone());
-    _ = fs::create_dir_all(&built_source_path.abs.parent().unwrap());
+    let _ = fs::create_dir_all(&built_source_path.abs.parent().unwrap());
     fs::write(&built_source_path.abs, "hooty hoo").unwrap();
     let archive = Archiver::new(build_dir.abs.clone(), vec![source_path, built_source_path])
         .write()
@@ -67,8 +66,7 @@ async fn test_archiver_write_does_not_append_to_existing_archive() {
             TestSource::with_path("routes/data/lambda.js").content("export const GET = () => {}"),
         )
         .build();
-    let build_dir =
-        FunctionBuildDir::new(&project_test.project_deets, &"l3-get-data-fn".to_string());
+    let build_dir = FunctionBuildDir::new(&project_test.project, &"l3-get-data-fn".to_string());
     Archiver::new(
         build_dir.abs.clone(),
         vec![project_test.source_path("routes/data/lambda.js")],

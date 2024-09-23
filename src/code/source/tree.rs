@@ -3,7 +3,7 @@ use crate::code::source::path::SourcePath;
 use crate::code::source::tree::SourceTreeMessage::*;
 use crate::code::source::{Language, ModuleImport, ModuleImports, SourceFile};
 use crate::lambda::{LambdaFn, RouteKey};
-use crate::project::Lx3ProjectDeets;
+use crate::project::Lx3Project;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
@@ -25,7 +25,7 @@ enum SourceTreeMessage {
 struct SourceTreeEventLoop {
     msg_rx: UnboundedReceiver<SourceTreeMessage>,
     msg_tx: UnboundedSender<SourceTreeMessage>,
-    project_deets: Arc<Lx3ProjectDeets>,
+    project: Arc<Lx3Project>,
     source_tree: Arc<Mutex<SourceTree>>,
 }
 
@@ -33,13 +33,13 @@ impl SourceTreeEventLoop {
     fn new(
         msg_rx: UnboundedReceiver<SourceTreeMessage>,
         msg_tx: UnboundedSender<SourceTreeMessage>,
-        project_deets: Arc<Lx3ProjectDeets>,
+        project: Arc<Lx3Project>,
         source_tree: Arc<Mutex<SourceTree>>,
     ) -> Self {
         Self {
             msg_rx,
             msg_tx,
-            project_deets,
+            project,
             source_tree,
         }
     }
@@ -73,12 +73,12 @@ impl SourceTreeEventLoop {
         processed: Option<oneshot::Sender<bool>>,
     ) {
         let msg_tx = self.msg_tx.clone();
-        let project_deets = self.project_deets.clone();
+        let project = self.project.clone();
         let source_tree = self.source_tree.clone();
         tokio::spawn(async move {
             // todo prevent circular imports cause infinite queueing
             let import_resolver = {
-                project_deets
+                project
                     .runtime_config
                     .lock()
                     .unwrap()
@@ -109,7 +109,7 @@ impl SourceTreeEventLoop {
 
             let lambda_fns = if source_file.path.rel.starts_with("routes") {
                 // todo send LambdaNotification src warning if routes dir src without lambda handler
-                source_file.collect_lambda_fns(&project_deets)
+                source_file.collect_lambda_fns(&project)
             } else {
                 None
             };
@@ -139,7 +139,7 @@ impl SourceTreeEventLoop {
     ) {
         let msg_tx = self.msg_tx.clone();
         let source_parser = {
-            self.project_deets
+            self.project
                 .runtime_config
                 .lock()
                 .unwrap()
@@ -161,28 +161,22 @@ impl SourceTreeEventLoop {
 
 pub struct SourcesApi {
     msg_tx: UnboundedSender<SourceTreeMessage>,
-    project_deets: Arc<Lx3ProjectDeets>,
+    project: Arc<Lx3Project>,
 }
 
 impl SourcesApi {
-    fn new(
-        msg_tx: UnboundedSender<SourceTreeMessage>,
-        project_deets: Arc<Lx3ProjectDeets>,
-    ) -> Arc<Self> {
-        Arc::new(Self {
-            msg_tx,
-            project_deets,
-        })
+    fn new(msg_tx: UnboundedSender<SourceTreeMessage>, project: Arc<Lx3Project>) -> Arc<Self> {
+        Arc::new(Self { msg_tx, project })
     }
 
     pub async fn refresh_routes(&self) -> Result<(), anyhow::Error> {
         let mut processing: Vec<oneshot::Receiver<bool>> = Vec::new();
-        for path in recursively_read_dirs(&self.project_deets.project_dir.join("routes")).await? {
+        for path in recursively_read_dirs(&self.project.dir.join("routes")).await? {
             if SourcePath::is_lambda_file_name(&path) {
                 let (sender, receiver) = oneshot::channel();
                 processing.push(receiver);
                 self.msg_tx.send(ProcessSourcePath {
-                    source_path: SourcePath::from_abs(&self.project_deets.project_dir, path),
+                    source_path: SourcePath::from_abs(&self.project.dir, path),
                     processed: Some(sender),
                 })?;
             }
@@ -196,27 +190,23 @@ impl SourcesApi {
 
 pub struct SourceTree {
     lambdas: HashMap<RouteKey, Arc<LambdaFn>>,
-    project_deets: Arc<Lx3ProjectDeets>,
+    project: Arc<Lx3Project>,
     /// Project source SourceFile instances mapped by relative path
     sources: HashMap<PathBuf, Arc<SourceFile>>,
 }
 
 impl SourceTree {
-    pub fn new(project_deets: Arc<Lx3ProjectDeets>) -> (Arc<Mutex<Self>>, Arc<SourcesApi>) {
+    pub fn new(project: Arc<Lx3Project>) -> (Arc<Mutex<Self>>, Arc<SourcesApi>) {
         let (msg_tx, msg_rx) = unbounded_channel();
         let source_tree = Arc::new(Mutex::new(SourceTree {
             lambdas: HashMap::new(),
-            project_deets: project_deets.clone(),
+            project: project.clone(),
             sources: HashMap::new(),
         }));
-        let mut event_loop = SourceTreeEventLoop::new(
-            msg_rx,
-            msg_tx.clone(),
-            project_deets.clone(),
-            source_tree.clone(),
-        );
+        let mut event_loop =
+            SourceTreeEventLoop::new(msg_rx, msg_tx.clone(), project.clone(), source_tree.clone());
         tokio::spawn(async move { event_loop.start().await });
-        (source_tree, SourcesApi::new(msg_tx, project_deets))
+        (source_tree, SourcesApi::new(msg_tx, project))
     }
 
     fn add_lambda_fn(&mut self, lambda_fn: LambdaFn) {
