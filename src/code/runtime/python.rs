@@ -5,6 +5,7 @@ pub struct PythonConfig {
 }
 
 impl PythonConfig {
+    #[allow(unused)]
     pub fn read_is_slow_runtime() -> bool {
         true
     }

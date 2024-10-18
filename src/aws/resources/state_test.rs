@@ -3,7 +3,6 @@ use aws_sdk_lambda::types::{EnvironmentResponse, FunctionConfiguration, Runtime}
 use std::collections::HashMap;
 
 use crate::aws::resources::state::DeployedProjectState;
-use crate::code::env::EnvVarSources;
 use crate::lambda::{HttpMethod, LambdaFn, RouteKey};
 use crate::testing::project::ProjectTest;
 use crate::testing::source::TestSource;
@@ -20,7 +19,6 @@ async fn test_deployed_state_resolves_lambda_components_by_route_key() {
         .build();
     let route_key = RouteKey::new(HttpMethod::Get, "some/function".to_string());
     let lambda_fn = LambdaFn::new(
-        EnvVarSources::new(&project_test.project_dir, &route_key).unwrap(),
         "GET".to_string(),
         project_test.source_path("routes/some/function/lambda.js"),
         project_test.project.clone(),

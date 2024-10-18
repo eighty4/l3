@@ -2,12 +2,11 @@ use std::fmt;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use anyhow::anyhow;
-
 use crate::code::env::EnvVarSources;
 use crate::code::source::path::{FunctionBuildDir, SourcePath};
 use crate::code::source::Language;
 use crate::project::Lx3Project;
+use anyhow::anyhow;
 
 fn create_fn_name(project_name: &String, route_key: &RouteKey) -> String {
     format!(
@@ -58,6 +57,7 @@ impl RouteKey {
         Ok(RouteKey::new(http_method, http_path))
     }
 
+    #[allow(unused)]
     pub fn to_fn_name(&self, project_name: &String) -> String {
         create_fn_name(project_name, self)
     }
@@ -122,16 +122,16 @@ pub struct LambdaFn {
 
 impl LambdaFn {
     pub fn new(
-        env_var_sources: EnvVarSources,
         handler_fn: String,
         path: SourcePath,
         project: Arc<Lx3Project>,
         route_key: RouteKey,
     ) -> Self {
         debug_assert!(path.rel.starts_with("routes"));
+        let fn_name = create_fn_name(&project.name, &route_key);
         Self {
-            env_var_sources,
-            fn_name: create_fn_name(&project.name, &route_key),
+            env_var_sources: EnvVarSources::new(&project.dir, &route_key).unwrap(),
+            fn_name,
             handler_fn,
             language: Language::from_extension(&path.rel).unwrap(),
             path,

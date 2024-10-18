@@ -32,17 +32,21 @@ pub fn parse_fn_name_from_arn(fn_arn: &FunctionArn) -> FunctionName {
     fn_arn.split(':').last().unwrap().to_string()
 }
 
-pub struct AwsLambdaConfig {
+pub struct AwsLambdaFunction {
     pub arn: FunctionArn,
     pub env: Option<HashMap<String, String>>,
+    #[allow(unused)]
     pub handler: String,
     pub name: FunctionName,
+    #[allow(unused)]
     pub role: String,
+    #[allow(unused)]
     pub runtime: AwsLambdaRuntime,
 }
 
 pub enum AwsGatewayRouteTarget {
     GatewayIntegration(IntegrationId),
+    #[allow(unused)]
     Unknown(String),
 }
 
@@ -58,12 +62,12 @@ pub struct AwsGatewayRoute {
 }
 
 pub struct AwsLambdaResources {
-    pub function: Option<Arc<AwsLambdaConfig>>,
+    pub function: Option<Arc<AwsLambdaFunction>>,
     pub integration: Option<Arc<AwsGatewayIntegration>>,
     pub route: Option<Arc<AwsGatewayRoute>>,
 }
 
-impl From<CreateFunctionOutput> for AwsLambdaConfig {
+impl From<CreateFunctionOutput> for AwsLambdaFunction {
     fn from(v: CreateFunctionOutput) -> Self {
         Self {
             arn: v.function_arn.unwrap(),
@@ -76,7 +80,7 @@ impl From<CreateFunctionOutput> for AwsLambdaConfig {
     }
 }
 
-impl From<FunctionConfiguration> for AwsLambdaConfig {
+impl From<FunctionConfiguration> for AwsLambdaFunction {
     fn from(v: FunctionConfiguration) -> Self {
         Self {
             arn: v.function_arn.unwrap(),
@@ -89,7 +93,7 @@ impl From<FunctionConfiguration> for AwsLambdaConfig {
     }
 }
 
-impl From<UpdateFunctionConfigurationOutput> for AwsLambdaConfig {
+impl From<UpdateFunctionConfigurationOutput> for AwsLambdaFunction {
     fn from(v: UpdateFunctionConfigurationOutput) -> Self {
         Self {
             arn: v.function_arn.unwrap(),

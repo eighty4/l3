@@ -48,7 +48,7 @@ pub(crate) fn init_project(init_opts: InitOptions) -> Result<(), anyhow::Error> 
 
 fn prompt_for_project_name(project_dir: &Path) -> String {
     prompt_for_input(InputPromptConfig {
-        autocomplete_value: Some(suggested_project_name_from_directory(project_dir).as_str()),
+        _autocomplete_value: Some(suggested_project_name_from_directory(project_dir).as_str()),
         line_padding: PRINT_PREFIX,
         help_text: Some("AWS resources will be named with this"),
         prompt_text: "What is your project name?",

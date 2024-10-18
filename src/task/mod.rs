@@ -15,7 +15,10 @@ pub struct LambdaTask {
 
 pub enum LambdaTaskKind {
     CreateFunction,
+    #[allow(unused)]
     DeleteFunction,
+    #[allow(unused)]
     UpdateCode,
+    #[allow(unused)]
     UpdateEnvironment,
 }

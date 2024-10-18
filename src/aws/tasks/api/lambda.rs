@@ -1,4 +1,4 @@
-use crate::aws::resources::{AwsLambdaConfig, FunctionName};
+use crate::aws::resources::{AwsLambdaFunction, FunctionName};
 use crate::code::source::Language;
 use anyhow::anyhow;
 use aws_sdk_apigatewayv2::primitives::Blob;
@@ -24,7 +24,7 @@ pub async fn create_fn_w_retry_for_role_not_ready(
     handler_path: &String,
     role_arn: &String,
     env_vars: Option<HashMap<String, String>>,
-) -> Result<Arc<AwsLambdaConfig>, anyhow::Error> {
+) -> Result<Arc<AwsLambdaFunction>, anyhow::Error> {
     // todo fix uploading zip file blob in a loop when waiting for lambda role creation
     //  use s3 to only upload code archive once
     //  check for role active state
@@ -57,7 +57,7 @@ pub async fn create_fn_w_retry_for_role_not_ready(
                     "debug: deployed in {}ms",
                     (std::time::Instant::now() - start).as_millis()
                 );
-                Ok(Arc::new(AwsLambdaConfig::from(result)))
+                Ok(Arc::new(AwsLambdaFunction::from(result)))
             }
             Err(err) => {
                 if std::time::Instant::now() - start > Duration::from_secs(20) {

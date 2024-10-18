@@ -1,4 +1,3 @@
-use crate::code::env::EnvVarSources;
 use crate::code::source::path::{SourceKind, SourcePath};
 use crate::lambda::{HttpMethod, LambdaFn, RouteKey};
 use crate::project::Lx3Project;
@@ -49,6 +48,7 @@ impl Display for Language {
 
 pub enum ModuleImports {
     Empty,
+    #[allow(unused)]
     Processed(Vec<ModuleImport>),
     Unprocessed(Vec<String>),
 }
@@ -111,9 +111,7 @@ impl SourceFile {
             let http_path = RouteKey::extract_http_path(&self.path.rel).unwrap();
             for (http_method, handler_fn) in handler_fns {
                 let route_key = RouteKey::new(http_method, http_path.clone());
-                let env_var_sources = EnvVarSources::new(&project.dir, &route_key).unwrap();
                 lambda_fns.push(LambdaFn::new(
-                    env_var_sources,
                     handler_fn,
                     self.path.clone(),
                     project.clone(),

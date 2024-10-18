@@ -6,7 +6,7 @@ use std::io;
 use std::io::{stdin, Stdout, Write};
 
 pub struct InputPromptConfig<'a> {
-    pub autocomplete_value: Option<&'a str>,
+    pub _autocomplete_value: Option<&'a str>,
     pub help_text: Option<&'a str>,
     pub line_padding: &'a str,
     pub prompt_text: &'a str,

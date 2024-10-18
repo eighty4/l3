@@ -181,7 +181,8 @@ impl RuntimeConfig {
         }
     }
 
-    pub fn node_config(&self) -> Arc<NodeConfig> {
+    #[allow(unused)]
+    pub fn get_node_config(&self) -> Arc<NodeConfig> {
         self.node_config.clone()
     }
 
@@ -215,7 +216,8 @@ impl RuntimeConfig {
         }
     }
 
-    pub fn typescript_config(&self) -> Arc<TypeScriptConfig> {
+    #[allow(unused)]
+    pub fn get_typescript_config(&self) -> Arc<TypeScriptConfig> {
         self.typescript_config.clone()
     }
 }

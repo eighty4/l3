@@ -70,7 +70,7 @@ impl ProjectTest {
             .parse(self.source_path(path))
     }
 
-    pub fn runtime_config(&self) -> Arc<Mutex<RuntimeConfig>> {
+    pub fn _runtime_config(&self) -> Arc<Mutex<RuntimeConfig>> {
         self.project.runtime_config.clone()
     }
 

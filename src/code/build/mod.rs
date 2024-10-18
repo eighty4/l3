@@ -1,7 +1,8 @@
 use std::collections::HashSet;
+use std::path::PathBuf;
 use std::sync::Arc;
 
-use crate::code::build::archiver::Archive;
+use crate::code::build::archive::write_archive;
 use crate::code::build::swc::SwcBuilder;
 use crate::code::parse::imports::ImportResolver;
 use crate::code::parse::SourceParser;
@@ -9,13 +10,12 @@ use crate::code::source::path::{FunctionBuildDir, SourcePath};
 use crate::code::source::{Language, ModuleImport, ModuleImports, SourceFile};
 use crate::lambda::LambdaFn;
 use crate::project::Lx3Project;
-use archiver::Archiver;
 
-mod archiver;
+mod archive;
 mod swc;
 
 #[cfg(test)]
-mod archiver_test;
+mod archive_test;
 #[cfg(test)]
 mod js_test;
 #[cfg(test)]
@@ -44,6 +44,13 @@ impl BuildMode {
             BuildMode::Release => true,
         }
     }
+}
+
+pub struct LambdaBuildManifest {
+    /// Absolute path to code.zip in FunctionBuildDir
+    pub archive_path: PathBuf,
+    /// Modules imported by LambdaFn
+    pub fn_sources: Vec<SourcePath>,
 }
 
 pub struct LambdaFnBuild {
@@ -78,7 +85,7 @@ impl LambdaFnBuild {
         }
     }
 
-    pub async fn build(&self) -> Result<Vec<SourcePath>, anyhow::Error> {
+    pub async fn build(self) -> Result<LambdaBuildManifest, anyhow::Error> {
         let import_resolver = {
             self.project
                 .runtime_config
@@ -92,9 +99,13 @@ impl LambdaFnBuild {
             import_resolver,
         )
         .await?;
-        let mut sources = self.build_fn_sources(fn_sources)?;
-        sources.append(&mut self.build_runtime_sources()?);
-        Ok(sources)
+        let mut archive_sources = self.build_fn_sources(fn_sources.clone())?;
+        archive_sources.append(&mut self.build_runtime_sources()?);
+        let archive_path = write_archive(self.build_dir.abs, archive_sources.clone())?;
+        Ok(LambdaBuildManifest {
+            archive_path,
+            fn_sources: archive_sources,
+        })
     }
 
     // todo optimize with parallelism
@@ -114,15 +125,8 @@ impl LambdaFnBuild {
 
     // todo optimize with parallelism
     fn build_runtime_sources(&self) -> Result<Vec<SourcePath>, anyhow::Error> {
-        let runtime_sources = {
-            self.project
-                .runtime_config
-                .lock()
-                .unwrap()
-                .runtime_sources(&self.lambda_fn.language)
-        };
         let mut result = Vec::new();
-        for runtime_source in runtime_sources {
+        for runtime_source in self.get_runtime_sources() {
             if let Some(language) = runtime_source.language() {
                 if language == self.lambda_fn.language {
                     result.push(self.builder.build(
@@ -139,8 +143,12 @@ impl LambdaFnBuild {
         Ok(result)
     }
 
-    pub async fn create_code_archive(&self) -> Result<Archive, anyhow::Error> {
-        Archiver::new(self.build_dir.abs.clone(), self.build().await?).write()
+    fn get_runtime_sources(&self) -> Vec<SourcePath> {
+        self.project
+            .runtime_config
+            .lock()
+            .unwrap()
+            .runtime_sources(&self.lambda_fn.language)
     }
 }
 

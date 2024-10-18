@@ -3,26 +3,32 @@ use aws_sdk_lambda::types::Runtime;
 pub enum NodeVersion {
     Eighteen,
     Twenty,
+    #[allow(unused)]
     TwentyTwo,
 }
 
 pub enum PythonVersion {
+    #[allow(unused)]
     Three8,
     Three9,
     Three10,
     Three11,
+    #[allow(unused)]
     Three12,
+    #[allow(unused)]
     Three13,
 }
 
 pub enum AwsLambdaRuntime {
     NodeJS(NodeVersion),
     Python(PythonVersion),
+    #[allow(unused)]
     Unsupported(Runtime),
 }
 
 impl AwsLambdaRuntime {
     /// Returns true for the most up-to-date Node and Python versions on Amazon Linux 2023
+    #[allow(unused)]
     pub fn is_most_up_to_date(&self) -> bool {
         match self {
             AwsLambdaRuntime::NodeJS(v) => {

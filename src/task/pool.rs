@@ -64,6 +64,7 @@ impl TaskPool {
         Arc::new(Self { lambda_task_tx })
     }
 
+    #[allow(unused)]
     pub fn lambda_task(
         &self,
         kind: LambdaTaskKind,

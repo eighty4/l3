@@ -1,11 +1,10 @@
-use std::fs;
-use std::path::{Path, PathBuf};
-use std::process::Command;
-
-use crate::code::build::archiver::Archiver;
+use crate::code::build::archive::write_archive;
 use crate::code::source::path::{FunctionBuildDir, SourcePath};
 use crate::testing::project::ProjectTest;
 use crate::testing::source::TestSource;
+use std::fs;
+use std::path::{Path, PathBuf};
+use std::process::Command;
 
 #[tokio::test]
 async fn test_archiver_write_zipped_source_file() {
@@ -15,15 +14,14 @@ async fn test_archiver_write_zipped_source_file() {
         )
         .build();
     let build_dir = FunctionBuildDir::new(&project_test.project, &"l3-get-data-fn".to_string());
-    let archive = Archiver::new(
+    let archive_path = write_archive(
         build_dir.abs.clone(),
         vec![project_test.source_path("routes/data/lambda.js")],
     )
-    .write()
     .unwrap();
-    assert_eq!(archive.path, build_dir.abs.join("code.zip"));
+    assert_eq!(archive_path, build_dir.abs.join("code.zip"));
 
-    unzip(&archive.path, &project_test.project_dir.join("result")).unwrap();
+    unzip(&archive_path, &project_test.project_dir.join("result")).unwrap();
     assert_eq!(
         fs::read_to_string(project_test.path("routes/data/lambda.js")).unwrap(),
         fs::read_to_string(project_test.path("result/routes/data/lambda.js")).unwrap(),
@@ -44,11 +42,10 @@ async fn test_archiver_write_zipped_build_output() {
             .to_build_dir(build_dir.clone());
     let _ = fs::create_dir_all(&built_source_path.abs.parent().unwrap());
     fs::write(&built_source_path.abs, "hooty hoo").unwrap();
-    let archive = Archiver::new(build_dir.abs.clone(), vec![source_path, built_source_path])
-        .write()
-        .unwrap();
+    let archive_path =
+        write_archive(build_dir.abs.clone(), vec![source_path, built_source_path]).unwrap();
 
-    unzip(&archive.path, &project_test.project_dir.join("result")).unwrap();
+    unzip(&archive_path, &project_test.project_dir.join("result")).unwrap();
     assert_eq!(
         fs::read_to_string(project_test.path("routes/data/lambda.js")).unwrap(),
         fs::read_to_string(project_test.path("result/routes/data/lambda.js")).unwrap(),
@@ -67,22 +64,20 @@ async fn test_archiver_write_does_not_append_to_existing_archive() {
         )
         .build();
     let build_dir = FunctionBuildDir::new(&project_test.project, &"l3-get-data-fn".to_string());
-    Archiver::new(
+    write_archive(
         build_dir.abs.clone(),
         vec![project_test.source_path("routes/data/lambda.js")],
     )
-    .write()
     .unwrap();
-    let archive = Archiver::new(
+    let archive_path = write_archive(
         build_dir.abs.clone(),
         vec![project_test.source_path("routes/data/lambda.js")],
     )
-    .write()
     .unwrap();
 
-    assert_eq!(archive.path, build_dir.abs.join("code.zip"));
+    assert_eq!(archive_path, build_dir.abs.join("code.zip"));
 
-    unzip(&archive.path, &project_test.project_dir.join("result")).unwrap();
+    unzip(&archive_path, &project_test.project_dir.join("result")).unwrap();
     assert_eq!(
         fs::read_to_string(project_test.path("routes/data/lambda.js")).unwrap(),
         fs::read_to_string(project_test.path("result/routes/data/lambda.js")).unwrap(),

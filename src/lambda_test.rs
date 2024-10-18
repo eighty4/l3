@@ -1,6 +1,5 @@
 use std::path::PathBuf;
 
-use crate::code::env::EnvVarSources;
 use crate::lambda::{HttpMethod, LambdaFn, RouteKey};
 use crate::testing::project::ProjectTest;
 use crate::testing::source::TestSource;
@@ -80,7 +79,6 @@ async fn test_lambda_fn_fn_name() {
         .build();
     let route_key = RouteKey::new(HttpMethod::Delete, "data".to_string());
     let lambda_fn = LambdaFn::new(
-        EnvVarSources::new(&project_test.project_dir, &route_key).unwrap(),
         "DELETE".to_string(),
         project_test.source_path("routes/data/lambda.js"),
         project_test.project.clone(),
@@ -98,7 +96,6 @@ async fn test_lambda_fn_handler_path() {
         .build();
     let route_key = RouteKey::new(HttpMethod::Get, "data".to_string());
     let lambda_fn = LambdaFn::new(
-        EnvVarSources::new(&project_test.project_dir, &route_key).unwrap(),
         "GET".to_string(),
         project_test.source_path("routes/data/lambda.js"),
         project_test.project.clone(),

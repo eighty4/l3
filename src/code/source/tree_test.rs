@@ -26,10 +26,10 @@ async fn test_sources_api_refresh_routes() {
     assert_eq!(1, lambda_fns.len());
     assert!(source_tree.lambda_fn_by_route_key(&route_key).is_some());
     assert!(source_tree
-        .source_file(&PathBuf::from("routes/data/lambda.js"))
+        .get_source_file(&PathBuf::from("routes/data/lambda.js"))
         .is_some());
     assert!(source_tree
-        .source_file(&PathBuf::from("lib/data.js"))
+        .get_source_file(&PathBuf::from("lib/data.js"))
         .is_some());
 }
 

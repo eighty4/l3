@@ -1,7 +1,7 @@
 use crate::aws::clients::AwsClients;
 use crate::aws::resources::fetch::fetch_project_state;
 use crate::aws::resources::{
-    AwsGatewayIntegration, AwsGatewayRoute, AwsGatewayRouteTarget, AwsLambdaConfig,
+    AwsGatewayIntegration, AwsGatewayRoute, AwsGatewayRouteTarget, AwsLambdaFunction,
     AwsLambdaResources, FunctionName, IntegrationId,
 };
 use crate::aws::AwsApiGateway;
@@ -13,7 +13,7 @@ use std::sync::Arc;
 
 #[derive(Default)]
 pub struct DeployedProjectState {
-    pub functions: HashMap<FunctionName, Arc<AwsLambdaConfig>>,
+    pub functions: HashMap<FunctionName, Arc<AwsLambdaFunction>>,
     pub integrations: HashMap<IntegrationId, Arc<AwsGatewayIntegration>>,
     pub routes: HashMap<RouteKey, Arc<AwsGatewayRoute>>,
 }
@@ -35,7 +35,7 @@ impl DeployedProjectState {
             {
                 functions.insert(
                     function.function_name.clone().unwrap(),
-                    Arc::new(AwsLambdaConfig::from(function)),
+                    Arc::new(AwsLambdaFunction::from(function)),
                 );
             }
         }
@@ -74,7 +74,7 @@ impl DeployedProjectState {
         ))
     }
 
-    pub fn created_lambda_function(&mut self, lambda_config: Arc<AwsLambdaConfig>) {
+    pub fn created_lambda_function(&mut self, lambda_config: Arc<AwsLambdaFunction>) {
         self.functions
             .insert(lambda_config.name.clone(), lambda_config);
     }
@@ -89,7 +89,7 @@ impl DeployedProjectState {
             .insert(gateway_route.route_key.clone(), gateway_route);
     }
 
-    pub fn deleted_lambda_function(&mut self, lambda_config: Arc<AwsLambdaConfig>) {
+    pub fn deleted_lambda_function(&mut self, lambda_config: Arc<AwsLambdaFunction>) {
         self.functions.remove(&lambda_config.name);
     }
 

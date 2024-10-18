@@ -32,6 +32,7 @@ impl FunctionBuildDir {
 #[derive(Clone)]
 pub enum SourceKind {
     /// FunctionBuild is a SourcePath to a function build output with an absolute path to build directory.
+    #[allow(unused)]
     FunctionBuild(FunctionBuildDir),
     /// OriginalSource is a SourcePath to a function source used as is without processing from the original path.
     OriginalSource,
@@ -87,7 +88,7 @@ impl SourcePath {
         Self::new(SourceKind::OriginalSource, abs, rel)
     }
 
-    pub fn file_name(&self) -> String {
+    pub fn _file_name(&self) -> String {
         self.rel.file_name().unwrap().to_string_lossy().to_string()
     }
 

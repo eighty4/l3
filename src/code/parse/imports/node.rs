@@ -10,12 +10,12 @@ use std::sync::Arc;
 // todo cross-check swc implementation
 //  https://github.com/swc-project/swc/blob/main/crates/swc_ecma_loader/src/resolvers/node.rs
 pub struct NodeImportResolver {
-    node_config: Arc<NodeConfig>,
+    _node_config: Arc<NodeConfig>,
 }
 
 impl NodeImportResolver {
-    pub fn new(node_config: Arc<NodeConfig>) -> Self {
-        Self { node_config }
+    pub fn new(_node_config: Arc<NodeConfig>) -> Self {
+        Self { _node_config }
     }
 }
 

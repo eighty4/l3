@@ -3,9 +3,11 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::code::env::EnvVarSources;
-use crate::code::read::parallel::recursively_read_dirs;
+use crate::code::read::recursively_read_dirs;
 use crate::code::sha256::make_checksum;
+use crate::code::source::path::{SourceKind, SourcePath};
 
+// todo move checksum tree instances into source tree or lambda fn
 /// Manages checksum diffing for sources packaged with a Lambda Function
 pub struct ChecksumTree {
     /// Map of relative source paths to sha256 hash
@@ -126,10 +128,10 @@ impl ChecksumTree {
         Ok(())
     }
 
-    #[allow(unused)]
-    pub fn update_all_checksums(&mut self, paths: Vec<PathBuf>) -> Result<(), anyhow::Error> {
+    pub fn update_all_checksums(&mut self, paths: &Vec<SourcePath>) -> Result<(), anyhow::Error> {
         for p in paths {
-            self.update_checksum(p)?;
+            debug_assert!(matches!(p.kind, SourceKind::OriginalSource));
+            self.update_checksum(p.rel.clone())?;
         }
         Ok(())
     }

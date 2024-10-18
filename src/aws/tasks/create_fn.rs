@@ -1,4 +1,4 @@
-use crate::aws::resources::AwsLambdaConfig;
+use crate::aws::resources::AwsLambdaFunction;
 use crate::aws::tasks::api::api_gateway::{
     add_api_gateway_invoke_permission, create_integration, create_route,
     does_api_gateway_have_invoke_permission, update_integration_uri, update_route_target,
@@ -48,18 +48,19 @@ async fn create_api_gateway_and_lambda_fn_resources(
             .join(&project.aws.api.id)
             .join(&lambda_fn.fn_name),
     );
-    // todo move checksum tree instances into source tree or lambda fn
     let mut checksums =
         ChecksumTree::new(project.dir.clone(), &project.aws.api.id, &lambda_fn.fn_name).await?;
     let env_vars = lambda_fn.env_var_sources.read_env_variables()?;
     let synced_fn = match &components.function {
         None => {
-            let archive_path = build_and_zip_sources(lambda_fn.clone(), project.clone()).await?;
+            let build_manifest = LambdaFnBuild::new(lambda_fn.clone(), project.clone())
+                .build()
+                .await?;
             let created_fn = create_fn_w_retry_for_role_not_ready(
                 &project.aws.sdk_clients.lambda,
                 &lambda_fn.language,
                 &lambda_fn.fn_name,
-                &archive_path,
+                &build_manifest.archive_path,
                 &lambda_fn.handler_path(),
                 &project.aws.lambda_role.arn,
                 env_vars,
@@ -70,8 +71,7 @@ async fn create_api_gateway_and_lambda_fn_resources(
                 .resources
                 .created_lambda_function(created_fn.clone())?;
             add_api_gateway_invoke_permission(project, &lambda_fn, &created_fn.arn).await?;
-            // todo update_checksum for each source file included in build
-            checksums.update_checksum(lambda_fn.path.rel.clone())?;
+            checksums.update_all_checksums(&build_manifest.fn_sources)?;
             checksums.update_env_var_checksums(&lambda_fn.env_var_sources)?;
             wait_for_fn_state_active(&project.aws.sdk_clients.lambda, &lambda_fn.fn_name).await?;
             created_fn
@@ -81,10 +81,8 @@ async fn create_api_gateway_and_lambda_fn_resources(
                 add_api_gateway_invoke_permission(project, &lambda_fn, &updating_fn.arn).await?;
             }
             if !checksums.do_env_checksums_match(&updating_fn.env, &lambda_fn.env_var_sources)? {
-                project
-                    .aws
-                    .resources
-                    .created_lambda_function(Arc::new(AwsLambdaConfig::from(
+                project.aws.resources.created_lambda_function(Arc::new(
+                    AwsLambdaFunction::from(
                         project
                             .aws
                             .sdk_clients
@@ -95,26 +93,27 @@ async fn create_api_gateway_and_lambda_fn_resources(
                             .send()
                             .await
                             .map_err(|err| anyhow!("{}", err.into_service_error().to_string()))?,
-                    )))?;
+                    ),
+                ))?;
                 wait_for_fn_update_successful(&project.aws.sdk_clients.lambda, &lambda_fn.fn_name)
                     .await?;
                 checksums.update_env_var_checksums(&lambda_fn.env_var_sources)?;
             }
             if !checksums.do_checksums_match(&lambda_fn.path.rel)? {
-                let archive_path =
-                    build_and_zip_sources(lambda_fn.clone(), project.clone()).await?;
+                let build_manifest = LambdaFnBuild::new(lambda_fn.clone(), project.clone())
+                    .build()
+                    .await?;
                 project
                     .aws
                     .sdk_clients
                     .lambda
                     .update_function_code()
                     .function_name(&lambda_fn.fn_name)
-                    .zip_file(Blob::new(fs::read(&archive_path)?))
+                    .zip_file(Blob::new(fs::read(&build_manifest.archive_path)?))
                     .send()
                     .await
                     .map_err(|err| anyhow!("{}", err.into_service_error().to_string()))?;
-                // todo update_checksum for each source file included in build
-                checksums.update_checksum(lambda_fn.path.rel.clone())?;
+                checksums.update_all_checksums(&build_manifest.fn_sources)?;
                 // todo wait for publish to finish
             }
             updating_fn.clone()
@@ -181,14 +180,4 @@ async fn create_api_gateway_and_lambda_fn_resources(
         },
     };
     Ok(())
-}
-
-async fn build_and_zip_sources(
-    lambda_fn: Arc<LambdaFn>,
-    project: Arc<Lx3Project>,
-) -> Result<PathBuf, anyhow::Error> {
-    let archive = LambdaFnBuild::new(lambda_fn, project)
-        .create_code_archive()
-        .await?;
-    Ok(archive.path)
 }

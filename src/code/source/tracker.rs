@@ -11,12 +11,12 @@ use tokio::time::{interval, Interval};
 
 struct SourceTrackerEventLoop {
     file_rx: Receiver<FileUpdate>,
-    file_watcher: Arc<Mutex<FileWatcher>>,
+    _file_watcher: Arc<Mutex<FileWatcher>>,
     /// Interval used to debounce FileWatcher updates
     update_interval: Interval,
-    project: Arc<Lx3Project>,
+    _project: Arc<Lx3Project>,
     runtime_config_api: Arc<RuntimeConfigApi>,
-    sources_api: Arc<SourcesApi>,
+    _sources_api: Arc<SourcesApi>,
     /// FileUpdate events queued until the next syncing interval
     update_queue: Vec<FileUpdate>,
 }
@@ -24,18 +24,18 @@ struct SourceTrackerEventLoop {
 impl SourceTrackerEventLoop {
     fn new(
         file_rx: Receiver<FileUpdate>,
-        file_watcher: Arc<Mutex<FileWatcher>>,
-        project: Arc<Lx3Project>,
+        _file_watcher: Arc<Mutex<FileWatcher>>,
+        _project: Arc<Lx3Project>,
         runtime_config_api: Arc<RuntimeConfigApi>,
-        sources_api: Arc<SourcesApi>,
+        _sources_api: Arc<SourcesApi>,
     ) -> Self {
         Self {
             file_rx,
-            file_watcher,
+            _file_watcher,
             update_interval: interval(Duration::from_secs(1)),
-            project,
+            _project,
             runtime_config_api,
-            sources_api,
+            _sources_api,
             update_queue: Vec::new(),
         }
     }
@@ -80,8 +80,8 @@ impl SourceTrackerEventLoop {
 }
 
 pub struct SourceTracker {
-    file_watcher: Arc<Mutex<FileWatcher>>,
-    sources_api: Arc<SourcesApi>,
+    _file_watcher: Arc<Mutex<FileWatcher>>,
+    _sources_api: Arc<SourcesApi>,
 }
 
 impl SourceTracker {
@@ -108,8 +108,8 @@ impl SourceTracker {
             // file_watcher.add_recursive(PathBuf::from("routes")).expect("wtf");
         }
         Self {
-            file_watcher,
-            sources_api,
+            _file_watcher: file_watcher,
+            _sources_api: sources_api,
         }
     }
 }

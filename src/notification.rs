@@ -4,7 +4,9 @@ use std::time::Instant;
 
 pub enum LambdaNotification {
     Lambda(LambdaEvent),
+    #[allow(unused)]
     Log(LogEvent),
+    #[allow(unused)]
     Sources(SourcesEvent),
 }
 
@@ -24,6 +26,7 @@ pub enum LambdaEventKind {
 
 pub enum LambdaUpdateKind {
     Code,
+    #[allow(unused)]
     Dependencies,
     Env,
 }

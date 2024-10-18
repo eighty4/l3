@@ -1,5 +1,4 @@
 use crate::code::build::LambdaFnBuild;
-use crate::code::env::EnvVarSources;
 use crate::lambda::HttpMethod::Get;
 use crate::lambda::{LambdaFn, RouteKey};
 use crate::testing::project::ProjectTest;
@@ -18,7 +17,6 @@ async fn test_ts_build_relative_import() {
 
     let route_key = RouteKey::new(Get, "data".to_string());
     let lambda_fn = Arc::new(LambdaFn::new(
-        EnvVarSources::new(&project_test.project_dir, &route_key).unwrap(),
         "GET".to_string(),
         project_test.source_path("routes/data/lambda.ts"),
         project_test.project.clone(),
@@ -26,6 +24,6 @@ async fn test_ts_build_relative_import() {
     ));
 
     let lambda_build = LambdaFnBuild::new(lambda_fn, project_test.project.clone());
-    let result = lambda_build.build().await.unwrap();
-    assert_eq!(result.len(), 2);
+    let build_manifest = lambda_build.build().await.unwrap();
+    assert_eq!(build_manifest.fn_sources.len(), 2);
 }

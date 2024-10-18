@@ -279,6 +279,10 @@ async fn test_checksum_tree_update_all_checksums() {
         PathBuf::from("routes/data/lambda.ts"),
     ];
     assert!(!checksum_tree.do_all_checksums_match(&p).unwrap());
-    checksum_tree.update_all_checksums(p.clone()).unwrap();
+    let src_p = vec![
+        project_test.source_path("routes/data/lambda.js"),
+        project_test.source_path("routes/data/lambda.ts"),
+    ];
+    checksum_tree.update_all_checksums(&src_p).unwrap();
     assert!(checksum_tree.do_all_checksums_match(&p).unwrap());
 }

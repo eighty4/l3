@@ -80,7 +80,7 @@ impl FileWatcher {
         }
     }
 
-    pub fn add_recursive(&mut self, path: PathBuf) -> Result<(), anyhow::Error> {
+    pub fn _add_recursive(&mut self, path: PathBuf) -> Result<(), anyhow::Error> {
         self.add_path(path, RecursiveMode::Recursive)
     }
 

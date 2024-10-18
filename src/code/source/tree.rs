@@ -1,4 +1,4 @@
-use crate::code::read::parallel::recursively_read_dirs;
+use crate::code::read::recursively_read_dirs;
 use crate::code::source::path::SourcePath;
 use crate::code::source::tree::SourceTreeMessage::*;
 use crate::code::source::{Language, ModuleImport, ModuleImports, SourceFile};
@@ -190,8 +190,7 @@ impl SourcesApi {
 
 pub struct SourceTree {
     lambdas: HashMap<RouteKey, Arc<LambdaFn>>,
-    project: Arc<Lx3Project>,
-    /// Project source SourceFile instances mapped by relative path
+    /// SourceFile instances mapped by relative path
     sources: HashMap<PathBuf, Arc<SourceFile>>,
 }
 
@@ -200,7 +199,6 @@ impl SourceTree {
         let (msg_tx, msg_rx) = unbounded_channel();
         let source_tree = Arc::new(Mutex::new(SourceTree {
             lambdas: HashMap::new(),
-            project: project.clone(),
             sources: HashMap::new(),
         }));
         let mut event_loop =
@@ -227,7 +225,8 @@ impl SourceTree {
         self.lambdas.get(route_key).cloned()
     }
 
-    pub fn source_file(&self, path: &Path) -> Option<Arc<SourceFile>> {
+    #[allow(unused)]
+    pub fn get_source_file(&self, path: &Path) -> Option<Arc<SourceFile>> {
         debug_assert!(path.is_relative());
         self.sources.get(path).cloned()
     }

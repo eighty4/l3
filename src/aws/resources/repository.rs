@@ -2,7 +2,7 @@ use crate::aws::clients::AwsClients;
 use crate::aws::resources::repository::AwsResourceMessage::*;
 use crate::aws::resources::state::DeployedProjectState;
 use crate::aws::resources::{
-    AwsGatewayIntegration, AwsGatewayRoute, AwsLambdaConfig, AwsLambdaResources,
+    AwsGatewayIntegration, AwsGatewayRoute, AwsLambdaFunction, AwsLambdaResources,
 };
 use crate::aws::AwsApiGateway;
 use crate::lambda::LambdaFn;
@@ -12,10 +12,10 @@ use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 use tokio::sync::oneshot;
 
 enum AwsResourceMessage {
-    CreatedLambdaFunction(Arc<AwsLambdaConfig>),
+    CreatedLambdaFunction(Arc<AwsLambdaFunction>),
     CreatedGatewayIntegration(Arc<AwsGatewayIntegration>),
     CreatedGatewayRoute(Arc<AwsGatewayRoute>),
-    DeletedLambdaFunction(Arc<AwsLambdaConfig>),
+    DeletedLambdaFunction(Arc<AwsLambdaFunction>),
     DeletedGatewayIntegration(Arc<AwsGatewayIntegration>),
     DeletedGatewayRoute(Arc<AwsGatewayRoute>),
     RefreshState(oneshot::Sender<()>),
@@ -115,7 +115,7 @@ impl AwsResources {
 
     pub fn created_lambda_function(
         &self,
-        lambda_config: Arc<AwsLambdaConfig>,
+        lambda_config: Arc<AwsLambdaFunction>,
     ) -> Result<(), anyhow::Error> {
         self.msg_tx.send(CreatedLambdaFunction(lambda_config))?;
         Ok(())
@@ -140,7 +140,7 @@ impl AwsResources {
 
     pub fn deleted_lambda_function(
         &self,
-        lambda_config: Arc<AwsLambdaConfig>,
+        lambda_config: Arc<AwsLambdaFunction>,
     ) -> Result<(), anyhow::Error> {
         self.msg_tx.send(DeletedLambdaFunction(lambda_config))?;
         Ok(())
