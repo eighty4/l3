@@ -41,51 +41,47 @@ async fn create_api_gateway_and_lambda_fn_resources(
     project: &Arc<Lx3Project>,
     lambda_fn: Arc<LambdaFn>,
 ) -> Result<(), anyhow::Error> {
-    let components = project.aws.resources.resources_for_fn(&lambda_fn).await?;
+    let aws = project.aws();
+    let components = aws.resources.resources_for_fn(&lambda_fn).await?;
     let _ = fs::create_dir_all(
         PathBuf::from(".l3")
             .join("aws")
-            .join(&project.aws.api.id)
+            .join(&aws.api.id)
             .join(&lambda_fn.fn_name),
     );
     let mut checksums =
-        ChecksumTree::new(project.dir.clone(), &project.aws.api.id, &lambda_fn.fn_name).await?;
+        ChecksumTree::new(project.dir.clone(), &aws.api.id, &lambda_fn.fn_name).await?;
     let env_vars = lambda_fn.env_var_sources.read_env_variables()?;
     let synced_fn = match &components.function {
         None => {
-            let build_manifest = LambdaFnBuild::new(lambda_fn.clone(), project.clone())
+            let build_manifest = LambdaFnBuild::in_api_dir(lambda_fn.clone(), project.clone())
                 .build()
                 .await?;
             let created_fn = create_fn_w_retry_for_role_not_ready(
-                &project.aws.sdk_clients.lambda,
+                &aws.sdk_clients.lambda,
                 &lambda_fn.language,
                 &lambda_fn.fn_name,
                 &build_manifest.archive_path,
                 &lambda_fn.handler_path(),
-                &project.aws.lambda_role.arn,
+                &aws.lambda_role.arn,
                 env_vars,
             )
             .await?;
-            project
-                .aws
-                .resources
-                .created_lambda_function(created_fn.clone())?;
-            add_api_gateway_invoke_permission(project, &lambda_fn, &created_fn.arn).await?;
+            aws.resources.created_lambda_function(created_fn.clone())?;
+            add_api_gateway_invoke_permission(&aws, &lambda_fn, &created_fn.arn).await?;
             checksums.update_all_checksums(&build_manifest.fn_sources)?;
             checksums.update_env_var_checksums(&lambda_fn.env_var_sources)?;
-            wait_for_fn_state_active(&project.aws.sdk_clients.lambda, &lambda_fn.fn_name).await?;
+            wait_for_fn_state_active(&aws.sdk_clients.lambda, &lambda_fn.fn_name).await?;
             created_fn
         }
         Some(updating_fn) => {
-            if !does_api_gateway_have_invoke_permission(project, &lambda_fn).await? {
-                add_api_gateway_invoke_permission(project, &lambda_fn, &updating_fn.arn).await?;
+            if !does_api_gateway_have_invoke_permission(&aws, &lambda_fn).await? {
+                add_api_gateway_invoke_permission(&aws, &lambda_fn, &updating_fn.arn).await?;
             }
             if !checksums.do_env_checksums_match(&updating_fn.env, &lambda_fn.env_var_sources)? {
-                project.aws.resources.created_lambda_function(Arc::new(
-                    AwsLambdaFunction::from(
-                        project
-                            .aws
-                            .sdk_clients
+                aws.resources
+                    .created_lambda_function(Arc::new(AwsLambdaFunction::from(
+                        aws.sdk_clients
                             .lambda
                             .update_function_configuration()
                             .function_name(&lambda_fn.fn_name)
@@ -93,19 +89,15 @@ async fn create_api_gateway_and_lambda_fn_resources(
                             .send()
                             .await
                             .map_err(|err| anyhow!("{}", err.into_service_error().to_string()))?,
-                    ),
-                ))?;
-                wait_for_fn_update_successful(&project.aws.sdk_clients.lambda, &lambda_fn.fn_name)
-                    .await?;
+                    )))?;
+                wait_for_fn_update_successful(&aws.sdk_clients.lambda, &lambda_fn.fn_name).await?;
                 checksums.update_env_var_checksums(&lambda_fn.env_var_sources)?;
             }
             if !checksums.do_checksums_match(&lambda_fn.path.rel)? {
-                let build_manifest = LambdaFnBuild::new(lambda_fn.clone(), project.clone())
+                let build_manifest = LambdaFnBuild::in_api_dir(lambda_fn.clone(), project.clone())
                     .build()
                     .await?;
-                project
-                    .aws
-                    .sdk_clients
+                aws.sdk_clients
                     .lambda
                     .update_function_code()
                     .function_name(&lambda_fn.fn_name)
@@ -122,20 +114,14 @@ async fn create_api_gateway_and_lambda_fn_resources(
 
     match &components.route {
         None => {
-            let integration = create_integration(
-                &project.aws.sdk_clients,
-                &project.aws.api.id,
-                &synced_fn.arn,
-            )
-            .await?;
-            project
-                .aws
-                .resources
+            let integration =
+                create_integration(&aws.sdk_clients, &aws.api.id, &synced_fn.arn).await?;
+            aws.resources
                 .created_gateway_integration(integration.clone())?;
-            project.aws.resources.created_gateway_route(
+            aws.resources.created_gateway_route(
                 create_route(
-                    &project.aws.sdk_clients,
-                    &project.aws.api.id,
+                    &aws.sdk_clients,
+                    &aws.api.id,
                     &lambda_fn.route_key,
                     &integration.id,
                 )
@@ -144,32 +130,21 @@ async fn create_api_gateway_and_lambda_fn_resources(
         }
         Some(route) => match &components.integration {
             None => {
-                let integration = create_integration(
-                    &project.aws.sdk_clients,
-                    &project.aws.api.id,
-                    &synced_fn.arn,
-                )
-                .await?;
-                project
-                    .aws
-                    .resources
+                let integration =
+                    create_integration(&aws.sdk_clients, &aws.api.id, &synced_fn.arn).await?;
+                aws.resources
                     .created_gateway_integration(integration.clone())?;
-                project.aws.resources.created_gateway_route(
-                    update_route_target(
-                        &project.aws.sdk_clients,
-                        &project.aws.api.id,
-                        &route.id,
-                        &integration.id,
-                    )
-                    .await?,
+                aws.resources.created_gateway_route(
+                    update_route_target(&aws.sdk_clients, &aws.api.id, &route.id, &integration.id)
+                        .await?,
                 )?;
             }
             Some(integration) => {
                 if integration.integration_uri.as_str() != synced_fn.arn.as_str() {
-                    project.aws.resources.created_gateway_integration(
+                    aws.resources.created_gateway_integration(
                         update_integration_uri(
-                            &project.aws.sdk_clients,
-                            &project.aws.api.id,
+                            &aws.sdk_clients,
+                            &aws.api.id,
                             &integration.id,
                             &synced_fn.arn,
                         )

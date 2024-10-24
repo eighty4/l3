@@ -13,6 +13,7 @@ use crate::ui::exit::err_exit;
 use crate::ui::prompt::confirm::prompt_for_confirmation;
 use std::path::PathBuf;
 use std::process;
+use std::sync::Arc;
 
 pub struct DevOptions {
     pub aws: AwsApiGatewayConfig,
@@ -32,17 +33,19 @@ pub async fn develop_project(dev_options: DevOptions) -> Result<(), anyhow::Erro
     let (runtime_config, runtime_config_api) = RuntimeConfig::new(dev_options.project_dir.clone());
     runtime_config_api.initialize_runtime_configs().await;
     let (project, mut notification_rx) = Lx3Project::builder()
-        .aws(AwsProject::from(aws_preflight_data))
+        .aws(Arc::new(AwsProject::from(aws_preflight_data)))
         .runtime_config(runtime_config)
         .build(
             dev_options.project_dir.clone(),
             dev_options.project_name.clone(),
         );
 
+    let aws = project.aws();
+
     println!("λλλ dev");
     println!("  project: {}", &project.name);
-    println!("  region: {}", &project.aws.sdk_clients.region());
-    println!("  api id: {}", &project.aws.api.id);
+    println!("  region: {}", aws.sdk_clients.region());
+    println!("  api id: {}", aws.api.id);
     println!();
 
     let (source_tree, sources_api) = SourceTree::new(project.clone());
@@ -64,16 +67,13 @@ pub async fn develop_project(dev_options: DevOptions) -> Result<(), anyhow::Erro
     }
 
     if dev_options.clear_cache {
-        println!(
-            "\nClearing cache at .l3/aws/{} and re-syncing",
-            &project.aws.api.id
-        );
-        AwsDataDir::clear_cache(&project.aws.api.id, &project.dir);
+        println!("\nClearing cache at .l3/aws/{} and re-syncing", &aws.api.id);
+        AwsDataDir::clear_cache(&aws.api.id, &project.dir);
     }
 
-    AwsDataDir::cache_api_id(&project.dir, &project.aws.api.id)?;
+    AwsDataDir::cache_api_id(&project.dir, &aws.api.id)?;
 
-    project.aws.resources.refresh_state().await?;
+    aws.resources.refresh_state().await?;
 
     let _task_pool = TaskPool::new(TaskExecutor::new(
         project,

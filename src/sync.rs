@@ -12,6 +12,7 @@ use crate::ui::dev::print_notification;
 use crate::ui::prompt::confirm::prompt_for_confirmation;
 use std::path::PathBuf;
 use std::process;
+use std::sync::Arc;
 use std::time::Duration;
 use tokio::spawn;
 
@@ -41,18 +42,19 @@ pub(crate) async fn sync_project(sync_options: SyncOptions) -> Result<(), anyhow
     let (runtime_config, runtime_config_api) = RuntimeConfig::new(sync_options.project_dir.clone());
     runtime_config_api.initialize_runtime_configs().await;
     let (project, mut notification_rx) = Lx3Project::builder()
-        .aws(AwsProject::from(aws_preflight_data))
+        .aws(Arc::new(AwsProject::from(aws_preflight_data)))
         .build_mode(sync_options.build_mode.clone())
         .runtime_config(runtime_config)
         .build(
             sync_options.project_dir.clone(),
             sync_options.project_name.clone(),
         );
+    let aws = project.aws();
 
     println!("λλλ sync");
     println!("  project: {}", &project.name);
-    println!("  region: {}", &project.aws.sdk_clients.region());
-    println!("  api id: {}", &project.aws.api.id);
+    println!("  region: {}", aws.sdk_clients.region());
+    println!("  api id: {}", &aws.api.id);
 
     if !sync_options.auto_confirm && !prompt_for_confirmation("\n  Continue with syncing?") {
         println!("  Cancelling sync operations!");
@@ -60,14 +62,11 @@ pub(crate) async fn sync_project(sync_options: SyncOptions) -> Result<(), anyhow
     }
 
     if sync_options.clear_cache {
-        println!(
-            "\nClearing cache at .l3/aws/{} and re-syncing",
-            &project.aws.api.id
-        );
-        AwsDataDir::clear_cache(&project.aws.api.id, &project.dir);
+        println!("\nClearing cache at .l3/aws/{} and re-syncing", &aws.api.id);
+        AwsDataDir::clear_cache(&aws.api.id, &project.dir);
     }
 
-    AwsDataDir::cache_api_id(&project.dir, &project.aws.api.id)?;
+    AwsDataDir::cache_api_id(&project.dir, &aws.api.id)?;
 
     spawn(async move {
         while let Some(notification) = notification_rx.recv().await {
@@ -77,7 +76,7 @@ pub(crate) async fn sync_project(sync_options: SyncOptions) -> Result<(), anyhow
 
     let (source_tree, sources_api) = SourceTree::new(project.clone());
     sources_api.refresh_routes().await?;
-    project.aws.resources.refresh_state().await?;
+    aws.resources.refresh_state().await?;
 
     let lambda_fns = { source_tree.lock().unwrap().lambda_fns() };
 
@@ -120,8 +119,8 @@ pub(crate) async fn sync_project(sync_options: SyncOptions) -> Result<(), anyhow
         println!(
             "{} https://{}.execute-api.{}.amazonaws.com/development/{}",
             lambda_fn.route_key.http_method,
-            &project.aws.api.id,
-            &project.aws.sdk_clients.region(),
+            &aws.api.id,
+            aws.sdk_clients.region(),
             lambda_fn.route_key.http_path,
         );
     }

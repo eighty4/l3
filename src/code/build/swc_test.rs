@@ -1,10 +1,11 @@
-use std::fs;
-
 use crate::code::build::swc::{compile_ts, compile_ts_file, minify_js, minify_js_file, SwcBuilder};
 use crate::code::build::{BuildMode, Builder};
 use crate::code::source::path::{FunctionBuildDir, SourceKind};
+use crate::lambda::{HttpMethod, LambdaFn, RouteKey};
 use crate::testing::project::ProjectTest;
 use crate::testing::source::TestSource;
+use std::fs;
+use std::path::PathBuf;
 
 #[tokio::test]
 async fn test_swc_builder_development_mode_returns_original_source_path() {
@@ -14,15 +15,18 @@ async fn test_swc_builder_development_mode_returns_original_source_path() {
         )
         .build();
     let source_file = &project_test.source_file("routes/data/lambda.js");
-    let build_dir = FunctionBuildDir::new(&project_test.project, &"l3-get-data-fn".to_string());
+    let lambda_fn = LambdaFn::new(
+        "GET".to_string(),
+        project_test.source_path("routes/data/lambda.js"),
+        project_test.project.clone(),
+        RouteKey::new(HttpMethod::Get, "data".to_string()),
+    );
+    let build_dir = FunctionBuildDir::PlatformSynced(project_test.project.clone(), lambda_fn);
     let built_path = SwcBuilder::new(project_test.project.clone())
         .build(source_file, &build_dir)
         .unwrap();
     assert!(matches!(built_path.kind, SourceKind::OriginalSource));
-    assert_eq!(
-        built_path.rel.to_string_lossy().as_ref(),
-        "routes/data/lambda.js"
-    );
+    assert_eq!(built_path.rel, PathBuf::from("routes/data/lambda.js"));
     assert_eq!(
         built_path.abs,
         project_test.project_dir.join("routes/data/lambda.js")
@@ -38,7 +42,13 @@ async fn test_swc_builder_development_mode_writes_ts_to_build_dir() {
         )
         .build();
     let source_file = &project_test.source_file("routes/data/lambda.ts");
-    let build_dir = FunctionBuildDir::new(&project_test.project, &"l3-get-data-fn".to_string());
+    let lambda_fn = LambdaFn::new(
+        "GET".to_string(),
+        project_test.source_path("routes/data/lambda.js"),
+        project_test.project.clone(),
+        RouteKey::new(HttpMethod::Get, "data".to_string()),
+    );
+    let build_dir = FunctionBuildDir::PlatformSynced(project_test.project.clone(), lambda_fn);
     let built_path = SwcBuilder::new(project_test.project.clone())
         .build(source_file, &build_dir)
         .unwrap();
@@ -51,7 +61,7 @@ async fn test_swc_builder_development_mode_writes_ts_to_build_dir() {
         built_path.abs,
         project_test
             .project_dir
-            .join(".l3/aws/API_ID/l3-get-data-fn/debug/routes/data/lambda.js")
+            .join(".l3/aws/API_ID/l3-PROJECT_NAME-data-get/debug/routes/data/lambda.js")
     );
     assert!(built_path.abs.is_file());
     assert_eq!(

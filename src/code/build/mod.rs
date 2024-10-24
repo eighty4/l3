@@ -1,4 +1,3 @@
-use std::collections::HashSet;
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -64,7 +63,19 @@ pub struct LambdaFnBuild {
 }
 
 impl LambdaFnBuild {
-    pub fn new(lambda_fn: Arc<LambdaFn>, project: Arc<Lx3Project>) -> Self {
+    pub fn in_api_dir(lambda_fn: Arc<LambdaFn>, project: Arc<Lx3Project>) -> Self {
+        Self::new(
+            FunctionBuildDir::PlatformSynced(project.clone(), lambda_fn.clone()),
+            lambda_fn,
+            project,
+        )
+    }
+
+    pub fn new(
+        build_dir: FunctionBuildDir,
+        lambda_fn: Arc<LambdaFn>,
+        project: Arc<Lx3Project>,
+    ) -> Self {
         let source_parser = {
             project
                 .runtime_config
@@ -73,7 +84,7 @@ impl LambdaFnBuild {
                 .source_parser(&lambda_fn.language)
         };
         Self {
-            build_dir: lambda_fn.build_dir(&project),
+            build_dir,
             builder: Box::new(match &lambda_fn.language {
                 Language::JavaScript | Language::TypeScript => SwcBuilder::new(project.clone()),
                 Language::Python => panic!(),
@@ -101,7 +112,7 @@ impl LambdaFnBuild {
         .await?;
         let mut archive_sources = self.build_fn_sources(fn_sources.clone())?;
         archive_sources.append(&mut self.build_runtime_sources()?);
-        let archive_path = write_archive(self.build_dir.abs, archive_sources.clone())?;
+        let archive_path = write_archive(self.build_dir.to_path(), archive_sources.clone())?;
         Ok(LambdaBuildManifest {
             archive_path,
             fn_sources: archive_sources,
@@ -111,7 +122,7 @@ impl LambdaFnBuild {
     // todo optimize with parallelism
     fn build_fn_sources(
         &self,
-        fn_sources: HashSet<SourcePath>,
+        fn_sources: Vec<SourcePath>,
     ) -> Result<Vec<SourcePath>, anyhow::Error> {
         let mut result = Vec::new();
         for fn_source in fn_sources {
@@ -136,7 +147,7 @@ impl LambdaFnBuild {
                     continue;
                 }
             }
-            if runtime_source.abs.is_file() {
+            if runtime_source.abs().is_file() {
                 result.push(runtime_source);
             }
         }
@@ -162,15 +173,15 @@ async fn parse_fn_sources(
     entrypoint_path: &SourcePath,
     source_parser: Arc<Box<dyn SourceParser>>,
     import_resolver: Arc<Box<dyn ImportResolver>>,
-) -> Result<HashSet<SourcePath>, anyhow::Error> {
+) -> Result<Vec<SourcePath>, anyhow::Error> {
     let entrypoint = source_parser.parse(entrypoint_path.clone())?;
-    let mut result: HashSet<SourcePath> = HashSet::new();
+    let mut result: Vec<SourcePath> = Vec::new();
     match entrypoint.imports {
         ModuleImports::Unprocessed(imports) => {
             for import in imports {
                 match import_resolver.resolve(&entrypoint.path, import.as_str()) {
                     ModuleImport::RelativeSource(relative_source) => {
-                        result.insert(relative_source);
+                        result.push(relative_source);
                     }
                     ModuleImport::Unknown(_) => panic!(),
                     ModuleImport::PackageDependency { .. } => todo!(),
@@ -179,6 +190,6 @@ async fn parse_fn_sources(
         }
         _ => panic!(),
     }
-    result.insert(entrypoint.path);
+    result.push(entrypoint.path);
     Ok(result)
 }

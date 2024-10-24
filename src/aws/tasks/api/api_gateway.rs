@@ -1,7 +1,7 @@
 use crate::aws::clients::AwsClients;
 use crate::aws::resources::{AwsGatewayIntegration, AwsGatewayRoute, FunctionArn, IntegrationId};
+use crate::aws::AwsProject;
 use crate::lambda::{LambdaFn, RouteKey};
-use crate::project::Lx3Project;
 use anyhow::anyhow;
 use aws_sdk_apigatewayv2::types::IntegrationType;
 use std::sync::Arc;
@@ -83,11 +83,10 @@ pub async fn update_integration_uri(
 }
 
 pub async fn does_api_gateway_have_invoke_permission(
-    project: &Arc<Lx3Project>,
+    aws: &Arc<AwsProject>,
     lambda_fn: &Arc<LambdaFn>,
 ) -> Result<bool, anyhow::Error> {
-    match project
-        .aws
+    match aws
         .sdk_clients
         .lambda
         .get_policy()
@@ -95,13 +94,10 @@ pub async fn does_api_gateway_have_invoke_permission(
         .send()
         .await
     {
-        Ok(get_policy_output) => Ok(get_policy_output.policy.unwrap().contains(
-            format!(
-                "\"Sid\":\"{}_{}\"",
-                project.aws.api.id, project.aws.api.stage_name
-            )
-            .as_str(),
-        )),
+        Ok(get_policy_output) => Ok(get_policy_output
+            .policy
+            .unwrap()
+            .contains(format!("\"Sid\":\"{}_{}\"", aws.api.id, aws.api.stage_name).as_str())),
         Err(err) => {
             let service_err = err.into_service_error();
             if service_err.is_resource_not_found_exception() {
@@ -114,28 +110,23 @@ pub async fn does_api_gateway_have_invoke_permission(
 }
 
 pub async fn add_api_gateway_invoke_permission(
-    project: &Arc<Lx3Project>,
+    aws: &Arc<AwsProject>,
     lambda_fn: &Arc<LambdaFn>,
     fn_arn: &FunctionArn,
 ) -> Result<(), anyhow::Error> {
     let source_arn = format!(
         "arn:aws:execute-api:{}:{}:{}/{}/{}/{}",
-        project.aws.sdk_clients.region(),
-        project.aws.account_id,
-        project.aws.api.id,
-        project.aws.api.stage_name,
+        aws.sdk_clients.region(),
+        aws.account_id,
+        aws.api.id,
+        aws.api.stage_name,
         lambda_fn.route_key.http_method,
         lambda_fn.route_key.http_path,
     );
-    project
-        .aws
-        .sdk_clients
+    aws.sdk_clients
         .lambda
         .add_permission()
-        .statement_id(format!(
-            "{}_{}",
-            project.aws.api.id, project.aws.api.stage_name
-        ))
+        .statement_id(format!("{}_{}", aws.api.id, aws.api.stage_name))
         .function_name(fn_arn)
         .action("lambda:InvokeFunction")
         .principal("apigateway.amazonaws.com")

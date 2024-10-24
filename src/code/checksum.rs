@@ -131,7 +131,7 @@ impl ChecksumTree {
     pub fn update_all_checksums(&mut self, paths: &Vec<SourcePath>) -> Result<(), anyhow::Error> {
         for p in paths {
             debug_assert!(matches!(p.kind, SourceKind::OriginalSource));
-            self.update_checksum(p.rel.clone())?;
+            self.update_checksum(p.rel().clone())?;
         }
         Ok(())
     }

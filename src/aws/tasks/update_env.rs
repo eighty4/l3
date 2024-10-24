@@ -34,12 +34,11 @@ async fn update_fn_config_env(
     project: &Arc<Lx3Project>,
     lambda_fn: Arc<LambdaFn>,
 ) -> Result<(), anyhow::Error> {
+    let aws = project.aws();
     let environment = Environment::builder()
         .set_variables(lambda_fn.env_var_sources.read_env_variables()?)
         .build();
-    project
-        .aws
-        .sdk_clients
+    aws.sdk_clients
         .lambda
         .update_function_configuration()
         .function_name(&lambda_fn.fn_name)
@@ -47,7 +46,7 @@ async fn update_fn_config_env(
         .send()
         .await
         .map_err(|err| anyhow!("{}", err.into_service_error().to_string()))?;
-    wait_for_fn_update_successful(&project.aws.sdk_clients.lambda, &lambda_fn.fn_name).await?;
+    wait_for_fn_update_successful(&aws.sdk_clients.lambda, &lambda_fn.fn_name).await?;
     // todo checksums.update_env_var_checksums(&params.lambda_fn.env_var_sources)?;
     Ok(())
 }

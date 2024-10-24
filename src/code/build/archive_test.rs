@@ -1,5 +1,6 @@
 use crate::code::build::archive::write_archive;
 use crate::code::source::path::{FunctionBuildDir, SourcePath};
+use crate::lambda::{HttpMethod, LambdaFn, RouteKey};
 use crate::testing::project::ProjectTest;
 use crate::testing::source::TestSource;
 use std::fs;
@@ -13,13 +14,19 @@ async fn test_archiver_write_zipped_source_file() {
             TestSource::with_path("routes/data/lambda.js").content("export const GET = () => {}"),
         )
         .build();
-    let build_dir = FunctionBuildDir::new(&project_test.project, &"l3-get-data-fn".to_string());
+    let lambda_fn = LambdaFn::new(
+        "GET".to_string(),
+        project_test.source_path("routes/data/lambda.js"),
+        project_test.project.clone(),
+        RouteKey::new(HttpMethod::Get, "data".to_string()),
+    );
+    let build_dir = FunctionBuildDir::PlatformSynced(project_test.project.clone(), lambda_fn);
     let archive_path = write_archive(
-        build_dir.abs.clone(),
+        build_dir.to_path(),
         vec![project_test.source_path("routes/data/lambda.js")],
     )
     .unwrap();
-    assert_eq!(archive_path, build_dir.abs.join("code.zip"));
+    assert_eq!(archive_path, build_dir.to_path().join("code.zip"));
 
     unzip(&archive_path, &project_test.project_dir.join("result")).unwrap();
     assert_eq!(
@@ -35,7 +42,13 @@ async fn test_archiver_write_zipped_build_output() {
             TestSource::with_path("routes/data/lambda.js").content("export const GET = () => {}"),
         )
         .build();
-    let build_dir = FunctionBuildDir::new(&project_test.project, &"l3-get-data-fn".to_string());
+    let lambda_fn = LambdaFn::new(
+        "GET".to_string(),
+        project_test.source_path("routes/data/lambda.js"),
+        project_test.project.clone(),
+        RouteKey::new(HttpMethod::Get, "data".to_string()),
+    );
+    let build_dir = FunctionBuildDir::PlatformSynced(project_test.project.clone(), lambda_fn);
     let source_path = project_test.source_path("routes/data/lambda.js");
     let built_source_path =
         SourcePath::from_rel(&project_test.project_dir, PathBuf::from("src/data.js"))
@@ -43,7 +56,7 @@ async fn test_archiver_write_zipped_build_output() {
     let _ = fs::create_dir_all(&built_source_path.abs.parent().unwrap());
     fs::write(&built_source_path.abs, "hooty hoo").unwrap();
     let archive_path =
-        write_archive(build_dir.abs.clone(), vec![source_path, built_source_path]).unwrap();
+        write_archive(build_dir.to_path(), vec![source_path, built_source_path]).unwrap();
 
     unzip(&archive_path, &project_test.project_dir.join("result")).unwrap();
     assert_eq!(
@@ -63,19 +76,25 @@ async fn test_archiver_write_does_not_append_to_existing_archive() {
             TestSource::with_path("routes/data/lambda.js").content("export const GET = () => {}"),
         )
         .build();
-    let build_dir = FunctionBuildDir::new(&project_test.project, &"l3-get-data-fn".to_string());
+    let lambda_fn = LambdaFn::new(
+        "GET".to_string(),
+        project_test.source_path("routes/data/lambda.js"),
+        project_test.project.clone(),
+        RouteKey::new(HttpMethod::Get, "data".to_string()),
+    );
+    let build_dir = FunctionBuildDir::PlatformSynced(project_test.project.clone(), lambda_fn);
     write_archive(
-        build_dir.abs.clone(),
+        build_dir.to_path(),
         vec![project_test.source_path("routes/data/lambda.js")],
     )
     .unwrap();
     let archive_path = write_archive(
-        build_dir.abs.clone(),
+        build_dir.to_path(),
         vec![project_test.source_path("routes/data/lambda.js")],
     )
     .unwrap();
 
-    assert_eq!(archive_path, build_dir.abs.join("code.zip"));
+    assert_eq!(archive_path, build_dir.to_path().join("code.zip"));
 
     unzip(&archive_path, &project_test.project_dir.join("result")).unwrap();
     assert_eq!(

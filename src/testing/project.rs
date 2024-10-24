@@ -182,7 +182,7 @@ impl ProjectTestBuilder {
         ));
         let resources = AwsResources::new(api.clone(), project_name.clone(), sdk_clients.clone());
         let (project, _notification_rx) = Lx3Project::builder()
-            .aws(AwsProject {
+            .aws(Arc::new(AwsProject {
                 account_id: "account_id".to_string(),
                 api,
                 resources,
@@ -195,7 +195,7 @@ impl ProjectTestBuilder {
                     .role_name("role_name")
                     .build()
                     .unwrap(),
-            })
+            }))
             .build_mode(self.build_mode.unwrap_or(BuildMode::Debug))
             .runtime_config(runtime_config)
             .build(project_dir.clone(), project_name.clone());

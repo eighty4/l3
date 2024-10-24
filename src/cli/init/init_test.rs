@@ -1,5 +1,5 @@
+use crate::cli::init::{init_project, InitOptions};
 use crate::code::source::Language::{JavaScript, Python, TypeScript};
-use crate::init::{init_project, InitOptions};
 use std::fs;
 use std::path::Path;
 use temp_dir::TempDir;

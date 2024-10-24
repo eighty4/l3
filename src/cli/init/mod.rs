@@ -8,6 +8,9 @@ use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
+#[cfg(test)]
+mod init_test;
+
 const PRINT_PREFIX: &str = "  ";
 
 pub struct InitOptions {

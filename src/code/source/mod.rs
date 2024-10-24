@@ -101,13 +101,13 @@ impl SourceFile {
         handler_fns
     }
 
-    pub fn collect_lambda_fns(&self, project: &Arc<Lx3Project>) -> Option<Vec<LambdaFn>> {
+    pub fn collect_lambda_fns(&self, project: &Arc<Lx3Project>) -> Option<Vec<Arc<LambdaFn>>> {
         debug_assert!(self.path.rel.starts_with("routes"));
         let handler_fns = self.collect_http_handler_fn_names();
         if handler_fns.is_empty() {
             None
         } else {
-            let mut lambda_fns: Vec<LambdaFn> = Vec::new();
+            let mut lambda_fns: Vec<Arc<LambdaFn>> = Vec::new();
             let http_path = RouteKey::extract_http_path(&self.path.rel).unwrap();
             for (http_method, handler_fn) in handler_fns {
                 let route_key = RouteKey::new(http_method, http_path.clone());

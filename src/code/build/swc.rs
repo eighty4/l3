@@ -111,6 +111,7 @@ pub fn minify_js(js: String) -> Result<String, anyhow::Error> {
             source_map.new_source_file(Arc::new(FileName::Anon), js),
             handler,
             &minify_options(),
+            Default::default(),
         );
         Ok(result?.code)
     })
@@ -119,7 +120,12 @@ pub fn minify_js(js: String) -> Result<String, anyhow::Error> {
 #[allow(unused)]
 pub fn minify_js_file(path: &Path) -> Result<String, anyhow::Error> {
     with_swc_compiler::<_, String>(|compiler, handler, source_map| {
-        let result = compiler.minify(source_map.load_file(path)?, handler, &minify_options());
+        let result = compiler.minify(
+            source_map.load_file(path)?,
+            handler,
+            &minify_options(),
+            Default::default(),
+        );
         Ok(result?.code)
     })
 }

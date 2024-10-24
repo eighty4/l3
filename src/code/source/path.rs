@@ -1,31 +1,44 @@
 use crate::code::build::BuildMode;
 use crate::code::source::Language;
+use crate::lambda::LambdaFn;
 use crate::project::Lx3Project;
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf, MAIN_SEPARATOR_STR};
 use std::sync::Arc;
 
-/// FunctionBuildDir paths are tokenized by the build's cloud destination (AWS), API Gateway ID,
-/// Lambda function name and BuildMode.
 #[derive(Clone)]
-pub struct FunctionBuildDir {
-    pub abs: PathBuf,
-    /// Relative to project_dir
-    pub _rel: PathBuf,
+pub enum FunctionBuildDir {
+    /// PlatformSynced build directories are tokenized by the build's cloud
+    /// destination (AWS), API Gateway ID, Lambda function name and BuildMode.
+    PlatformSynced(Arc<Lx3Project>, Arc<LambdaFn>),
+    /// Unsynced paths are for a fn build or source analysis agnostic
+    /// to syncing to a platform.
+    Unsynced(Arc<Lx3Project>, Arc<LambdaFn>),
 }
 
 impl FunctionBuildDir {
-    pub fn new(project: &Arc<Lx3Project>, fn_name: &String) -> Self {
-        let _rel = PathBuf::from(".l3")
-            .join("aws")
-            .join(&project.aws.api.id)
-            .join(fn_name)
-            .join(match project.build_mode {
-                BuildMode::Debug => "debug",
-                BuildMode::Release => "release",
-            });
-        let abs = project.dir.join(&_rel);
-        Self { abs, _rel }
+    pub fn to_path(&self) -> PathBuf {
+        match self {
+            FunctionBuildDir::PlatformSynced(project, lambda_fn) => project.dir.join(
+                PathBuf::from(".l3")
+                    .join("aws")
+                    .join(&project.aws().api.id)
+                    .join(&lambda_fn.fn_name)
+                    .join(match project.build_mode {
+                        BuildMode::Debug => "debug",
+                        BuildMode::Release => "release",
+                    }),
+            ),
+            FunctionBuildDir::Unsynced(project, lambda_fn) => project.dir.join(
+                PathBuf::from(".l3")
+                    .join("lambdas")
+                    .join(&lambda_fn.fn_name)
+                    .join(match project.build_mode {
+                        BuildMode::Debug => "debug",
+                        BuildMode::Release => "release",
+                    }),
+            ),
+        }
     }
 }
 
@@ -42,9 +55,7 @@ pub enum SourceKind {
 pub struct SourcePath {
     /// SourceKind distinguishes between source roots for project sources and build outputs.
     pub kind: SourceKind,
-    /// Absolute path to source in filesystem
     pub abs: PathBuf,
-    /// Relative path to source from project or build output root
     pub rel: PathBuf,
 }
 
@@ -88,6 +99,16 @@ impl SourcePath {
         Self::new(SourceKind::OriginalSource, abs, rel)
     }
 
+    /// Absolute path to source in filesystem
+    pub fn abs(&self) -> &PathBuf {
+        &self.abs
+    }
+
+    /// Relative path to source from project or build output root
+    pub fn rel(&self) -> &PathBuf {
+        &self.rel
+    }
+
     pub fn _file_name(&self) -> String {
         self.rel.file_name().unwrap().to_string_lossy().to_string()
     }
@@ -101,7 +122,7 @@ impl SourcePath {
             "ts" => self.rel.with_extension("js"),
             _ => self.rel.clone(),
         };
-        let abs = build_dir.abs.join(&rel);
+        let abs = build_dir.to_path().join(&rel);
         Self::new(SourceKind::FunctionBuild(build_dir), abs, rel)
     }
 

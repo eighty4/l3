@@ -115,7 +115,7 @@ async fn test_checksum_tree_do_all_checksums_match_clean_checksums() {
             &project_test
                 .source_paths()
                 .iter()
-                .map(|p| p.rel.clone())
+                .map(|p| p.rel().clone())
                 .collect()
         )
         .unwrap());
@@ -152,7 +152,7 @@ async fn test_checksum_tree_do_all_checksums_match_dirty_checksum() {
             &project_test
                 .source_paths()
                 .iter()
-                .map(|p| p.rel.clone())
+                .map(|p| p.rel().clone())
                 .collect()
         )
         .unwrap());
@@ -189,7 +189,7 @@ async fn test_checksum_tree_do_all_checksums_match_without_checksum() {
             &project_test
                 .source_paths()
                 .iter()
-                .map(|p| p.rel.clone())
+                .map(|p| p.rel().clone())
                 .collect()
         )
         .unwrap());

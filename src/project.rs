@@ -8,7 +8,7 @@ use std::sync::{Arc, Mutex};
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 
 pub struct Lx3Project {
-    pub aws: AwsProject,
+    aws: Option<Arc<AwsProject>>,
     pub build_mode: BuildMode,
     pub dir: PathBuf,
     pub name: String,
@@ -21,6 +21,11 @@ impl Lx3Project {
         Lx3ProjectBuilder::new()
     }
 
+    pub fn aws(&self) -> Arc<AwsProject> {
+        debug_assert!(self.aws.is_some());
+        self.aws.clone().unwrap()
+    }
+
     pub fn send_lambda_event(&self, lambda_fn: Arc<LambdaFn>, kind: LambdaEventKind) {
         self.notification_tx
             .send(LambdaNotification::Lambda(LambdaEvent { lambda_fn, kind }))
@@ -30,7 +35,7 @@ impl Lx3Project {
 
 #[derive(Default)]
 pub struct Lx3ProjectBuilder {
-    aws: Option<AwsProject>,
+    aws: Option<Arc<AwsProject>>,
     build_mode: Option<BuildMode>,
     runtime_config: Option<Arc<Mutex<RuntimeConfig>>>,
 }
@@ -40,7 +45,7 @@ impl Lx3ProjectBuilder {
         Default::default()
     }
 
-    pub fn aws(mut self, aws: AwsProject) -> Self {
+    pub fn aws(mut self, aws: Arc<AwsProject>) -> Self {
         self.aws = Some(aws);
         self
     }
@@ -60,11 +65,11 @@ impl Lx3ProjectBuilder {
         project_dir: PathBuf,
         project_name: String,
     ) -> (Arc<Lx3Project>, UnboundedReceiver<LambdaNotification>) {
-        debug_assert!(self.aws.is_some() && self.runtime_config.is_some());
+        debug_assert!(self.runtime_config.is_some());
         let (notification_tx, notification_rx) = unbounded_channel::<LambdaNotification>();
         (
             Arc::new(Lx3Project {
-                aws: self.aws.unwrap(),
+                aws: self.aws,
                 build_mode: self.build_mode.unwrap_or(BuildMode::Debug),
                 notification_tx,
                 dir: project_dir,

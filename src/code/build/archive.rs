@@ -13,7 +13,9 @@ pub fn write_archive(
     sources: Vec<SourcePath>,
 ) -> Result<PathBuf, anyhow::Error> {
     debug_assert!(build_dir.is_absolute());
-    debug_assert!(sources.iter().all(|p| p.abs.is_dir() || p.abs.is_file()));
+    debug_assert!(sources
+        .iter()
+        .all(|p| p.abs().is_dir() || p.abs().is_file()));
     let dest = build_dir.join("code.zip");
     let _ = fs::create_dir_all(dest.parent().unwrap());
     let _ = fs::remove_file(&dest);

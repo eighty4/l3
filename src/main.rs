@@ -1,18 +1,21 @@
 use crate::aws::AwsApiGatewayConfig;
+use crate::cli::build::{build_function, BuildFunctionOptions};
+use crate::cli::init::{init_project, InitOptions};
+use crate::cli::sources::analyze_sources;
 use crate::code::build::BuildMode;
 use crate::code::source::Language;
 use crate::dev::{develop_project, DevOptions};
-use crate::init::{init_project, InitOptions};
 use crate::sync::{sync_project, SyncOptions};
 use crate::ui::exit::cmd_err_exit;
 use clap::{Parser, Subcommand};
 use std::env;
+use std::path::PathBuf;
 
 mod aws;
+mod cli;
 mod code;
 mod config;
 mod dev;
-mod init;
 mod lambda;
 mod notification;
 mod project;
@@ -22,8 +25,6 @@ mod ui;
 
 #[cfg(test)]
 mod config_test;
-#[cfg(test)]
-mod init_test;
 #[cfg(test)]
 mod lambda_test;
 #[cfg(test)]
@@ -38,12 +39,38 @@ struct LambdaX3Cli {
 
 #[derive(Subcommand)]
 enum LambdaX3Command {
+    #[clap(about = "Build a function's deployable artifact")]
+    Build(BuildFunctionArgs),
     #[clap(about = "Create a project in the current directory")]
     Init(InitArgs),
+    #[clap(about = "Analyze function sources and dependencies")]
+    Sources(SourcesArgs),
     #[clap(about = "Deploy project resources to Lambda and API Gateway")]
     Sync(SyncArgs),
     #[clap(about = "Watch project directory and sync updates")]
     Dev(DevArgs),
+}
+
+#[derive(Parser, Debug)]
+struct BuildFunctionArgs {
+    #[clap(long, help = "Path to a ./routes directory source file")]
+    function_path: PathBuf,
+}
+
+impl TryFrom<BuildFunctionArgs> for BuildFunctionOptions {
+    type Error = anyhow::Error;
+
+    fn try_from(args: BuildFunctionArgs) -> Result<Self, Self::Error> {
+        Ok(Self {
+            build_mode: BuildMode::Debug,
+            p: args.function_path,
+            project_dir: env::current_dir()?,
+            project_name: match config::project_name()? {
+                None => panic!(),
+                Some(project_name) => project_name,
+            },
+        })
+    }
 }
 
 #[derive(Parser, Debug)]
@@ -175,6 +202,9 @@ impl TryFrom<DevArgs> for DevOptions {
     }
 }
 
+#[derive(Parser, Debug)]
+struct SourcesArgs {}
+
 #[tokio::main]
 async fn main() {
     if let Err(err) = exec_cmd(LambdaX3Cli::parse().command).await {
@@ -184,7 +214,9 @@ async fn main() {
 
 async fn exec_cmd(cmd: LambdaX3Command) -> Result<(), anyhow::Error> {
     match cmd {
+        LambdaX3Command::Build(args) => build_function(BuildFunctionOptions::try_from(args)?).await,
         LambdaX3Command::Init(args) => init_project(InitOptions::try_from(args)?),
+        LambdaX3Command::Sources(_args) => analyze_sources().await,
         LambdaX3Command::Sync(args) => sync_project(SyncOptions::try_from(args)?).await,
         LambdaX3Command::Dev(args) => develop_project(DevOptions::try_from(args)?).await,
     }

@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use crate::code::env::EnvVarSources;
-use crate::code::source::path::{FunctionBuildDir, SourcePath};
+use crate::code::source::path::SourcePath;
 use crate::code::source::Language;
 use crate::project::Lx3Project;
 use anyhow::anyhow;
@@ -126,21 +126,22 @@ impl LambdaFn {
         path: SourcePath,
         project: Arc<Lx3Project>,
         route_key: RouteKey,
-    ) -> Self {
+    ) -> Arc<Self> {
+        println!(
+            "{}\n{}",
+            path.abs.to_string_lossy(),
+            path.rel.to_string_lossy()
+        );
         debug_assert!(path.rel.starts_with("routes"));
         let fn_name = create_fn_name(&project.name, &route_key);
-        Self {
+        Arc::new(Self {
             env_var_sources: EnvVarSources::new(&project.dir, &route_key).unwrap(),
             fn_name,
             handler_fn,
             language: Language::from_extension(&path.rel).unwrap(),
             path,
             route_key,
-        }
-    }
-
-    pub fn build_dir(&self, project: &Arc<Lx3Project>) -> FunctionBuildDir {
-        FunctionBuildDir::new(project, &self.fn_name)
+        })
     }
 
     pub fn handler_path(&self) -> String {

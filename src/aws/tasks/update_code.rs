@@ -36,15 +36,14 @@ async fn build_and_update_fn_code(
     project: &Arc<Lx3Project>,
     lambda_fn: Arc<LambdaFn>,
 ) -> Result<(), anyhow::Error> {
+    let aws = project.aws();
     let mut checksums =
-        ChecksumTree::new(project.dir.clone(), &project.aws.api.id, &lambda_fn.fn_name).await?;
+        ChecksumTree::new(project.dir.clone(), &aws.api.id, &lambda_fn.fn_name).await?;
     if !checksums.do_checksums_match(&lambda_fn.path.rel)? {
-        let build_manifest = LambdaFnBuild::new(lambda_fn.clone(), project.clone())
+        let build_manifest = LambdaFnBuild::in_api_dir(lambda_fn.clone(), project.clone())
             .build()
             .await?;
-        project
-            .aws
-            .sdk_clients
+        aws.sdk_clients
             .lambda
             .update_function_code()
             .function_name(&lambda_fn.fn_name)

@@ -207,9 +207,8 @@ impl SourceTree {
         (source_tree, SourcesApi::new(msg_tx, project))
     }
 
-    fn add_lambda_fn(&mut self, lambda_fn: LambdaFn) {
-        self.lambdas
-            .insert(lambda_fn.route_key.clone(), Arc::new(lambda_fn));
+    fn add_lambda_fn(&mut self, lambda_fn: Arc<LambdaFn>) {
+        self.lambdas.insert(lambda_fn.route_key.clone(), lambda_fn);
     }
 
     fn add_source_file(&mut self, source_file: SourceFile) {

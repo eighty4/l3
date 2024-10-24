@@ -11,7 +11,7 @@ async fn test_typescript_import_resolver_with_relative_esm_js_import() {
     let resolver = TypescriptImportResolver::new();
     match resolver.resolve(&source_path, "./lib.js") {
         ModuleImport::RelativeSource(matched) => {
-            assert_eq!(matched.rel, PathBuf::from("lib.ts"))
+            assert_eq!(matched.rel(), &PathBuf::from("lib.ts"))
         }
         _ => panic!(),
     }

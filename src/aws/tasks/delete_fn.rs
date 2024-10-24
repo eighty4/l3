@@ -26,44 +26,36 @@ async fn delete_api_gateway_and_lambda_fn_resources(
     project: &Arc<Lx3Project>,
     lambda_fn: Arc<LambdaFn>,
 ) -> Result<(), anyhow::Error> {
-    let components = project.aws.resources.resources_for_fn(&lambda_fn).await?;
+    let aws = project.aws();
+    let components = aws.resources.resources_for_fn(&lambda_fn).await?;
     if let Some(route) = components.route {
-        project
-            .aws
-            .sdk_clients
+        aws.sdk_clients
             .api_gateway
             .delete_route()
-            .api_id(&project.aws.api.id)
+            .api_id(&aws.api.id)
             .route_id(&route.id)
             .send()
             .await?;
-        project.aws.resources.deleted_gateway_route(route)?;
+        aws.resources.deleted_gateway_route(route)?;
     }
     if let Some(integration) = components.integration {
-        project
-            .aws
-            .sdk_clients
+        aws.sdk_clients
             .api_gateway
             .delete_integration()
-            .api_id(&project.aws.api.id)
+            .api_id(&aws.api.id)
             .integration_id(&integration.id)
             .send()
             .await?;
-        project
-            .aws
-            .resources
-            .deleted_gateway_integration(integration)?;
+        aws.resources.deleted_gateway_integration(integration)?;
     }
     if let Some(removing_fn) = components.function {
-        project
-            .aws
-            .sdk_clients
+        aws.sdk_clients
             .lambda
             .delete_function()
             .function_name(&removing_fn.name)
             .send()
             .await?;
-        project.aws.resources.deleted_lambda_function(removing_fn)?;
+        aws.resources.deleted_lambda_function(removing_fn)?;
     }
     Ok(())
 }

@@ -3,7 +3,6 @@ use crate::lambda::HttpMethod::Get;
 use crate::lambda::{LambdaFn, RouteKey};
 use crate::testing::project::ProjectTest;
 use crate::testing::source::TestSource;
-use std::sync::Arc;
 
 #[tokio::test]
 async fn test_js_build_relative_import_with_explicit_extension() {
@@ -19,14 +18,14 @@ async fn test_js_build_relative_import_with_explicit_extension() {
             .build();
 
         let route_key = RouteKey::new(Get, "data".to_string());
-        let lambda_fn = Arc::new(LambdaFn::new(
+        let lambda_fn = LambdaFn::new(
             "GET".to_string(),
             project_test.source_path(format!("routes/data/lambda.{ext}").as_str()),
             project_test.project.clone(),
             route_key,
-        ));
+        );
 
-        let lambda_build = LambdaFnBuild::new(lambda_fn, project_test.project.clone());
+        let lambda_build = LambdaFnBuild::in_api_dir(lambda_fn, project_test.project.clone());
         let build_manifest = lambda_build.build().await.unwrap();
         assert_eq!(build_manifest.fn_sources.len(), 3);
     }

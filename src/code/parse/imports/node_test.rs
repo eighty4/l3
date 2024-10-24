@@ -13,7 +13,7 @@ async fn test_node_import_resolver_with_relative_mjs_import() {
     let resolver = NodeImportResolver::new(Arc::new(NodeConfig::default()));
     match resolver.resolve(&source_path, "./lib.mjs") {
         ModuleImport::RelativeSource(matched) => {
-            assert_eq!(matched.rel, PathBuf::from("lib.mjs"))
+            assert_eq!(matched.rel(), &PathBuf::from("lib.mjs"))
         }
         _ => panic!(),
     }
@@ -26,7 +26,7 @@ async fn test_node_import_resolver_with_relative_js_import() {
     let resolver = NodeImportResolver::new(Arc::new(NodeConfig::default()));
     match resolver.resolve(&source_path, "./lib.js") {
         ModuleImport::RelativeSource(matched) => {
-            assert_eq!(matched.rel, PathBuf::from("lib.js"))
+            assert_eq!(matched.rel(), &PathBuf::from("lib.js"))
         }
         _ => panic!(),
     }
