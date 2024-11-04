@@ -2,7 +2,8 @@ use crate::code::env::{
     is_valid_env_file_name, parse_env_file_name_for_http_method, EnvVarSources,
 };
 use crate::lambda::{HttpMethod, RouteKey};
-use crate::testing::{ProjectTest, TestSource};
+use crate::testing::project::ProjectTest;
+use crate::testing::source::TestSource;
 
 #[test]
 fn test_is_valid_env_file_name() {
@@ -42,8 +43,8 @@ fn test_parse_env_file_name_for_http_method() {
     );
 }
 
-#[test]
-fn test_env_var_sources_read_method_vars() {
+#[tokio::test]
+async fn test_env_var_sources_read_method_vars() {
     let route_key = RouteKey::new(HttpMethod::Get, "data".to_string());
     let project_test = ProjectTest::builder()
         .with_source(TestSource::method_env_var(route_key.clone()).content("GREETING=yo"))
@@ -54,8 +55,8 @@ fn test_env_var_sources_read_method_vars() {
     assert_eq!(env_vars.unwrap().get("GREETING").unwrap().as_str(), "yo");
 }
 
-#[test]
-fn test_env_var_sources_read_path_vars() {
+#[tokio::test]
+async fn test_env_var_sources_read_path_vars() {
     let route_key = RouteKey::new(HttpMethod::Get, "data".to_string());
     let project_test = ProjectTest::builder()
         .with_source(TestSource::path_env_var(route_key.clone()).content("GREETING=sup"))
@@ -66,8 +67,8 @@ fn test_env_var_sources_read_path_vars() {
     assert_eq!(env_vars.unwrap().get("GREETING").unwrap().as_str(), "sup");
 }
 
-#[test]
-fn test_env_var_sources_read_method_overrides_path_vars() {
+#[tokio::test]
+async fn test_env_var_sources_read_method_overrides_path_vars() {
     let route_key = RouteKey::new(HttpMethod::Get, "data".to_string());
     let project_test = ProjectTest::builder()
         .with_source(TestSource::method_env_var(route_key.clone()).content("GREETING=yo"))

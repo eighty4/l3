@@ -1,7 +1,6 @@
-use std::fs;
-use std::path::PathBuf;
-
 use anyhow::anyhow;
+use std::fs;
+use std::path::Path;
 use yaml_rust::{Yaml, YamlLoader};
 
 pub struct Config {
@@ -41,21 +40,30 @@ pub fn read_config() -> Result<Option<Config>, anyhow::Error> {
     }
 }
 
-pub fn read_api_id_from_data_dir() -> Result<Option<String>, anyhow::Error> {
-    let p = PathBuf::from(".l3/api");
-    if p.exists() {
-        match fs::read_to_string(p) {
-            Ok(api_id) => Ok(Some(api_id.trim().to_string())),
-            Err(err) => Err(anyhow!("error reading --api_id from .l3/api: {err}")),
-        }
-    } else {
-        Ok(None)
+pub fn is_valid_project_name(project_name: &str) -> bool {
+    if project_name.len() < 3 || project_name.len() > 16 {
+        return false;
     }
+    let mut chars = project_name.chars();
+    if !chars.next().map(|c| c.is_alphabetic()).unwrap() {
+        return false;
+    }
+    for c in chars {
+        let valid = c.is_alphanumeric() || c == '-' || c == '_';
+        if !valid {
+            return false;
+        }
+    }
+    !project_name
+        .chars()
+        .last()
+        .map(|c| c == '-' || c == '_')
+        .unwrap()
 }
 
-pub fn write_api_id_to_data_dir(api_id: &String) -> Result<(), anyhow::Error> {
-    match fs::create_dir_all(format!(".l3/{api_id}")).and_then(|_| fs::write(".l3/api", api_id)) {
-        Ok(_) => Ok(()),
-        Err(err) => Err(anyhow!("error writing --api_id to .l3/api: {err}")),
-    }
+// todo rewrite invalid dir name into a valid project name
+pub fn suggested_project_name_from_directory(p: &Path) -> String {
+    debug_assert!(p.is_absolute());
+    debug_assert!(p.is_dir());
+    p.file_name().unwrap().to_string_lossy().to_string()
 }

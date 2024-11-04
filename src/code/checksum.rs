@@ -5,7 +5,9 @@ use std::path::{Path, PathBuf};
 use crate::code::env::EnvVarSources;
 use crate::code::read::recursively_read_dirs;
 use crate::code::sha256::make_checksum;
+use crate::code::source::path::{SourceKind, SourcePath};
 
+// todo move checksum tree instances into source tree or lambda fn
 /// Manages checksum diffing for sources packaged with a Lambda Function
 pub struct ChecksumTree {
     /// Map of relative source paths to sha256 hash
@@ -20,12 +22,13 @@ impl ChecksumTree {
     pub fn dir_path(project_dir: &Path, api_id: &String, fn_name: &String) -> PathBuf {
         project_dir
             .join(".l3")
+            .join("aws")
             .join(api_id)
             .join(fn_name)
             .join("checksums")
     }
 
-    pub fn new(
+    pub async fn new(
         project_dir: PathBuf,
         api_id: &String,
         fn_name: &String,
@@ -33,7 +36,7 @@ impl ChecksumTree {
         let mut checksums = HashMap::new();
         let checksum_dir = Self::dir_path(&project_dir, api_id, fn_name);
         if checksum_dir.is_dir() {
-            for abs_path in recursively_read_dirs(&checksum_dir)? {
+            for abs_path in recursively_read_dirs(&checksum_dir).await? {
                 checksums.insert(
                     PathBuf::from(&abs_path.strip_prefix(&checksum_dir)?),
                     fs::read_to_string(&abs_path)?,
@@ -61,6 +64,7 @@ impl ChecksumTree {
 
     #[allow(unused)]
     pub fn do_all_checksums_match(&self, paths: &Vec<PathBuf>) -> Result<bool, anyhow::Error> {
+        debug_assert!(paths.iter().all(|p| p.is_relative()));
         for p in paths {
             if !self.do_checksums_match(p)? {
                 return Ok(false);
@@ -71,9 +75,11 @@ impl ChecksumTree {
 
     pub fn do_env_checksums_match(
         &self,
+        deployed_env_vars: &Option<HashMap<String, String>>,
         env_var_sources: &EnvVarSources,
     ) -> Result<bool, anyhow::Error> {
-        if env_var_sources.method_env_file.is_none() {
+        let has_method_env_file = env_var_sources.method_env_file.is_some();
+        if !has_method_env_file {
             if self
                 .checksums
                 .contains_key(&env_var_sources.method_env_file_path)
@@ -83,7 +89,8 @@ impl ChecksumTree {
         } else if !self.do_checksums_match(&env_var_sources.method_env_file_path)? {
             return Ok(false);
         }
-        if env_var_sources.path_env_file.is_none() {
+        let has_path_env_file = env_var_sources.path_env_file.is_some();
+        if !has_path_env_file {
             if self
                 .checksums
                 .contains_key(&env_var_sources.path_env_file_path)
@@ -93,7 +100,12 @@ impl ChecksumTree {
         } else if !self.do_checksums_match(&env_var_sources.path_env_file_path)? {
             return Ok(false);
         }
-        Ok(true)
+        // only matching checksums if an env file exists or the deployed fn has no env vars
+        Ok(has_method_env_file
+            || has_path_env_file
+            || deployed_env_vars
+                .as_ref()
+                .map_or(true, |env| env.is_empty()))
     }
 
     pub fn remove_checksum(&mut self, path: &PathBuf) {
@@ -116,10 +128,10 @@ impl ChecksumTree {
         Ok(())
     }
 
-    #[allow(unused)]
-    pub fn update_all_checksums(&mut self, paths: Vec<PathBuf>) -> Result<(), anyhow::Error> {
+    pub fn update_all_checksums(&mut self, paths: &Vec<SourcePath>) -> Result<(), anyhow::Error> {
         for p in paths {
-            self.update_checksum(p)?;
+            debug_assert!(matches!(p.kind, SourceKind::OriginalSource));
+            self.update_checksum(p.rel().clone())?;
         }
         Ok(())
     }

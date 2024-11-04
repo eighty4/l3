@@ -1,8 +1,9 @@
 use crate::code::sha256::make_checksum;
-use crate::testing::{ProjectTest, TestSource};
+use crate::testing::project::ProjectTest;
+use crate::testing::source::TestSource;
 
-#[test]
-fn test() {
+#[tokio::test]
+async fn test() {
     let project_test = ProjectTest::builder()
         .with_source(TestSource::with_path("file").content("content"))
         .build();

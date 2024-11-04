@@ -1,9 +1,12 @@
 use std::fmt;
 use std::path::{Path, PathBuf};
-
-use anyhow::anyhow;
+use std::sync::Arc;
 
 use crate::code::env::EnvVarSources;
+use crate::code::source::path::SourcePath;
+use crate::code::source::Language;
+use crate::project::Lx3Project;
+use anyhow::anyhow;
 
 fn create_fn_name(project_name: &String, route_key: &RouteKey) -> String {
     format!(
@@ -25,7 +28,7 @@ impl RouteKey {
     pub fn extract_http_path(path: &Path) -> Option<String> {
         debug_assert!(path.is_relative());
         let mut parts = Vec::new();
-        for p in path.parent().unwrap().components().rev() {
+        for p in path.parent()?.components().rev() {
             if p.as_os_str().to_string_lossy().as_ref() == "routes" {
                 return Some(PathBuf::from_iter(parts).to_string_lossy().to_string());
             } else {
@@ -46,27 +49,26 @@ impl RouteKey {
         }
     }
 
+    /// Creates a RouteKey from a string format "{http_method} {http_path}"
+    pub fn from_route_key_string(s: String) -> Result<Self, anyhow::Error> {
+        let (http_method_str, http_path_str) = s.split_once(' ').unwrap();
+        let http_method = HttpMethod::try_from(http_method_str)?;
+        let http_path = http_path_str.trim().to_string();
+        Ok(RouteKey::new(http_method, http_path))
+    }
+
+    #[allow(unused)]
     pub fn to_fn_name(&self, project_name: &String) -> String {
         create_fn_name(project_name, self)
     }
 
+    /// Creates relative path to Lambda route directory
     pub fn to_route_dir_path(&self) -> PathBuf {
         PathBuf::from("routes").join(&self.http_path)
     }
 
     pub fn to_route_key_string(&self) -> String {
         format!("{} /{}", self.http_method, self.http_path)
-    }
-}
-
-impl TryFrom<String> for RouteKey {
-    type Error = anyhow::Error;
-
-    fn try_from(route_key_str: String) -> Result<Self, Self::Error> {
-        let (http_method_str, http_path_str) = route_key_str.split_once(' ').unwrap();
-        let http_method = HttpMethod::try_from(http_method_str)?;
-        let http_path = http_path_str.trim().to_string();
-        Ok(RouteKey::new(http_method, http_path))
     }
 }
 
@@ -109,35 +111,37 @@ impl<'a> TryFrom<&'a str> for HttpMethod {
     }
 }
 
-#[derive(Clone)]
 pub struct LambdaFn {
     pub env_var_sources: EnvVarSources,
     pub fn_name: String,
     pub handler_fn: String,
-    pub path: PathBuf,
+    pub language: Language,
+    pub path: SourcePath,
     pub route_key: RouteKey,
 }
 
 impl LambdaFn {
     pub fn new(
-        env_var_sources: EnvVarSources,
         handler_fn: String,
-        path: PathBuf,
-        project_name: &String,
+        path: SourcePath,
+        project: Arc<Lx3Project>,
         route_key: RouteKey,
-    ) -> Self {
-        Self {
-            env_var_sources,
-            fn_name: create_fn_name(project_name, &route_key),
+    ) -> Arc<Self> {
+        debug_assert!(path.rel.starts_with("routes"));
+        let fn_name = create_fn_name(&project.name, &route_key);
+        Arc::new(Self {
+            env_var_sources: EnvVarSources::new(&project.dir, &route_key).unwrap(),
+            fn_name,
             handler_fn,
+            language: Language::from_extension(&path.rel).unwrap(),
             path,
             route_key,
-        }
+        })
     }
 
     pub fn handler_path(&self) -> String {
-        let file_name = self.path.file_name().unwrap().to_string_lossy();
-        let extension = self.path.extension().unwrap().to_string_lossy();
+        let file_name = self.path.rel.file_name().unwrap().to_string_lossy();
+        let extension = self.path.rel.extension().unwrap().to_string_lossy();
         format!(
             "routes/{}/{}.{}",
             self.route_key.http_path,
