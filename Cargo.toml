@@ -1,10 +1,32 @@
+[workspace]
+members = [
+    "fn_build",
+]
+
+[workspace.dependencies]
+anyhow = "1.0.92"
+swc = "4.0.0"
+swc_common = { version = "3.0.0", features = ["concurrent"] }
+swc_ecma_ast = "3.0.0"
+swc_ecma_parser = { version = "4.0.0", features = ["typescript"] }
+swc_ecma_visit = { version = "3.0.0" }
+temp-dir = "0.1.14"
+tokio = { version = "1.41.0", features = ["full"] }
+
+[workspace.package]
+authors = ["Adam McKee <adam.be.g84d@gmail.com>"]
+edition = "2021"
+repository = "https://github.com/eighty4/l3"
+
 [package]
 name = "l3"
 version = "0.0.1"
-edition = "2021"
+authors = { workspace = true }
+edition = { workspace = true }
+repository = { workspace = true }
 
 [dependencies]
-anyhow = "1.0.92"
+anyhow = { workspace = true }
 aws-config = "1.5.9"
 aws-sdk-apigatewayv2 = "1.48.0"
 aws-sdk-iam = "1.50.0"
@@ -17,14 +39,14 @@ notify = { version = "7.0.0", default-features = false, features = ["macos_fseve
 regex = "1.11.1"
 serde_json = "1.0.132"
 sha2 = "0.10.8"
-swc = "4.0.0"
-swc_common = { version = "3.0.0", features = ["concurrent"] }
-swc_ecma_ast = "3.0.0"
-swc_ecma_parser = { version = "4.0.0", features = ["typescript"] }
-tokio = { version = "1.41.0", features = ["full"] }
+swc = { workspace = true }
+swc_common = { workspace = true }
+swc_ecma_ast = { workspace = true }
+swc_ecma_parser = { workspace = true }
+tokio = { workspace = true }
 toml = "0.8.19"
 yaml-rust = "0.4.5"
 zip = "2.2.0"
 
 [dev-dependencies]
-temp-dir = "0.1.14"
+temp-dir = { workspace = true }

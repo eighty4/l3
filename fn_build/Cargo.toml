@@ -1,0 +1,19 @@
+[package]
+name = "l3_fn_build"
+version = "0.0.1"
+authors = { workspace = true }
+edition = { workspace = true }
+repository = { workspace = true }
+
+[dependencies]
+anyhow = { workspace = true }
+swc = { workspace = true }
+swc_common = { workspace = true }
+swc_ecma_ast = { workspace = true }
+swc_ecma_parser = { workspace = true }
+swc_ecma_visit = { workspace = true }
+thiserror = "1.0.67"
+tokio = { workspace = true }
+
+[dev-dependencies]
+temp-dir = { workspace = true }

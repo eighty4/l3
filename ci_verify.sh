@@ -6,19 +6,19 @@ set -e
 _git_status_output=$(git status --porcelain)
 
 echo '\n*** cargo build ***'
-cargo build
+cargo build --workspace
 
 echo '\n*** cargo fmt -v ***'
-cargo fmt -v
+cargo fmt --all -v
 if [ -z "$_git_status_output" ]; then
   git diff --exit-code
 fi
 
 echo '\n*** cargo test ***'
-cargo test
+cargo test --workspace
 
 echo '\n*** cargo clippy -- -D warnings ***'
-cargo clippy -- -D warnings
+cargo clippy --all -- -D warnings
 
 if [ -n "$_git_status_output" ]; then
   echo
