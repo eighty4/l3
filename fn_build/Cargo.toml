@@ -16,4 +16,6 @@ thiserror = "1.0.67"
 tokio = { workspace = true }
 
 [dev-dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
 temp-dir = { workspace = true }

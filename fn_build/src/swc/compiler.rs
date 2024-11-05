@@ -53,6 +53,19 @@ impl SwcCompiler {
         }
     }
 
+    pub fn minify_js(self, path: &Path) -> CompileResult<String> {
+        self.source_with_compiler(path, |compiler, handler, source_file| {
+            compiler
+                .minify(
+                    source_file,
+                    handler,
+                    &Default::default(),
+                    Default::default(),
+                )
+                .map(|transform_output| transform_output.code)
+        })
+    }
+
     pub fn parse_es_module(self, path: &Path) -> CompileResult<Module> {
         self.source_with_compiler(path, |compiler, handler, source_file| {
             compiler
@@ -71,7 +84,7 @@ impl SwcCompiler {
         })
     }
 
-    pub fn source_with_compiler<F, R>(self, p: &Path, f: F) -> CompileResult<R>
+    fn source_with_compiler<F, R>(self, p: &Path, f: F) -> CompileResult<R>
     where
         F: FnOnce(&Compiler, &Handler, Arc<SourceFile>) -> Result<R, anyhow::Error>,
     {
@@ -82,7 +95,7 @@ impl SwcCompiler {
         self.with_compiler(|compiler, handler| f(compiler, handler, source_file))
     }
 
-    pub fn with_compiler<F, R>(self, f: F) -> CompileResult<R>
+    fn with_compiler<F, R>(self, f: F) -> CompileResult<R>
     where
         F: FnOnce(&Compiler, &Handler) -> Result<R, anyhow::Error>,
     {

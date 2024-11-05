@@ -1,0 +1,8 @@
+[
+  {
+    "path": "routes/data/lambda.js",
+    "result": {
+      "Content": "export const DELETE=()=>{console.log(\"delete\")};"
+    }
+  }
+]

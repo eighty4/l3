@@ -1,3 +1,4 @@
+use crate::spec::FnBuildOutput;
 use std::path::PathBuf;
 
 #[derive(Clone)]
@@ -17,6 +18,13 @@ pub enum ModuleImport {
 pub struct FnSource {
     pub imports: Vec<ModuleImport>,
     pub path: PathBuf,
+}
+
+pub struct FnBuild {
+    #[allow(unused)]
+    pub entrypoint: FnSource,
+    #[allow(unused)]
+    pub output: FnBuildOutput,
 }
 
 #[derive(thiserror::Error, Debug)]
