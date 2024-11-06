@@ -1,0 +1,10 @@
+[
+  {
+    "path": "lib/data.js",
+    "result": "identical"
+  },
+  {
+    "path": "routes/data/lambda.js",
+    "result": "identical"
+  }
+]

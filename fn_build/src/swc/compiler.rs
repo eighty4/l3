@@ -67,6 +67,8 @@ impl SwcCompiler {
     }
 
     pub fn parse_es_module(self, path: &Path) -> CompileResult<Module> {
+        debug_assert!(path.is_absolute());
+        debug_assert!(path.is_file());
         self.source_with_compiler(path, |compiler, handler, source_file| {
             compiler
                 .parse_js(

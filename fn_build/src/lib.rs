@@ -1,3 +1,4 @@
+mod paths;
 mod result;
 mod spec;
 mod swc;
@@ -9,9 +10,12 @@ mod build_test;
 mod parse_test;
 
 #[cfg(test)]
+mod paths_test;
+
+#[cfg(test)]
 mod testing;
 
-use crate::result::{FnBuild, FnBuildError, FnBuildResult, FnSource};
+use crate::result::{FnBuild, FnBuildError, FnBuildResult, FnSources};
 use crate::spec::{FnBuildSpec, FnParseSpec};
 use crate::swc::{build_js_fn, parse_js_fn};
 
@@ -33,7 +37,7 @@ pub async fn build_fn(build_spec: FnBuildSpec) -> FnBuildResult<FnBuild> {
     }
 }
 
-pub async fn parse_fn(parse_spec: FnParseSpec) -> FnBuildResult<FnSource> {
+pub async fn parse_fn(parse_spec: FnParseSpec) -> FnBuildResult<FnSources> {
     debug_assert!(parse_spec.entrypoint.is_relative());
     debug_assert!(parse_spec.entrypoint.parent().is_some());
     debug_assert!(parse_spec.project_dir.is_absolute());

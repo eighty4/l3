@@ -1,0 +1,14 @@
+[
+  {
+    "imports": [],
+    "path": "lib/data.js"
+  },
+  {
+    "imports": [
+      {
+        "relativeSource": "lib/data.js"
+      }
+    ],
+    "path": "routes/data/lambda.js"
+  }
+]

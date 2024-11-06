@@ -1,5 +1,6 @@
-use crate::spec::FnBuildSpec;
-use crate::swc::build_js_fn;
+use crate::result::{FnBuild, FnSources};
+use crate::spec::{FnBuildSpec, FnParseSpec};
+use crate::swc::{build_js_fn, parse_js_fn};
 use crate::testing::{run_fixtures, BuildProcess, BuildProcessResult};
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -7,8 +8,12 @@ use std::sync::Arc;
 struct JavaScriptBuild {}
 
 impl BuildProcess for JavaScriptBuild {
-    fn build(&self, build_spec: FnBuildSpec) -> BuildProcessResult {
+    fn build(&self, build_spec: FnBuildSpec) -> BuildProcessResult<FnBuild> {
         Box::pin(build_js_fn(build_spec))
+    }
+
+    fn parse(&self, parse_spec: FnParseSpec) -> BuildProcessResult<FnSources> {
+        Box::pin(parse_js_fn(parse_spec))
     }
 }
 
