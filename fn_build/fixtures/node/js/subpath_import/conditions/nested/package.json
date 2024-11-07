@@ -1,0 +1,19 @@
+{
+  "type": "module",
+  "imports": {
+    "#data": {
+      "require": "./lib/data-polyfill.js",
+      "node": {
+        "import": {
+          "node-addons": "data-dep"
+        }
+      }
+    },
+    "#log": {
+      "node": {
+        "require": "./lib/tla-log.js"
+      },
+      "import": "log-dep"
+    }
+  }
+}

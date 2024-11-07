@@ -1,0 +1,20 @@
+{
+  "files": [
+    {
+      "path": "package.json",
+      "result": "identical"
+    },
+    {
+      "path": "data/raw.js",
+      "result": "identical"
+    },
+    {
+      "path": "data/abstraction/orm.js",
+      "result": "identical"
+    },
+    {
+      "path": "routes/data/lambda.js",
+      "result": "identical"
+    }
+  ]
+}

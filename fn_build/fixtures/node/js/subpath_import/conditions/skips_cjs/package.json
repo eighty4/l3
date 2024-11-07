@@ -1,0 +1,13 @@
+{
+  "type": "module",
+  "imports": {
+    "#not-module-sync": {
+      "module-sync": "cjs-dep",
+      "node": "./lib/not-module-sync.js"
+    },
+    "#not-require": {
+      "require": "cjs-dep",
+      "node": "./lib/not-require.js"
+    }
+  }
+}

@@ -1,5 +1,7 @@
+mod fs;
 mod paths;
 mod result;
+mod runtime;
 mod spec;
 mod swc;
 
@@ -15,18 +17,18 @@ mod paths_test;
 #[cfg(test)]
 mod testing;
 
-use crate::result::{FnBuild, FnBuildError, FnBuildResult, FnSources};
+use crate::result::{FnBuild, FnBuildError, FnBuildResult, FnManifest};
 use crate::spec::{FnBuildSpec, FnParseSpec};
 use crate::swc::{build_js_fn, parse_js_fn};
 
 pub async fn build_fn(build_spec: FnBuildSpec) -> FnBuildResult<FnBuild> {
-    debug_assert!(build_spec.entrypoint.is_relative());
-    debug_assert!(build_spec.entrypoint.parent().is_some());
+    debug_assert!(build_spec.function.entrypoint.is_relative());
+    debug_assert!(build_spec.function.entrypoint.parent().is_some());
     debug_assert!(build_spec.output.is_absolute());
     debug_assert!(build_spec.output.is_dir());
-    debug_assert!(build_spec.project_dir.is_absolute());
-    debug_assert!(build_spec.project_dir.is_dir());
-    match build_spec.entrypoint.extension() {
+    debug_assert!(build_spec.function.project_dir.is_absolute());
+    debug_assert!(build_spec.function.project_dir.is_dir());
+    match build_spec.function.entrypoint.extension() {
         None => Err(FnBuildError::InvalidFileType),
         Some(extension) => match extension.to_string_lossy().as_ref() {
             "js" | "mjs" => build_js_fn(build_spec).await,
@@ -37,7 +39,7 @@ pub async fn build_fn(build_spec: FnBuildSpec) -> FnBuildResult<FnBuild> {
     }
 }
 
-pub async fn parse_fn(parse_spec: FnParseSpec) -> FnBuildResult<FnSources> {
+pub async fn parse_fn(parse_spec: FnParseSpec) -> FnBuildResult<FnManifest> {
     debug_assert!(parse_spec.entrypoint.is_relative());
     debug_assert!(parse_spec.entrypoint.parent().is_some());
     debug_assert!(parse_spec.project_dir.is_absolute());

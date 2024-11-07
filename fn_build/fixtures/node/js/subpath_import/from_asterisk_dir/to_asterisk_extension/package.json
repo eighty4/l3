@@ -1,0 +1,6 @@
+{
+  "type": "module",
+  "imports": {
+    "#lib/*/data.js": "./data/*.js"
+  }
+}

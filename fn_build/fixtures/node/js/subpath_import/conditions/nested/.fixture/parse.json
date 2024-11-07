@@ -1,0 +1,26 @@
+{
+  "dependencies": "required",
+  "sources": [
+    {
+      "imports": [],
+      "path": "package.json"
+    },
+    {
+      "imports": [
+        {
+          "packageDependency": {
+            "package": "data-dep",
+            "subpath": null
+          }
+        },
+        {
+          "packageDependency": {
+            "package": "log-dep",
+            "subpath": null
+          }
+        }
+      ],
+      "path": "routes/data/lambda.js"
+    }
+  ]
+}

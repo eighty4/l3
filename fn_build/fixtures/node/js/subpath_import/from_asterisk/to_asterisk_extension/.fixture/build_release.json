@@ -1,0 +1,26 @@
+{
+  "files": [
+    {
+      "path": "package.json",
+      "result": "identical"
+    },
+    {
+      "path": "data/raw.js",
+      "result": {
+        "content": "let t=[];export function getData(){return t}"
+      }
+    },
+    {
+      "path": "data/abstraction/orm.js",
+      "result": {
+        "content": "let t=[[[]],[]];export function getComplexData(){return t}"
+      }
+    },
+    {
+      "path": "routes/data/lambda.js",
+      "result": {
+        "content": "import{getData as o}from\"#lib/data/raw\";import{getComplexData as t}from\"#lib/data/abstraction/orm\";export const GET=()=>{console.log(\"got\",o()),console.log(\"getting\",t())};"
+      }
+    }
+  ]
+}

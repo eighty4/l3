@@ -1,0 +1,14 @@
+{
+  "files": [
+    {
+      "path": "package.json",
+      "result": "identical"
+    },
+    {
+      "path": "routes/data/lambda.js",
+      "result": {
+        "content": "import{getData as o}from\"#lib/redis/data\";export const GET=()=>{console.log(\"got\",o())};"
+      }
+    }
+  ]
+}

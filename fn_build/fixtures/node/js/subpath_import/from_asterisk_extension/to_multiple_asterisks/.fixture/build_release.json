@@ -1,0 +1,20 @@
+{
+  "files": [
+    {
+      "path": "package.json",
+      "result": "identical"
+    },
+    {
+      "path": "data/data.js",
+      "result": {
+        "content": "let t=[];export function getData(){return t}"
+      }
+    },
+    {
+      "path": "routes/data/lambda.js",
+      "result": {
+        "content": "import{getData as o}from\"#lib/data.js\";export const GET=()=>{console.log(\"got\",o())};"
+      }
+    }
+  ]
+}

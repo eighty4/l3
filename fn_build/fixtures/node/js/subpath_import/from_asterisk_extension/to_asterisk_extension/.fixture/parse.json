@@ -1,0 +1,28 @@
+{
+  "dependencies": "unused",
+  "sources": [
+    {
+      "imports": [],
+      "path": "package.json"
+    },
+    {
+      "imports": [],
+      "path": "data/raw.js"
+    },
+    {
+      "imports": [],
+      "path": "data/abstraction/orm.js"
+    },
+    {
+      "imports": [
+        {
+          "relativeSource": "data/raw.js"
+        },
+        {
+          "relativeSource": "data/abstraction/orm.js"
+        }
+      ],
+      "path": "routes/data/lambda.js"
+    }
+  ]
+}

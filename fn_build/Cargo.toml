@@ -8,14 +8,14 @@ repository = { workspace = true }
 [dependencies]
 anyhow = { workspace = true }
 serde = { workspace = true }
+serde_json = { workspace = true }
 swc = { workspace = true }
 swc_common = { workspace = true }
 swc_ecma_ast = { workspace = true }
 swc_ecma_parser = { workspace = true }
 swc_ecma_visit = { workspace = true }
-thiserror = "1.0.67"
+thiserror = "2.0.0"
 tokio = { workspace = true }
 
 [dev-dependencies]
-serde_json = { workspace = true }
 temp-dir = { workspace = true }

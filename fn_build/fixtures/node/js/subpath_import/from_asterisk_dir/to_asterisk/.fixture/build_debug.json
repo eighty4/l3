@@ -1,0 +1,16 @@
+{
+  "files": [
+    {
+      "path": "package.json",
+      "result": "identical"
+    },
+    {
+      "path": "data/redis.js",
+      "result": "identical"
+    },
+    {
+      "path": "routes/data/lambda.js",
+      "result": "identical"
+    }
+  ]
+}

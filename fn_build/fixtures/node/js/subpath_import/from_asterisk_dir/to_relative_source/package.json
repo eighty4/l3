@@ -1,0 +1,6 @@
+{
+  "type": "module",
+  "imports": {
+    "#lib/*/redis.js": "./lib/redis.js"
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "dependencies": "required",
+  "sources": [
+    {
+      "imports": [],
+      "path": "package.json"
+    },
+    {
+      "imports": [
+        {
+          "packageDependency": {
+            "package": "data-dep",
+            "subpath": "redis.js"
+          }
+        }
+      ],
+      "path": "routes/data/lambda.js"
+    }
+  ]
+}

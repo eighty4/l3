@@ -1,0 +1,21 @@
+{
+  "dependencies": "unused",
+  "sources": [
+    {
+      "imports": [],
+      "path": "package.json"
+    },
+    {
+      "imports": [],
+      "path": "data/redis/data.js"
+    },
+    {
+      "imports": [
+        {
+          "relativeSource": "data/redis/data.js"
+        }
+      ],
+      "path": "routes/data/lambda.js"
+    }
+  ]
+}

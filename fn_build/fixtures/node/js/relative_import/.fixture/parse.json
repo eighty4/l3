@@ -1,0 +1,21 @@
+{
+  "dependencies": "unused",
+  "sources": [
+    {
+      "imports": [],
+      "path": "package.json"
+    },
+    {
+      "imports": [],
+      "path": "lib/data.js"
+    },
+    {
+      "imports": [
+        {
+          "relativeSource": "lib/data.js"
+        }
+      ],
+      "path": "routes/data/lambda.js"
+    }
+  ]
+}

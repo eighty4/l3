@@ -1,0 +1,28 @@
+{
+  "dependencies": "unused",
+  "sources": [
+    {
+      "imports": [],
+      "path": "package.json"
+    },
+    {
+      "imports": [],
+      "path": "lib/not-module-sync.js"
+    },
+    {
+      "imports": [],
+      "path": "lib/not-require.js"
+    },
+    {
+      "imports": [
+        {
+          "relativeSource": "lib/not-module-sync.js"
+        },
+        {
+          "relativeSource": "lib/not-require.js"
+        }
+      ],
+      "path": "routes/data/lambda.js"
+    }
+  ]
+}

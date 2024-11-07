@@ -1,5 +1,5 @@
 use std::io;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::sync::{Arc, Mutex};
 use swc::config::IsModule;
 use swc::Compiler;
@@ -31,8 +31,8 @@ pub enum CompileError {
     CompilerDiagnostics(Vec<Diagnostic>),
     #[error("compiler operation produced error: {0}")]
     OperationError(String),
-    #[error("error reading source file {0}: {1}")]
-    ReadError(PathBuf, io::Error),
+    #[error("reading source io error: {0}")]
+    ReadError(#[from] io::Error),
 }
 
 pub type CompileResult<R> = Result<R, CompileError>;
@@ -90,10 +90,7 @@ impl SwcCompiler {
     where
         F: FnOnce(&Compiler, &Handler, Arc<SourceFile>) -> Result<R, anyhow::Error>,
     {
-        let source_file = match self.source_map.load_file(p) {
-            Ok(source_file) => source_file,
-            Err(err) => return Err(CompileError::ReadError(p.to_path_buf(), err)),
-        };
+        let source_file = self.source_map.load_file(p)?;
         self.with_compiler(|compiler, handler| f(compiler, handler, source_file))
     }
 

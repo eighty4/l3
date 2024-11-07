@@ -1,0 +1,3 @@
+{
+  "entrypoint": "routes/data/lambda.js"
+}

@@ -1,3 +1,4 @@
+use crate::runtime::Runtime;
 use std::path::PathBuf;
 
 #[derive(Clone, Eq, Hash, PartialEq)]
@@ -14,13 +15,13 @@ pub type FnBuildOutput = PathBuf;
 // }
 
 pub struct FnBuildSpec {
-    pub entrypoint: PathBuf,
+    pub function: FnParseSpec,
     pub mode: BuildMode,
     pub output: FnBuildOutput,
-    pub project_dir: PathBuf,
 }
 
 pub struct FnParseSpec {
     pub entrypoint: PathBuf,
     pub project_dir: PathBuf,
+    pub runtime: Runtime,
 }
