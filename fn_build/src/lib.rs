@@ -1,7 +1,7 @@
 mod fs;
 mod paths;
 mod result;
-mod runtime;
+pub mod runtime;
 mod spec;
 mod swc;
 
@@ -17,9 +17,8 @@ mod paths_test;
 #[cfg(test)]
 mod testing;
 
-use crate::result::{FnBuild, FnBuildError, FnBuildResult, FnManifest};
-use crate::spec::{FnBuildSpec, FnParseSpec};
-use crate::swc::{build_js_fn, parse_js_fn};
+pub use crate::result::*;
+pub use crate::spec::*;
 
 pub async fn build_fn(build_spec: FnBuildSpec) -> FnBuildResult<FnBuild> {
     debug_assert!(build_spec.function.entrypoint.is_relative());
@@ -31,7 +30,7 @@ pub async fn build_fn(build_spec: FnBuildSpec) -> FnBuildResult<FnBuild> {
     match build_spec.function.entrypoint.extension() {
         None => Err(FnBuildError::InvalidFileType),
         Some(extension) => match extension.to_string_lossy().as_ref() {
-            "js" | "mjs" => build_js_fn(build_spec).await,
+            "js" | "mjs" => runtime::node::build_node_fn(build_spec).await,
             "py" => todo!(),
             "ts" => todo!(),
             &_ => Err(FnBuildError::InvalidFileType),
@@ -47,7 +46,7 @@ pub async fn parse_fn(parse_spec: FnParseSpec) -> FnBuildResult<FnManifest> {
     match parse_spec.entrypoint.extension() {
         None => Err(FnBuildError::InvalidFileType),
         Some(extension) => match extension.to_string_lossy().as_ref() {
-            "js" | "mjs" => parse_js_fn(parse_spec).await,
+            "js" | "mjs" => runtime::node::parse_node_fn(parse_spec).await,
             "py" => todo!(),
             "ts" => todo!(),
             &_ => Err(FnBuildError::InvalidFileType),

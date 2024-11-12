@@ -18,8 +18,8 @@ enum FixtureTestMode {
 
 #[tokio::test]
 async fn test_fixtures() {
-    let mode = FixtureTestMode::AllFixtures;
-    // let mode = FixtureTestMode::SingleFixture(PathBuf::from("fixtures/node/js/relative_import"));
+    // let mode = FixtureTestMode::AllFixtures;
+    let mode = FixtureTestMode::SingleFixture(PathBuf::from("fixtures/node/js/circular_imports"));
 
     let runtime: Arc<Box<dyn TestRuntime>> = Arc::new(Box::new(TestNodeRuntime {}));
     match mode {

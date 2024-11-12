@@ -1,9 +1,10 @@
 use crate::build_fn;
-use crate::result::FnBuildError;
 use crate::runtime::Runtime;
-use crate::spec::{BuildMode, FnBuildSpec, FnParseSpec};
+use crate::FnBuildError;
+use crate::{BuildMode, FnBuildSpec, FnParseSpec};
 use std::env;
 use std::path::PathBuf;
+use std::sync::Arc;
 use temp_dir::TempDir;
 
 #[tokio::test]
@@ -13,9 +14,11 @@ async fn build_fn_errors_for_invalid_extension() {
         let build_spec = FnBuildSpec {
             function: FnParseSpec {
                 entrypoint: PathBuf::from(entrypoint),
-                project_dir: env::current_dir()
-                    .unwrap()
-                    .join("fixtures/node/js/http_route"),
+                project_dir: Arc::new(
+                    env::current_dir()
+                        .unwrap()
+                        .join("fixtures/node/js/http_route"),
+                ),
                 runtime: Runtime::Node(Default::default()),
             },
             mode: BuildMode::Debug,

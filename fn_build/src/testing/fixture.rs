@@ -1,8 +1,7 @@
-use crate::result::FnManifest;
-use crate::spec::{BuildMode, FnBuildSpec, FnParseSpec};
 use crate::testing::result::{BuildFileOutput, BuildResult};
 use crate::testing::runtimes::TestRuntime;
 use crate::testing::spec::TestFixtureSpec;
+use crate::{BuildMode, FnBuildSpec, FnManifest, FnParseSpec};
 use anyhow::anyhow;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -12,7 +11,7 @@ use temp_dir::TempDir;
 pub struct TestFixture {
     build_dir_root: TempDir,
     runtime: Arc<Box<dyn TestRuntime>>,
-    fixture_dir: PathBuf,
+    fixture_dir: Arc<PathBuf>,
     spec: TestFixtureSpec,
 }
 
@@ -24,7 +23,7 @@ impl TestFixture {
         Self {
             build_dir_root: TempDir::new().unwrap(),
             runtime,
-            fixture_dir,
+            fixture_dir: Arc::new(fixture_dir),
             spec,
         }
     }

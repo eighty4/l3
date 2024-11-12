@@ -1,7 +1,7 @@
-use crate::result::ModuleImport;
 use crate::runtime::node::imports::resolver::NodeImportResolver;
 use crate::runtime::node::NodeConfig;
 use crate::runtime::ImportResolver;
+use crate::ModuleImport;
 use std::path::PathBuf;
 use std::sync::Arc;
 

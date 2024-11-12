@@ -5,6 +5,10 @@ authors = { workspace = true }
 edition = { workspace = true }
 repository = { workspace = true }
 
+[lib]
+name = "l3_fn_build"
+path = "src/lib.rs"
+
 [dependencies]
 anyhow = { workspace = true }
 serde = { workspace = true }

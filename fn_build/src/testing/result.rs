@@ -1,4 +1,4 @@
-use crate::spec::BuildMode;
+use crate::BuildMode;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};

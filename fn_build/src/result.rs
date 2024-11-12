@@ -1,4 +1,4 @@
-use crate::spec::FnBuildOutput;
+use crate::FnBuildOutput;
 use serde::Deserialize;
 use std::io;
 use std::path::PathBuf;

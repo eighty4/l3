@@ -1,10 +1,10 @@
 use crate::paths::join_file_paths;
-use crate::result::ModuleImport;
 use crate::runtime::node::imports::{
     NodeSubpathImportAsterisks, NodeSubpathImportMapWildcardTo, NodeSubpathImportMapping,
 };
 use crate::runtime::node::NodeConfig;
 use crate::runtime::ImportResolver;
+use crate::ModuleImport;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 

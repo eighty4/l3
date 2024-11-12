@@ -1,8 +1,6 @@
-use crate::result::{FnBuild, FnBuildError, FnManifest};
-use crate::runtime::node::NodeConfig;
+use crate::runtime::node::{build_node_fn, parse_node_fn, NodeConfig};
 use crate::runtime::Runtime;
-use crate::spec::{FnBuildSpec, FnParseSpec};
-use crate::swc::{build_js_fn, parse_js_fn};
+use crate::*;
 use std::future::Future;
 use std::io;
 use std::path::Path;
@@ -26,11 +24,11 @@ pub struct TestNodeRuntime {}
 
 impl TestRuntime for TestNodeRuntime {
     fn build(&self, build_spec: FnBuildSpec) -> BuildProcessResult<FnBuild> {
-        Box::pin(build_js_fn(build_spec))
+        Box::pin(build_node_fn(build_spec))
     }
 
     fn parse(&self, parse_spec: FnParseSpec) -> BuildProcessResult<FnManifest> {
-        Box::pin(parse_js_fn(parse_spec))
+        Box::pin(parse_node_fn(parse_spec))
     }
 
     fn config(&self, project_dir: &Path) -> Runtime {
