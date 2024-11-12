@@ -20,6 +20,7 @@ swc_ecma_parser = { workspace = true }
 swc_ecma_visit = { workspace = true }
 thiserror = "2.0.0"
 tokio = { workspace = true }
+zip = { workspace = true }
 
 [dev-dependencies]
 temp-dir = { workspace = true }

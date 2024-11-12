@@ -1,6 +1,6 @@
 use l3_fn_build::runtime::node::NodeConfig;
 use l3_fn_build::runtime::Runtime;
-use l3_fn_build::{build_fn, BuildMode, FnBuildSpec, FnParseSpec};
+use l3_fn_build::{build_fn, BuildMode, FnBuildOutput, FnBuildSpec, FnParseSpec};
 use std::env;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -22,7 +22,7 @@ async fn main() {
             runtime: Runtime::Node(Arc::new(node_config)),
         },
         mode: BuildMode::Debug,
-        output: out_dir.path().to_path_buf(),
+        output: FnBuildOutput::Directory(out_dir.path().to_path_buf()),
     })
     .await
     .unwrap();

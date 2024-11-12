@@ -1,7 +1,9 @@
 use crate::testing::result::{BuildFileOutput, BuildResult};
 use crate::testing::runtimes::TestRuntime;
 use crate::testing::spec::TestFixtureSpec;
-use crate::{BuildMode, FnBuildSpec, FnManifest, FnParseSpec};
+use crate::{
+    BuildMode, FnBuild, FnBuildOutput, FnBuildResult, FnBuildSpec, FnManifest, FnParseSpec,
+};
 use anyhow::anyhow;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -9,9 +11,13 @@ use std::{env, fs};
 use temp_dir::TempDir;
 
 pub struct TestFixture {
-    build_dir_root: TempDir,
+    /// Used for FnBuildOutput::Directory.
+    build_root_temp: TempDir,
+    /// TestRuntime integrates runtime specific features for test fixtures.
     runtime: Arc<Box<dyn TestRuntime>>,
+    /// Fixture directory in //fn_build/fixtures.
     fixture_dir: Arc<PathBuf>,
+    /// Model for test read from .fixture/spec.json.
     spec: TestFixtureSpec,
 }
 
@@ -21,7 +27,7 @@ impl TestFixture {
         debug_assert!(fixture_dir.is_dir());
         let spec = TestFixtureSpec::try_from(&fixture_dir).unwrap();
         Self {
-            build_dir_root: TempDir::new().unwrap(),
+            build_root_temp: TempDir::new().unwrap(),
             runtime,
             fixture_dir: Arc::new(fixture_dir),
             spec,
@@ -42,17 +48,7 @@ impl TestFixture {
         }
     }
 
-    async fn run_build_test(
-        &self,
-        mode: BuildMode,
-        result: BuildResult,
-        expected_manifest: &FnManifest,
-    ) {
-        let dir = self.build_dir_root.child(match mode {
-            BuildMode::Debug => "debug",
-            BuildMode::Release => "release",
-        });
-        fs::create_dir(&dir).unwrap();
+    pub async fn build(&self, mode: BuildMode, output: FnBuildOutput) -> FnBuildResult<FnBuild> {
         self.runtime
             .build(FnBuildSpec {
                 function: FnParseSpec {
@@ -61,20 +57,32 @@ impl TestFixture {
                     runtime: self.runtime.config(&self.fixture_dir),
                 },
                 mode,
-                output: dir.clone(),
+                output,
             })
             .await
+    }
+
+    async fn run_build_test(
+        &self,
+        mode: BuildMode,
+        result: BuildResult,
+        expected_manifest: &FnManifest,
+    ) {
+        self.build(mode.clone(), FnBuildOutput::Directory(self.build_root()))
+            .await
             .unwrap();
-        self.expect_build_result(&dir, result, &expected_manifest);
-        self.verify_build_with_runtime(&dir).await;
+        self.expect_build_result(&mode, result, &expected_manifest);
+        self.verify_build_with_runtime(&self.build_output_dir(&mode))
+            .await;
     }
 
     fn expect_build_result(
         &self,
-        build_dir: &Path,
+        build_mode: &BuildMode,
         build_result: BuildResult,
         expected_manifest: &FnManifest,
     ) {
+        let build_dir = self.build_output_dir(&build_mode);
         for expected_file in &build_result.files {
             let built_file_path = build_dir.join(&expected_file.path);
             let built_content = fs::read_to_string(&built_file_path).expect(
@@ -156,6 +164,21 @@ impl TestFixture {
             self.fixture_label(),
         );
         Ok(expected)
+    }
+
+    pub fn build_path(&self, p: &Path) -> PathBuf {
+        self.build_root_temp.path().join(p)
+    }
+
+    pub fn build_root(&self) -> PathBuf {
+        self.build_root_temp.path().to_path_buf()
+    }
+
+    pub fn build_output_dir(&self, build_mode: &BuildMode) -> PathBuf {
+        self.build_root_temp.child(match build_mode {
+            BuildMode::Debug => "debug",
+            BuildMode::Release => "release",
+        })
     }
 
     fn fixture_label(&self) -> String {

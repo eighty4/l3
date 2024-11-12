@@ -14,6 +14,7 @@ swc_ecma_parser = { version = "4.0.0", features = ["typescript"] }
 swc_ecma_visit = { version = "3.0.0" }
 temp-dir = "0.1.14"
 tokio = { version = "1.41.0", features = ["full"] }
+zip = "2.2.0"
 
 [workspace.package]
 authors = ["Adam McKee <adam.be.g84d@gmail.com>"]
@@ -48,7 +49,7 @@ swc_ecma_parser = { workspace = true }
 tokio = { workspace = true }
 toml = "0.8.19"
 yaml-rust = "0.4.5"
-zip = "2.2.0"
+zip = { workspace = true }
 
 [dev-dependencies]
 temp-dir = { workspace = true }

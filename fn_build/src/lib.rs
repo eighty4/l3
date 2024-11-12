@@ -1,3 +1,4 @@
+mod archive;
 mod fs;
 mod paths;
 mod result;
@@ -23,10 +24,13 @@ pub use crate::spec::*;
 pub async fn build_fn(build_spec: FnBuildSpec) -> FnBuildResult<FnBuild> {
     debug_assert!(build_spec.function.entrypoint.is_relative());
     debug_assert!(build_spec.function.entrypoint.parent().is_some());
-    debug_assert!(build_spec.output.is_absolute());
-    debug_assert!(build_spec.output.is_dir());
-    debug_assert!(build_spec.function.project_dir.is_absolute());
-    debug_assert!(build_spec.function.project_dir.is_dir());
+    debug_assert!({
+        let output_dir = match &build_spec.output {
+            FnBuildOutput::Archive { build_root, .. } => build_root,
+            FnBuildOutput::Directory(dir_path) => dir_path,
+        };
+        output_dir.is_absolute() && output_dir.is_dir()
+    });
     match build_spec.function.entrypoint.extension() {
         None => Err(FnBuildError::InvalidFileType),
         Some(extension) => match extension.to_string_lossy().as_ref() {

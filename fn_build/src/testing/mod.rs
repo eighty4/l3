@@ -2,6 +2,7 @@ mod fixture;
 mod result;
 mod runtimes;
 mod spec;
+mod utilities;
 
 use crate::testing::fixture::TestFixture;
 use crate::testing::runtimes::{TestNodeRuntime, TestRuntime};
@@ -9,6 +10,8 @@ use std::env;
 use std::fs::read_dir;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+
+pub use utilities::*;
 
 #[allow(unused)]
 enum FixtureTestMode {
@@ -18,8 +21,8 @@ enum FixtureTestMode {
 
 #[tokio::test]
 async fn test_fixtures() {
-    // let mode = FixtureTestMode::AllFixtures;
-    let mode = FixtureTestMode::SingleFixture(PathBuf::from("fixtures/node/js/circular_imports"));
+    let mode = FixtureTestMode::AllFixtures;
+    // let mode = FixtureTestMode::SingleFixture(PathBuf::from("fixtures/node/js/http_route"));
 
     let runtime: Arc<Box<dyn TestRuntime>> = Arc::new(Box::new(TestNodeRuntime {}));
     match mode {
@@ -32,6 +35,14 @@ async fn test_fixtures() {
                 .await;
         }
     }
+}
+
+fn create_fixture(fixture_dir: PathBuf, runtime: Arc<Box<dyn TestRuntime>>) -> TestFixture {
+    TestFixture::new(runtime, env::current_dir().unwrap().join(fixture_dir))
+}
+
+pub fn create_node_fixture(fixture_dir: PathBuf) -> TestFixture {
+    create_fixture(fixture_dir, Arc::new(Box::new(TestNodeRuntime {})))
 }
 
 pub async fn run_all_fixtures(fixture_root_dir: PathBuf, runtime: Arc<Box<dyn TestRuntime>>) {

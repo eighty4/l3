@@ -19,7 +19,7 @@ pub enum ModuleImport {
 }
 
 #[derive(Clone, Deserialize)]
-#[cfg_attr(test, derive(PartialEq))]
+#[cfg_attr(test, derive(Debug, PartialEq))]
 pub struct FnSource {
     pub imports: Vec<ModuleImport>,
     pub path: PathBuf,
