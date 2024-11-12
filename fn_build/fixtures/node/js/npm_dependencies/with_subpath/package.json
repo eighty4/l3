@@ -1,0 +1,6 @@
+{
+  "type": "module",
+  "dependencies": {
+    "data-lib": "0.0.1"
+  }
+}

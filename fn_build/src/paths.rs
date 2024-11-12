@@ -1,4 +1,19 @@
+use std::fs::read_dir;
 use std::path::{Path, PathBuf, MAIN_SEPARATOR_STR};
+
+pub fn collect_files(p: &Path) -> Vec<PathBuf> {
+    let mut paths = Vec::new();
+    for dir_entry_result in read_dir(p).unwrap() {
+        let dir_entry = dir_entry_result.unwrap();
+        let p = dir_entry.path();
+        if p.is_dir() {
+            paths.append(&mut collect_files(&p));
+        } else {
+            paths.push(p);
+        }
+    }
+    paths
+}
 
 /// Joins file paths and rewrites `.` and `..` segments from result.
 pub fn join_file_paths(base: &Path, relative: &Path) -> PathBuf {

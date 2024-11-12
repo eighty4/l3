@@ -1,0 +1,20 @@
+{
+  "dependencies": "required",
+  "sources": [
+    {
+      "imports": [],
+      "path": "package.json"
+    },
+    {
+      "imports": [
+        {
+          "packageDependency": {
+            "package": "data-lib",
+            "subpath": null
+          }
+        }
+      ],
+      "path": "routes/data/lambda.js"
+    }
+  ]
+}

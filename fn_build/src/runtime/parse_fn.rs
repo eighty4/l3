@@ -56,7 +56,7 @@ pub async fn parse_fn_inner(
                                 ));
                             }
                         }
-                        ModuleImport::Unknown(_) => panic!(),
+                        ModuleImport::Unknown(_) => panic!("ModuleImport::Unknown"),
                     }
                 }
                 parsing -= 1;

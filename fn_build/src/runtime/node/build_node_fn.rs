@@ -1,4 +1,4 @@
-use crate::archive::write_archive;
+use crate::archive::{write_archive, ArchiveInclusion};
 use crate::fs::copy_dir_all;
 use crate::runtime::node::parse_node_fn;
 use crate::swc::compiler::SwcCompiler;
@@ -6,7 +6,7 @@ use crate::{
     BuildMode, FnBuild, FnBuildOutput, FnBuildResult, FnBuildSpec, FnDependencies, FnSource,
 };
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 pub async fn build_node_fn(build_spec: FnBuildSpec) -> FnBuildResult<FnBuild> {
     let manifest = parse_node_fn(build_spec.function.clone()).await?;
@@ -47,7 +47,18 @@ pub async fn build_node_fn(build_spec: FnBuildSpec) -> FnBuildResult<FnBuild> {
         archive_file,
     } = &build_spec.output
     {
-        write_archive(&build_dir, &manifest, &build_root.join(archive_file)).unwrap();
+        write_archive(
+            &build_dir,
+            &manifest,
+            &build_root.join(archive_file),
+            match manifest.dependencies {
+                FnDependencies::Required => {
+                    vec![ArchiveInclusion::Directory(PathBuf::from("node_modules"))]
+                }
+                FnDependencies::Unused => Vec::new(),
+            },
+        )
+        .unwrap();
     }
     Ok(FnBuild {
         manifest,

@@ -1,3 +1,4 @@
+use crate::paths::collect_files;
 use crate::runtime::Runtime;
 use crate::testing::{create_node_fixture, unzip};
 use crate::FnBuildError;
@@ -34,7 +35,7 @@ async fn build_fn_errors_for_invalid_extension() {
 
 #[tokio::test]
 async fn build_fn_produces_archive() {
-    let fixture_dir = PathBuf::from("fixtures/node/js/relative_import");
+    let fixture_dir = PathBuf::from("fixtures/node/js/npm_dependencies/with_subpath");
     let test_fixture = create_node_fixture(fixture_dir.clone());
     let archive_file = test_fixture.build_path(&PathBuf::from("archive.zip"));
     let result = test_fixture
@@ -58,6 +59,19 @@ async fn build_fn_produces_archive() {
             "unzipped fn source {} did not match build output in {}",
             source.path.to_string_lossy(),
             build_dir.to_string_lossy(),
+        );
+    }
+
+    assert!(unzipped_root.join("node_modules").is_dir());
+    let dependency_source_paths: Vec<PathBuf> = collect_files(&fixture_dir.join("node_modules"))
+        .iter()
+        .map(|p| p.strip_prefix(&fixture_dir).unwrap().to_path_buf())
+        .collect();
+    assert!(!dependency_source_paths.is_empty());
+    for path in dependency_source_paths {
+        assert_eq!(
+            fs::read_to_string(fixture_dir.join(&path)).unwrap(),
+            fs::read_to_string(unzipped_root.join(&path)).unwrap(),
         );
     }
 }

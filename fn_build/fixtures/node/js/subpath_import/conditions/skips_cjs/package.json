@@ -1,5 +1,8 @@
 {
   "type": "module",
+  "dependencies": {
+    "cjs-dep": "0.0.1"
+  },
   "imports": {
     "#not-module-sync": {
       "module-sync": "cjs-dep",

@@ -1,5 +1,9 @@
 {
   "type": "module",
+  "dependencies": {
+    "data-dep": "0.0.1",
+    "log-dep": "0.0.1"
+  },
   "imports": {
     "#data": {
       "require": "./lib/data-polyfill.js",

@@ -1,5 +1,8 @@
 {
   "type": "module",
+  "dependencies": {
+    "data-dep": "0.0.1"
+  },
   "imports": {
     "#lib/*.js": "data-dep/*.js"
   }

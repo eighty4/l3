@@ -40,6 +40,18 @@ impl NodeImportResolver {
         }
     }
 
+    fn resolve_npm_dependency(&self, import: &str) -> Option<ModuleImport> {
+        let (package, subpath) = match import.split_once('/') {
+            None => (import.to_string(), None),
+            Some((before, after)) => (before.to_string(), Some(after.to_string())),
+        };
+        if self.node_config.has_npm_dependency(&package) {
+            Some(ModuleImport::PackageDependency { package, subpath })
+        } else {
+            None
+        }
+    }
+
     fn resolve_subpath_import(&self, project_dir: &Path, import: &str) -> Option<ModuleImport> {
         for mapping in &self.node_config.subpath_imports {
             match &mapping {
@@ -86,7 +98,7 @@ impl NodeImportResolver {
             self.resolve_relative_path(project_dir, &self.package_json, to)
                 .map(ModuleImport::RelativeSource)
         } else {
-            Some(Self::create_package_dependency(to.to_string()))
+            self.resolve_npm_dependency(to)
         }
     }
 
@@ -105,29 +117,21 @@ impl NodeImportResolver {
             self.resolve_relative_path(project_dir, &self.package_json, to.as_str())
                 .map(ModuleImport::RelativeSource)
         } else {
-            Some(Self::create_package_dependency(to))
+            self.resolve_npm_dependency(to.as_str())
         }
     }
 
     fn resolve_subpath_import_mapping_wildcard_to_explicit_specifier(
         &self,
         project_dir: &Path,
-        to: &String,
+        to: &str,
     ) -> Option<ModuleImport> {
         if to.starts_with('.') {
-            self.resolve_relative_path(project_dir, &self.package_json, to.as_str())
+            self.resolve_relative_path(project_dir, &self.package_json, to)
                 .map(ModuleImport::RelativeSource)
         } else {
-            Some(Self::create_package_dependency(to.to_string()))
+            self.resolve_npm_dependency(to)
         }
-    }
-
-    fn create_package_dependency(specifier: String) -> ModuleImport {
-        let (package, subpath) = match specifier.split_once('/') {
-            None => (specifier, None),
-            Some((before, after)) => (before.to_string(), Some(after.to_string())),
-        };
-        ModuleImport::PackageDependency { package, subpath }
     }
 }
 
@@ -141,6 +145,8 @@ impl ImportResolver for NodeImportResolver {
             if let Some(subpath_import) = self.resolve_subpath_import(project_dir, import) {
                 return subpath_import;
             }
+        } else if let Some(npm_dependency) = self.resolve_npm_dependency(import) {
+            return npm_dependency;
         }
         ModuleImport::Unknown(import.to_string())
     }

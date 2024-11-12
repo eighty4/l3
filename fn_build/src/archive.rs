@@ -1,18 +1,23 @@
 use std::fs;
 use std::fs::File;
 use std::io::{Read, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
+use crate::paths::collect_files;
 use crate::FnManifest;
 use zip::write::FileOptions;
 use zip::ZipWriter;
 
-// todo include dependencies such as node_modules
+pub enum ArchiveInclusion {
+    Directory(PathBuf),
+}
+
 // todo build_fn that archives build output from memory vs writing to disk then reading to archive
 pub fn write_archive(
     build_dir: &Path,
     manifest: &FnManifest,
     archive_path: &Path,
+    inclusions: Vec<ArchiveInclusion>,
 ) -> Result<(), anyhow::Error> {
     debug_assert!(build_dir.is_absolute());
     debug_assert!(manifest
@@ -37,6 +42,20 @@ pub fn write_archive(
         zip_writer.start_file(source.path.to_string_lossy(), compress_options)?;
         zip_writer.write_all(buf.as_ref())?;
         buf.clear();
+    }
+    for inclusion in inclusions {
+        match inclusion {
+            ArchiveInclusion::Directory(dir) => {
+                debug_assert!(dir.is_relative());
+                for abs in collect_files(&build_dir.join(&dir)) {
+                    let rel = abs.strip_prefix(build_dir)?.to_path_buf();
+                    File::open(abs)?.read_to_end(&mut buf)?;
+                    zip_writer.start_file(rel.to_string_lossy(), compress_options)?;
+                    zip_writer.write_all(buf.as_ref())?;
+                    buf.clear();
+                }
+            }
+        }
     }
     zip_writer.finish()?;
     Ok(())
