@@ -1,0 +1,4 @@
+{
+  "entrypoint": "routes/data/lambda.py",
+  "handler_fn_name": "post"
+}

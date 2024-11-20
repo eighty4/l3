@@ -1,0 +1,138 @@
+use crate::runtime::node::imports::resolver::NodeImportResolver;
+use crate::runtime::node::NodeConfig;
+use crate::runtime::parse_fn::parse_fn_inner;
+use crate::runtime::{FnEntrypoint, FnSourceParser, ImportResolver, Runtime};
+use crate::swc::compiler::SwcCompiler;
+use crate::swc::visitors::ImportVisitor;
+use crate::{FnHandler, FnParseManifest, FnParseResult, FnParseSpec, FnSource, ModuleImport};
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
+use swc_ecma_ast::{Decl, ExportDecl, Module, ModuleDecl};
+use swc_ecma_visit::FoldWith;
+
+pub async fn parse_node_fn(parse_spec: FnParseSpec) -> FnParseResult<FnParseManifest> {
+    parse_fn_inner(
+        &parse_spec,
+        match &parse_spec.runtime {
+            Runtime::Node(node_config) => {
+                Arc::new(Box::new(NodeFnSourceParser::new(node_config.clone())))
+            }
+            _ => panic!(),
+        },
+    )
+    .await
+}
+
+struct NodeFnSourceParser {
+    compiler: SwcCompiler,
+    import_resolver: Arc<NodeImportResolver>,
+}
+
+impl NodeFnSourceParser {
+    fn new(node_config: Arc<NodeConfig>) -> Self {
+        Self {
+            compiler: SwcCompiler::new(),
+            import_resolver: Arc::new(NodeImportResolver::new(node_config)),
+        }
+    }
+}
+
+impl NodeFnSourceParser {
+    fn parse_es_module(&self, project_dir: &Path, source_path: &Path) -> Module {
+        self.compiler
+            .clone()
+            .parse_es_module(&project_dir.join(source_path))
+            .unwrap()
+    }
+
+    fn collect_handlers(&self, project_dir: &Path, source_path: &Path) -> Vec<FnHandler> {
+        let module = self.parse_es_module(project_dir, source_path);
+        let mut handlers: Vec<FnHandler> = Vec::new();
+        let parse_fn_name = |s: &str| {
+            s.trim_end_matches(char::is_numeric)
+                .trim_end_matches(char::is_numeric)
+                .trim_end_matches('#')
+                .to_string()
+        };
+        let create_handler = |s: &str| FnHandler::from_handler_fn(source_path, parse_fn_name(s));
+        for module_item in module.body {
+            if let Some(module_decl) = module_item.module_decl() {
+                match module_decl {
+                    ModuleDecl::ExportDecl(ExportDecl {
+                        decl: Decl::Fn(fn_decl),
+                        ..
+                    }) => handlers.push(create_handler(fn_decl.ident.as_ref())),
+                    ModuleDecl::ExportDecl(ExportDecl {
+                        decl: Decl::Var(var_decl),
+                        ..
+                    }) => {
+                        for var_declarator in var_decl.decls {
+                            if let Some(expr) = var_declarator.init {
+                                if expr.as_arrow().is_some() || expr.as_fn_expr().is_some() {
+                                    handlers.push(create_handler(
+                                        var_declarator.name.ident().unwrap().as_ref(),
+                                    ))
+                                }
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+            };
+        }
+        handlers
+    }
+
+    fn collect_imports(&self, project_dir: &Path, source_path: &Path) -> Vec<ModuleImport> {
+        let module = self.parse_es_module(project_dir, source_path);
+        let mut visitor = ImportVisitor::new();
+        module.fold_with(&mut visitor);
+        visitor
+            .result()
+            .into_iter()
+            .map(|import| {
+                self.import_resolver
+                    .resolve(project_dir, source_path, import.as_str())
+            })
+            .collect()
+    }
+}
+
+impl FnSourceParser for NodeFnSourceParser {
+    fn collect_runtime_sources(&self, project_dir: &Path) -> Vec<FnSource> {
+        let package_json_path = PathBuf::from("package.json");
+        if project_dir.join(&package_json_path).is_file() {
+            vec![FnSource {
+                imports: Vec::new(),
+                path: package_json_path,
+            }]
+        } else {
+            Vec::new()
+        }
+    }
+
+    fn parse_fn_entrypoint(
+        &self,
+        project_dir: &Path,
+        source_path: PathBuf,
+    ) -> FnParseResult<FnEntrypoint> {
+        Ok(FnEntrypoint {
+            handlers: self.collect_handlers(project_dir, &source_path),
+            source: self.parse_for_imports(project_dir, source_path)?,
+        })
+    }
+
+    fn parse_for_imports(
+        &self,
+        project_dir: &Path,
+        source_path: PathBuf,
+    ) -> FnParseResult<FnSource> {
+        debug_assert!(project_dir.is_absolute());
+        debug_assert!(project_dir.is_dir());
+        debug_assert!(source_path.is_relative());
+        Ok(FnSource {
+            imports: self.collect_imports(project_dir, &source_path),
+            path: source_path.to_path_buf(),
+        })
+    }
+}

@@ -1,14 +1,18 @@
 {
   "dependencies": "unused",
+  "entrypoint": "routes/data/lambda.js",
+  "handlers": [
+    {
+      "fnName": "GET",
+      "routing": {
+        "httpRoute": {
+          "method": "GET",
+          "path": "data"
+        }
+      }
+    }
+  ],
   "sources": [
-    {
-      "imports": [],
-      "path": "package.json"
-    },
-    {
-      "imports": [],
-      "path": "data/redis.js"
-    },
     {
       "imports": [
         {
@@ -16,6 +20,14 @@
         }
       ],
       "path": "routes/data/lambda.js"
+    },
+    {
+      "imports": [],
+      "path": "data/redis.js"
+    },
+    {
+      "imports": [],
+      "path": "package.json"
     }
   ]
 }

@@ -1,4 +1,5 @@
 use crate::runtime::node::{build_node_fn, parse_node_fn, NodeConfig};
+use crate::runtime::python::{build_python_fn, parse_python_fn};
 use crate::runtime::Runtime;
 use crate::*;
 use std::future::Future;
@@ -8,26 +9,36 @@ use std::pin::Pin;
 use std::process::{Command, Output};
 use std::sync::Arc;
 
-pub type BuildProcessResult<T> = Pin<Box<dyn Future<Output = Result<T, FnBuildError>> + Send>>;
+pub fn create_test_runtime(entrypoint: &Path) -> Arc<Box<dyn TestRuntime>> {
+    let extension = entrypoint.extension().expect("source with extension");
+    let runtime: Arc<Box<dyn TestRuntime>> = match extension.to_string_lossy().as_ref() {
+        "js" | "mjs" | "ts" => Arc::new(Box::new(TestNodeRuntime {})),
+        "py" => Arc::new(Box::new(TestPythonRuntime {})),
+        _ => panic!(),
+    };
+    runtime
+}
+
+pub type BuildProcessResult<R> = Pin<Box<dyn Future<Output = R> + Send>>;
 
 pub trait TestRuntime {
-    fn build(&self, build_spec: FnBuildSpec) -> BuildProcessResult<FnBuild>;
+    fn build(&self, build_spec: FnBuildSpec) -> BuildProcessResult<FnBuildResult<FnBuildManifest>>;
 
-    fn parse(&self, parse_spec: FnParseSpec) -> BuildProcessResult<FnManifest>;
+    fn parse(&self, parse_spec: FnParseSpec) -> BuildProcessResult<FnParseResult<FnParseManifest>>;
 
     fn config(&self, project_dir: &Path) -> Runtime;
 
     fn verify(&self, project_dir: &Path, entrypoint: &Path) -> Option<io::Result<Output>>;
 }
 
-pub struct TestNodeRuntime {}
+struct TestNodeRuntime {}
 
 impl TestRuntime for TestNodeRuntime {
-    fn build(&self, build_spec: FnBuildSpec) -> BuildProcessResult<FnBuild> {
+    fn build(&self, build_spec: FnBuildSpec) -> BuildProcessResult<FnBuildResult<FnBuildManifest>> {
         Box::pin(build_node_fn(build_spec))
     }
 
-    fn parse(&self, parse_spec: FnParseSpec) -> BuildProcessResult<FnManifest> {
+    fn parse(&self, parse_spec: FnParseSpec) -> BuildProcessResult<FnParseResult<FnParseManifest>> {
         Box::pin(parse_node_fn(parse_spec))
     }
 
@@ -40,6 +51,31 @@ impl TestRuntime for TestNodeRuntime {
     fn verify(&self, project_dir: &Path, entrypoint: &Path) -> Option<io::Result<Output>> {
         Some(
             Command::new("node")
+                .arg(entrypoint)
+                .current_dir(project_dir)
+                .output(),
+        )
+    }
+}
+
+struct TestPythonRuntime {}
+
+impl TestRuntime for TestPythonRuntime {
+    fn build(&self, build_spec: FnBuildSpec) -> BuildProcessResult<FnBuildResult<FnBuildManifest>> {
+        Box::pin(build_python_fn(build_spec))
+    }
+
+    fn parse(&self, parse_spec: FnParseSpec) -> BuildProcessResult<FnParseResult<FnParseManifest>> {
+        Box::pin(parse_python_fn(parse_spec))
+    }
+
+    fn config(&self, _project_dir: &Path) -> Runtime {
+        Runtime::Python
+    }
+
+    fn verify(&self, project_dir: &Path, entrypoint: &Path) -> Option<io::Result<Output>> {
+        Some(
+            Command::new("python3")
                 .arg(entrypoint)
                 .current_dir(project_dir)
                 .output(),

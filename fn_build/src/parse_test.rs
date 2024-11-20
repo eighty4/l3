@@ -1,6 +1,6 @@
+use crate::parse_fn;
 use crate::runtime::Runtime;
-use crate::FnParseSpec;
-use crate::{parse_fn, FnBuildError};
+use crate::{FnParseError, FnParseSpec};
 use std::env;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -18,7 +18,7 @@ async fn parse_fn_errors_for_invalid_extension() {
             runtime: Runtime::Node(Default::default()),
         };
         match parse_fn(parse_spec).await {
-            Err(FnBuildError::InvalidFileType) => {}
+            Err(FnParseError::InvalidFileType) => {}
             _ => panic!(),
         };
     }

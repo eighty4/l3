@@ -5,6 +5,7 @@ use std::path::PathBuf;
 #[derive(Deserialize, Serialize)]
 pub struct TestFixtureSpec {
     pub entrypoint: PathBuf,
+    pub handler_fn_name: String,
 }
 
 impl TryFrom<&PathBuf> for TestFixtureSpec {

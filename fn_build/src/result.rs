@@ -1,66 +1,89 @@
-use crate::FnBuildOutput;
-use serde::Deserialize;
+use crate::FnRouting;
+use serde::{Deserialize, Serialize};
 use std::io;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
-#[derive(Clone, Deserialize)]
-#[cfg_attr(test, derive(Debug, PartialEq))]
-#[cfg_attr(test, serde(rename_all = "camelCase"))]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub enum ModuleImport {
-    #[allow(unused)]
     PackageDependency {
         package: String,
         subpath: Option<String>,
     },
-    /// Relative path to a source file from the project root.
+    /// A source file import specified by relative path from the project's root.
     RelativeSource(PathBuf),
-    #[allow(unused)]
+    /// An unresolvable import specifier.
     Unknown(String),
 }
 
-#[derive(Clone, Deserialize)]
-#[cfg_attr(test, derive(Debug, PartialEq))]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct FnSource {
     pub imports: Vec<ModuleImport>,
     pub path: PathBuf,
 }
 
-#[derive(Clone, Deserialize)]
-#[cfg_attr(test, serde(rename_all = "camelCase"))]
+#[derive(Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub enum FnDependencies {
     Required,
     Unused,
 }
 
-#[derive(Clone, Deserialize)]
-pub struct FnManifest {
+#[derive(Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FnHandler {
+    /// Function name matching case in source file.
+    pub fn_name: String,
+    /// Routing method as the function would be deployed.
+    pub routing: FnRouting,
+}
+
+#[derive(Clone, Deserialize, Serialize)]
+pub struct FnParseManifest {
     pub dependencies: FnDependencies,
+    pub entrypoint: PathBuf,
+    pub handlers: Vec<FnHandler>,
     pub sources: Vec<FnSource>,
 }
 
-#[derive(Clone, Deserialize)]
-pub struct FnBuild {
-    #[allow(unused)]
-    pub manifest: FnManifest,
-    #[allow(unused)]
-    pub output: FnBuildOutput,
-}
-
 #[derive(thiserror::Error, Debug)]
-pub enum FnBuildError {
+pub enum FnParseError {
     #[error("entrypoint file type is unsupported")]
     InvalidFileType,
     #[error("{0}")]
     IoError(#[from] io::Error),
 }
 
+pub type FnParseResult<T> = Result<T, FnParseError>;
+
+#[derive(Clone, Deserialize)]
+pub struct FnBuildOutput {
+    pub archive_file: Option<PathBuf>,
+    pub build_dir: PathBuf,
+}
+
+#[derive(Clone, Deserialize)]
+pub struct FnBuildManifest {
+    pub dependencies: FnDependencies,
+    pub entrypoint: PathBuf,
+    pub handler: FnHandler,
+    pub output: FnBuildOutput,
+    pub sources: Vec<FnSource>,
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum FnBuildError {
+    #[error("{0}")]
+    IoError(#[from] io::Error),
+    #[error("error parsing function entrypoint: {0}")]
+    ParseError(#[from] FnParseError),
+}
+
 pub type FnBuildResult<T> = Result<T, FnBuildError>;
 
-impl From<PathBuf> for FnSource {
-    fn from(path: PathBuf) -> Self {
-        Self {
-            imports: Vec::new(),
-            path,
-        }
+impl FnHandler {
+    pub fn from_handler_fn(path: &Path, fn_name: String) -> Self {
+        let routing = FnRouting::from_handler_fn(path, fn_name.as_str());
+        Self { fn_name, routing }
     }
 }

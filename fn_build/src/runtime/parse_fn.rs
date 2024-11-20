@@ -1,5 +1,5 @@
 use crate::runtime::FnSourceParser;
-use crate::{FnBuildResult, FnDependencies, FnManifest, FnParseSpec, FnSource, ModuleImport};
+use crate::{FnDependencies, FnParseManifest, FnParseResult, FnParseSpec, FnSource, ModuleImport};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -17,18 +17,22 @@ enum SourceParsingState {
 pub async fn parse_fn_inner(
     parse_spec: &FnParseSpec,
     source_parser: Arc<Box<dyn FnSourceParser>>,
-) -> FnBuildResult<FnManifest> {
-    let (tx, mut rx) = unbounded_channel::<ParseFnMessage>();
-    tokio::spawn(parse_source_file(
-        tx.clone(),
-        source_parser.clone(),
-        parse_spec.project_dir.clone(),
-        parse_spec.entrypoint.clone(),
-    ));
-
+) -> FnParseResult<FnParseManifest> {
+    let mut sources: HashMap<PathBuf, SourceParsingState> = HashMap::new();
     let mut uses_deps = false;
     let mut parsing: usize = 1;
-    let mut sources: HashMap<PathBuf, SourceParsingState> = HashMap::new();
+    let (tx, mut rx) = unbounded_channel::<ParseFnMessage>();
+    let (handlers, entrypoint) = {
+        let entrypoint = source_parser
+            .parse_fn_entrypoint(&parse_spec.project_dir, parse_spec.entrypoint.clone())?;
+        let path = entrypoint.source.path.clone();
+        let handlers = entrypoint.handlers;
+        tx.send(ParseFnMessage::ParsedSourceFile {
+            source_file: entrypoint.source,
+        })
+        .unwrap();
+        (handlers, path)
+    };
     source_parser
         .collect_runtime_sources(&parse_spec.project_dir)
         .into_iter()
@@ -70,12 +74,14 @@ pub async fn parse_fn_inner(
             }
         }
     }
-    Ok(FnManifest {
+    Ok(FnParseManifest {
         dependencies: if uses_deps {
             FnDependencies::Required
         } else {
             FnDependencies::Unused
         },
+        entrypoint,
+        handlers,
         sources: sources
             .into_values()
             .map(|source_parsing_state| match source_parsing_state {
@@ -95,7 +101,7 @@ async fn parse_source_file(
     debug_assert!(project_dir.is_absolute());
     debug_assert!(project_dir.is_dir());
     debug_assert!(source_path.is_relative());
-    let source_file = source_parser.parse(&project_dir, source_path);
+    let source_file = source_parser.parse_for_imports(&project_dir, source_path);
     _ = tx.send(ParseFnMessage::ParsedSourceFile {
         source_file: source_file.unwrap(),
     });

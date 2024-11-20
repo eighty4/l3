@@ -1,9 +1,21 @@
 {
   "dependencies": "unused",
+  "entrypoint": "routes/data/lambda.js",
+  "handlers": [
+    {
+      "fnName": "GET",
+      "routing": {
+        "httpRoute": {
+          "method": "GET",
+          "path": "data"
+        }
+      }
+    }
+  ],
   "sources": [
     {
       "imports": [],
-      "path": "package.json"
+      "path": "data/abstraction/orm.js"
     },
     {
       "imports": [],
@@ -11,7 +23,7 @@
     },
     {
       "imports": [],
-      "path": "data/abstraction/orm.js"
+      "path": "package.json"
     },
     {
       "imports": [

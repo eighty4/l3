@@ -1,0 +1,21 @@
+{
+  "dependencies": "unused",
+  "entrypoint": "routes/data/lambda.py",
+  "handlers": [
+    {
+      "fnName": "delete",
+      "routing": {
+        "httpRoute": {
+          "method": "DELETE",
+          "path": "data"
+        }
+      }
+    }
+  ],
+  "sources": [
+    {
+      "imports": [],
+      "path": "routes/data/lambda.py"
+    }
+  ]
+}

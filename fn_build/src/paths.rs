@@ -25,9 +25,8 @@ pub fn join_file_paths(base: &Path, relative: &Path) -> PathBuf {
 fn rewrite_current_and_parent_path_segments(p: PathBuf) -> PathBuf {
     let mut stack: Vec<String> = Vec::new();
     let mut changed = false;
-    for path_component_os_str in &p {
-        let path_component = path_component_os_str.to_string_lossy();
-        match path_component.as_ref() {
+    for path_component in p.to_string_lossy().split(MAIN_SEPARATOR_STR) {
+        match path_component {
             "." => changed = true,
             ".." => {
                 if stack.pop().is_none() {
@@ -38,7 +37,13 @@ fn rewrite_current_and_parent_path_segments(p: PathBuf) -> PathBuf {
                 }
                 changed = true;
             }
-            _ => stack.push(path_component.to_string()),
+            _ => stack.push(match path_component.strip_prefix("./") {
+                None => path_component.to_string(),
+                Some(path_component_sans_pwd_prefix) => {
+                    changed = true;
+                    path_component_sans_pwd_prefix.to_string()
+                }
+            }),
         }
     }
     if changed {

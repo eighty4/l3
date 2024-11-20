@@ -1,8 +1,9 @@
 use crate::testing::result::{BuildFileOutput, BuildResult};
-use crate::testing::runtimes::TestRuntime;
+use crate::testing::runtimes::{create_test_runtime, TestRuntime};
 use crate::testing::spec::TestFixtureSpec;
 use crate::{
-    BuildMode, FnBuild, FnBuildOutput, FnBuildResult, FnBuildSpec, FnManifest, FnParseSpec,
+    BuildMode, FnBuildManifest, FnBuildResult, FnBuildSpec, FnOutputConfig, FnParseManifest,
+    FnParseSpec,
 };
 use anyhow::anyhow;
 use std::path::{Path, PathBuf};
@@ -19,45 +20,85 @@ pub struct TestFixture {
     fixture_dir: Arc<PathBuf>,
     /// Model for test read from .fixture/spec.json.
     spec: TestFixtureSpec,
+    gold_update: bool,
 }
 
 impl TestFixture {
-    pub fn new(runtime: Arc<Box<dyn TestRuntime>>, fixture_dir: PathBuf) -> Self {
+    pub fn new(fixture_dir: PathBuf) -> Self {
+        Self::new_inner(fixture_dir, false)
+    }
+
+    pub fn gold_update(fixture_dir: PathBuf) -> Self {
+        Self::new_inner(fixture_dir, true)
+    }
+
+    fn new_inner(fixture_dir: PathBuf, gold_update: bool) -> Self {
         debug_assert!(fixture_dir.is_absolute());
         debug_assert!(fixture_dir.is_dir());
         let spec = TestFixtureSpec::try_from(&fixture_dir).unwrap();
         Self {
             build_root_temp: TempDir::new().unwrap(),
-            runtime,
+            runtime: create_test_runtime(&spec.entrypoint),
             fixture_dir: Arc::new(fixture_dir),
             spec,
+            gold_update,
         }
     }
 
     pub async fn run(&self) {
-        self.verify_build_with_runtime(&self.fixture_dir).await;
-        let expected_manifest = self.verify_parse().await.unwrap();
-        if let Some(debug_result) = BuildResult::read_json(&self.fixture_dir, &BuildMode::Debug) {
-            self.run_build_test(BuildMode::Debug, debug_result, &expected_manifest)
-                .await;
-        }
-        if let Some(release_result) = BuildResult::read_json(&self.fixture_dir, &BuildMode::Release)
-        {
-            self.run_build_test(BuildMode::Release, release_result, &expected_manifest)
-                .await;
+        if self.gold_update {
+            self.update_gold().await
+        } else {
+            self.verify_build_with_runtime(&self.fixture_dir).await;
+            let expected_manifest = self.verify_parse().await.unwrap();
+            if let Some(debug_result) = BuildResult::read_json(&self.fixture_dir, &BuildMode::Debug)
+            {
+                self.run_build_test(BuildMode::Debug, debug_result, &expected_manifest)
+                    .await;
+            }
+            if let Some(release_result) =
+                BuildResult::read_json(&self.fixture_dir, &BuildMode::Release)
+            {
+                self.run_build_test(BuildMode::Release, release_result, &expected_manifest)
+                    .await;
+            }
         }
     }
 
-    pub async fn build(&self, mode: BuildMode, output: FnBuildOutput) -> FnBuildResult<FnBuild> {
+    async fn update_gold(&self) {
+        let parse_manifest = self
+            .runtime
+            .parse(FnParseSpec {
+                entrypoint: self.spec.entrypoint.clone(),
+                project_dir: self.fixture_dir.clone(),
+                runtime: self.runtime.config(&self.fixture_dir),
+            })
+            .await
+            .unwrap();
+        let parse_json_path = self.fixture_dir.join(".fixture/parse.json");
+        _ = fs::remove_file(&parse_json_path);
+        fs::write(
+            &parse_json_path,
+            format!(
+                "{}\n",
+                serde_json::to_string_pretty(&parse_manifest).unwrap()
+            ),
+        )
+        .unwrap();
+    }
+
+    async fn build(&self, mode: BuildMode) -> FnBuildResult<FnBuildManifest> {
         self.runtime
             .build(FnBuildSpec {
-                function: FnParseSpec {
-                    entrypoint: self.spec.entrypoint.clone(),
-                    project_dir: self.fixture_dir.clone(),
-                    runtime: self.runtime.config(&self.fixture_dir),
-                },
+                entrypoint: self.spec.entrypoint.clone(),
+                handler_fn_name: self.spec.handler_fn_name.clone(),
                 mode,
-                output,
+                output: FnOutputConfig {
+                    build_root: self.build_root_temp.path().to_path_buf(),
+                    create_archive: false,
+                },
+                project_dir: self.fixture_dir.clone(),
+                runtime: self.runtime.config(&self.fixture_dir),
             })
             .await
     }
@@ -66,12 +107,10 @@ impl TestFixture {
         &self,
         mode: BuildMode,
         result: BuildResult,
-        expected_manifest: &FnManifest,
+        expected_parse_manifest: &FnParseManifest,
     ) {
-        self.build(mode.clone(), FnBuildOutput::Directory(self.build_root()))
-            .await
-            .unwrap();
-        self.expect_build_result(&mode, result, &expected_manifest);
+        self.build(mode.clone()).await.unwrap();
+        self.expect_build_result(&mode, result, &expected_parse_manifest);
         self.verify_build_with_runtime(&self.build_output_dir(&mode))
             .await;
     }
@@ -80,7 +119,7 @@ impl TestFixture {
         &self,
         build_mode: &BuildMode,
         build_result: BuildResult,
-        expected_manifest: &FnManifest,
+        expected_parse_manifest: &FnParseManifest,
     ) {
         let build_dir = self.build_output_dir(&build_mode);
         for expected_file in &build_result.files {
@@ -118,16 +157,16 @@ impl TestFixture {
         }
         assert_eq!(
             build_result.files.len(),
-            expected_manifest.sources.len(),
+            expected_parse_manifest.sources.len(),
             "fixture {} {} build has incorrect number of sources",
             self.fixture_label(),
             build_dir.file_name().unwrap().to_string_lossy(),
         );
     }
 
-    async fn verify_parse(&self) -> Result<FnManifest, anyhow::Error> {
-        let expected = self.read_expected_parse_manifest();
-        let result = self
+    async fn verify_parse(&self) -> Result<FnParseManifest, anyhow::Error> {
+        let expected_parse_manifest = self.read_expected_parse_manifest();
+        let parse_manifest = self
             .runtime
             .parse(FnParseSpec {
                 entrypoint: self.spec.entrypoint.clone(),
@@ -135,8 +174,8 @@ impl TestFixture {
                 runtime: self.runtime.config(&self.fixture_dir),
             })
             .await?;
-        for expected_source in &expected.sources {
-            match result
+        for expected_source in &expected_parse_manifest.sources {
+            match parse_manifest
                 .sources
                 .iter()
                 .find(|source| source.path == expected_source.path)
@@ -158,20 +197,12 @@ impl TestFixture {
             }
         }
         assert_eq!(
-            result.sources.len(),
-            expected.sources.len(),
+            parse_manifest.sources.len(),
+            expected_parse_manifest.sources.len(),
             "fixture {} parsing has incorrect number of sources",
             self.fixture_label(),
         );
-        Ok(expected)
-    }
-
-    pub fn build_path(&self, p: &Path) -> PathBuf {
-        self.build_root_temp.path().join(p)
-    }
-
-    pub fn build_root(&self) -> PathBuf {
-        self.build_root_temp.path().to_path_buf()
+        Ok(expected_parse_manifest)
     }
 
     pub fn build_output_dir(&self, build_mode: &BuildMode) -> PathBuf {
@@ -189,7 +220,7 @@ impl TestFixture {
             .to_string()
     }
 
-    fn read_expected_parse_manifest(&self) -> FnManifest {
+    fn read_expected_parse_manifest(&self) -> FnParseManifest {
         let path = self.fixture_dir.join(".fixture").join("parse.json");
         debug_assert!(path.is_file());
         serde_json::from_str(fs::read_to_string(&path).unwrap().as_str())

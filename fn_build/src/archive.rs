@@ -4,7 +4,7 @@ use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 
 use crate::paths::collect_files;
-use crate::FnManifest;
+use crate::FnSource;
 use zip::write::FileOptions;
 use zip::ZipWriter;
 
@@ -12,20 +12,17 @@ pub enum ArchiveInclusion {
     Directory(PathBuf),
 }
 
-// todo build_fn that archives build output from memory vs writing to disk then reading to archive
+// todo archive build output from memory vs writing to disk then reading to archive
+//  must also return all source file checksums with build_fn result
 pub fn write_archive(
     build_dir: &Path,
-    manifest: &FnManifest,
     archive_path: &Path,
+    sources: &Vec<FnSource>,
     inclusions: Vec<ArchiveInclusion>,
 ) -> Result<(), anyhow::Error> {
     debug_assert!(build_dir.is_absolute());
-    debug_assert!(manifest
-        .sources
-        .iter()
-        .all(|source| source.path.is_relative()));
-    debug_assert!(manifest
-        .sources
+    debug_assert!(sources.iter().all(|source| source.path.is_relative()));
+    debug_assert!(sources
         .iter()
         .map(|source| build_dir.join(&source.path))
         .all(|path| path.is_dir() || path.is_file()));
@@ -37,7 +34,7 @@ pub fn write_archive(
     let compress_options: FileOptions<'static, ()> =
         FileOptions::default().compression_method(zip::CompressionMethod::Deflated);
     let mut buf = Vec::new();
-    for source in &manifest.sources {
+    for source in sources {
         File::open(build_dir.join(&source.path))?.read_to_end(&mut buf)?;
         zip_writer.start_file(source.path.to_string_lossy(), compress_options)?;
         zip_writer.write_all(buf.as_ref())?;

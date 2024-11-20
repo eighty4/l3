@@ -1,5 +1,17 @@
 {
   "dependencies": "required",
+  "entrypoint": "routes/data/lambda.js",
+  "handlers": [
+    {
+      "fnName": "DELETE",
+      "routing": {
+        "httpRoute": {
+          "method": "DELETE",
+          "path": "data"
+        }
+      }
+    }
+  ],
   "sources": [
     {
       "imports": [],

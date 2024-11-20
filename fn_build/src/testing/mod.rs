@@ -5,52 +5,79 @@ mod spec;
 mod utilities;
 
 use crate::testing::fixture::TestFixture;
-use crate::testing::runtimes::{TestNodeRuntime, TestRuntime};
 use std::env;
 use std::fs::read_dir;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 
 pub use utilities::*;
 
 #[allow(unused)]
 enum FixtureTestMode {
-    AllFixtures,
+    AllFixtures(PathBuf),
     SingleFixture(PathBuf),
 }
 
 #[tokio::test]
-async fn test_fixtures() {
-    let mode = FixtureTestMode::AllFixtures;
-    // let mode = FixtureTestMode::SingleFixture(PathBuf::from("fixtures/node/js/http_route"));
+async fn test_node_fixtures() {
+    for fixture in collect_fixtures(FixtureTestMode::AllFixtures(PathBuf::from("fixtures/node")))
+        .into_iter()
+        .map(create_fixture)
+    {
+        fixture.run().await;
+    }
+}
 
-    let runtime: Arc<Box<dyn TestRuntime>> = Arc::new(Box::new(TestNodeRuntime {}));
+#[tokio::test]
+async fn test_python_fixtures() {
+    for fixture in collect_fixtures(FixtureTestMode::AllFixtures(PathBuf::from(
+        "fixtures/python",
+    )))
+    .into_iter()
+    .map(create_fixture)
+    {
+        fixture.run().await;
+    }
+}
+
+#[tokio::test]
+#[ignore]
+async fn update_node_gold() {
+    for fixture in collect_fixtures(FixtureTestMode::AllFixtures(PathBuf::from("fixtures/node")))
+        .into_iter()
+        .map(create_update_gold_fixture)
+    {
+        fixture.run().await;
+    }
+}
+
+#[tokio::test]
+#[ignore]
+async fn update_python_gold() {
+    for fixture in collect_fixtures(FixtureTestMode::AllFixtures(PathBuf::from(
+        "fixtures/python",
+    )))
+    .into_iter()
+    .map(create_update_gold_fixture)
+    {
+        fixture.run().await;
+    }
+}
+
+fn collect_fixtures(mode: FixtureTestMode) -> Vec<PathBuf> {
     match mode {
-        FixtureTestMode::AllFixtures => {
-            run_all_fixtures(PathBuf::from("fixtures/node"), runtime).await;
+        FixtureTestMode::AllFixtures(p) => {
+            collect_fixture_dirs(&env::current_dir().unwrap().join(p)).unwrap()
         }
-        FixtureTestMode::SingleFixture(fixture) => {
-            TestFixture::new(runtime, env::current_dir().unwrap().join(fixture))
-                .run()
-                .await;
-        }
+        FixtureTestMode::SingleFixture(p) => vec![env::current_dir().unwrap().join(p)],
     }
 }
 
-fn create_fixture(fixture_dir: PathBuf, runtime: Arc<Box<dyn TestRuntime>>) -> TestFixture {
-    TestFixture::new(runtime, env::current_dir().unwrap().join(fixture_dir))
+pub fn create_fixture(fixture_dir: PathBuf) -> TestFixture {
+    TestFixture::new(env::current_dir().unwrap().join(fixture_dir))
 }
 
-pub fn create_node_fixture(fixture_dir: PathBuf) -> TestFixture {
-    create_fixture(fixture_dir, Arc::new(Box::new(TestNodeRuntime {})))
-}
-
-pub async fn run_all_fixtures(fixture_root_dir: PathBuf, runtime: Arc<Box<dyn TestRuntime>>) {
-    debug_assert!(fixture_root_dir.is_relative());
-    debug_assert!(fixture_root_dir.starts_with("fixtures"));
-    for dir in collect_fixture_dirs(&env::current_dir().unwrap().join(fixture_root_dir)).unwrap() {
-        TestFixture::new(runtime.clone(), dir).run().await;
-    }
+fn create_update_gold_fixture(fixture_dir: PathBuf) -> TestFixture {
+    TestFixture::gold_update(env::current_dir().unwrap().join(fixture_dir))
 }
 
 fn collect_fixture_dirs(p: &Path) -> Result<Vec<PathBuf>, anyhow::Error> {

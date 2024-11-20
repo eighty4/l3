@@ -1,0 +1,21 @@
+{
+  "dependencies": "unused",
+  "entrypoint": "routes/data/lambda.py",
+  "handlers": [
+    {
+      "fnName": "patch",
+      "routing": {
+        "httpRoute": {
+          "method": "PATCH",
+          "path": "data"
+        }
+      }
+    }
+  ],
+  "sources": [
+    {
+      "imports": [],
+      "path": "routes/data/lambda.py"
+    }
+  ]
+}
