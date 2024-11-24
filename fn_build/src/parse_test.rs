@@ -1,5 +1,5 @@
-use crate::parse_fn;
 use crate::runtime::Runtime;
+use crate::{parse_entrypoint, parse_fn, FnHandler, FnRouting, HttpMethod, HttpRoute};
 use crate::{FnParseError, FnParseSpec};
 use std::env;
 use std::path::PathBuf;
@@ -13,7 +13,7 @@ async fn parse_fn_errors_for_invalid_extension() {
             project_dir: Arc::new(
                 env::current_dir()
                     .unwrap()
-                    .join("fixtures/node/js/http_route"),
+                    .join("fixtures/node/js/http_routes/delete_fn"),
             ),
             runtime: Runtime::Node(Default::default()),
         };
@@ -22,4 +22,52 @@ async fn parse_fn_errors_for_invalid_extension() {
             _ => panic!(),
         };
     }
+}
+
+#[tokio::test]
+async fn parse_entrypoint_of_js_fn() {
+    assert_eq!(
+        parse_entrypoint(FnParseSpec {
+            entrypoint: PathBuf::from("routes/data/lambda.js"),
+            project_dir: Arc::new(
+                env::current_dir()
+                    .unwrap()
+                    .join("fixtures/node/js/http_routes/get_fn"),
+            ),
+            runtime: Runtime::Node(Default::default()),
+        })
+        .await
+        .unwrap(),
+        vec!(FnHandler {
+            fn_name: "GET".to_string(),
+            routing: FnRouting::HttpRoute(HttpRoute {
+                method: HttpMethod::Get,
+                path: "data".to_string()
+            })
+        })
+    );
+}
+
+#[tokio::test]
+async fn parse_entrypoint_of_python_fn() {
+    assert_eq!(
+        parse_entrypoint(FnParseSpec {
+            entrypoint: PathBuf::from("routes/data/lambda.py"),
+            project_dir: Arc::new(
+                env::current_dir()
+                    .unwrap()
+                    .join("fixtures/python/http_routes/get_fn"),
+            ),
+            runtime: Runtime::Node(Default::default()),
+        })
+        .await
+        .unwrap(),
+        vec!(FnHandler {
+            fn_name: "get".to_string(),
+            routing: FnRouting::HttpRoute(HttpRoute {
+                method: HttpMethod::Get,
+                path: "data".to_string()
+            })
+        })
+    );
 }

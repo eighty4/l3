@@ -16,7 +16,7 @@ async fn build_fn_errors_for_invalid_extension() {
     for entrypoint in &["README", "README.md"] {
         let build_spec = FnBuildSpec {
             entrypoint: PathBuf::from(entrypoint),
-            handler_fn_name: "DELETE".to_string(),
+            handler_fn_name: "GET".to_string(),
             mode: BuildMode::Debug,
             output: FnOutputConfig {
                 build_root: build_dir.path().to_path_buf(),
@@ -25,7 +25,7 @@ async fn build_fn_errors_for_invalid_extension() {
             project_dir: Arc::new(
                 env::current_dir()
                     .unwrap()
-                    .join("fixtures/node/js/http_route"),
+                    .join("fixtures/node/js/http_routes/get_fn"),
             ),
             runtime: Runtime::Node(Default::default()),
         };

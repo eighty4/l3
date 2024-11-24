@@ -1,0 +1,14 @@
+{
+  "files": [
+    {
+      "path": "package.json",
+      "result": "identical"
+    },
+    {
+      "path": "routes/data/lambda.js",
+      "result": {
+        "content": "export const PATCH=()=>{console.log(\"patch\")};"
+      }
+    }
+  ]
+}

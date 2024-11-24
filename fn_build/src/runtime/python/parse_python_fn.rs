@@ -1,15 +1,31 @@
 use crate::paths::join_file_paths;
 use crate::runtime::parse_fn::parse_fn_inner;
 use crate::runtime::{FnEntrypoint, FnSourceParser, ImportResolver};
-use crate::{FnHandler, FnParseManifest, FnParseResult, FnParseSpec, FnSource, ModuleImport};
+use crate::{
+    FnHandler, FnParseError, FnParseManifest, FnParseResult, FnParseSpec, FnSource, ModuleImport,
+};
 use rustpython_parser::ast::Stmt;
-use rustpython_parser::{ast, Parse};
+use rustpython_parser::{ast, Parse, ParseError};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+pub async fn parse_python_entrypoint(parse_spec: FnParseSpec) -> FnParseResult<Vec<FnHandler>> {
+    let ast = PythonSourceParser::parse_ast(&parse_spec.project_dir, &parse_spec.entrypoint)?;
+    let handlers = PythonSourceParser::collect_handlers(&parse_spec.entrypoint, &ast);
+    Ok(handlers)
+}
+
 pub async fn parse_python_fn(parse_spec: FnParseSpec) -> FnParseResult<FnParseManifest> {
     parse_fn_inner(&parse_spec, Arc::new(Box::new(PythonSourceParser::new()))).await
+}
+
+impl From<ParseError> for FnParseError {
+    fn from(err: ParseError) -> Self {
+        // todo map rustpython_parser::ParseError diagnostics to a public API type
+        dbg!(err);
+        FnParseError::SyntaxError
+    }
 }
 
 struct PythonSourceParser {
@@ -23,10 +39,11 @@ impl PythonSourceParser {
         }
     }
 
-    fn parse_ast(project_dir: &Path, path: &Path) -> Vec<Stmt> {
+    fn parse_ast(project_dir: &Path, path: &Path) -> FnParseResult<Vec<Stmt>> {
         let abs_path = project_dir.join(path);
-        let python_code = fs::read_to_string(abs_path).unwrap();
-        ast::Suite::parse(&python_code, &path.to_string_lossy()).unwrap()
+        let python_code = fs::read_to_string(abs_path)?;
+        let ast = ast::Suite::parse(&python_code, &path.to_string_lossy())?;
+        Ok(ast)
     }
 
     fn collect_handlers(source_path: &Path, ast: &Vec<Stmt>) -> Vec<FnHandler> {
@@ -80,7 +97,7 @@ impl FnSourceParser for PythonSourceParser {
         project_dir: &Path,
         path: PathBuf,
     ) -> FnParseResult<FnEntrypoint> {
-        let ast = Self::parse_ast(project_dir, &path);
+        let ast = Self::parse_ast(project_dir, &path)?;
         let handlers = Self::collect_handlers(&path, &ast);
         let imports = self.collect_imports(project_dir, &path, &ast);
         Ok(FnEntrypoint {
@@ -90,7 +107,7 @@ impl FnSourceParser for PythonSourceParser {
     }
 
     fn parse_for_imports(&self, project_dir: &Path, path: PathBuf) -> FnParseResult<FnSource> {
-        let ast = Self::parse_ast(project_dir, &path);
+        let ast = Self::parse_ast(project_dir, &path)?;
         let imports = self.collect_imports(project_dir, &path, &ast);
         Ok(FnSource { imports, path })
     }

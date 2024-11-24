@@ -2,13 +2,23 @@ use crate::runtime::node::imports::resolver::NodeImportResolver;
 use crate::runtime::node::NodeConfig;
 use crate::runtime::parse_fn::parse_fn_inner;
 use crate::runtime::{FnEntrypoint, FnSourceParser, ImportResolver, Runtime};
-use crate::swc::compiler::SwcCompiler;
+use crate::swc::compiler::{CompileError, SwcCompiler};
 use crate::swc::visitors::ImportVisitor;
-use crate::{FnHandler, FnParseManifest, FnParseResult, FnParseSpec, FnSource, ModuleImport};
+use crate::{
+    FnHandler, FnParseError, FnParseManifest, FnParseResult, FnParseSpec, FnSource, ModuleImport,
+};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use swc_ecma_ast::{Decl, ExportDecl, Module, ModuleDecl};
 use swc_ecma_visit::FoldWith;
+
+pub async fn parse_node_entrypoint(parse_spec: FnParseSpec) -> FnParseResult<Vec<FnHandler>> {
+    let source_parser = match &parse_spec.runtime {
+        Runtime::Node(node_config) => NodeFnSourceParser::new(node_config.clone()),
+        _ => panic!(),
+    };
+    source_parser.collect_handlers(&parse_spec.project_dir, &parse_spec.entrypoint)
+}
 
 pub async fn parse_node_fn(parse_spec: FnParseSpec) -> FnParseResult<FnParseManifest> {
     parse_fn_inner(
@@ -21,6 +31,20 @@ pub async fn parse_node_fn(parse_spec: FnParseSpec) -> FnParseResult<FnParseMani
         },
     )
     .await
+}
+
+impl From<CompileError> for FnParseError {
+    fn from(err: CompileError) -> Self {
+        match err {
+            CompileError::CompilerDiagnostics(diagnostics) => {
+                // todo map SWC diagnostics to a public API type
+                dbg!(diagnostics);
+                FnParseError::SyntaxError
+            }
+            CompileError::OperationError(err) => FnParseError::UnknownError(err),
+            CompileError::ReadError(err) => FnParseError::IoError(err),
+        }
+    }
 }
 
 struct NodeFnSourceParser {
@@ -38,15 +62,19 @@ impl NodeFnSourceParser {
 }
 
 impl NodeFnSourceParser {
-    fn parse_es_module(&self, project_dir: &Path, source_path: &Path) -> Module {
-        self.compiler
+    fn parse_es_module(&self, project_dir: &Path, source_path: &Path) -> FnParseResult<Module> {
+        Ok(self
+            .compiler
             .clone()
-            .parse_es_module(&project_dir.join(source_path))
-            .unwrap()
+            .parse_es_module(&project_dir.join(source_path))?)
     }
 
-    fn collect_handlers(&self, project_dir: &Path, source_path: &Path) -> Vec<FnHandler> {
-        let module = self.parse_es_module(project_dir, source_path);
+    fn collect_handlers(
+        &self,
+        project_dir: &Path,
+        source_path: &Path,
+    ) -> FnParseResult<Vec<FnHandler>> {
+        let module = self.parse_es_module(project_dir, source_path)?;
         let mut handlers: Vec<FnHandler> = Vec::new();
         let parse_fn_name = |s: &str| {
             s.trim_end_matches(char::is_numeric)
@@ -80,21 +108,26 @@ impl NodeFnSourceParser {
                 }
             };
         }
-        handlers
+        Ok(handlers)
     }
 
-    fn collect_imports(&self, project_dir: &Path, source_path: &Path) -> Vec<ModuleImport> {
-        let module = self.parse_es_module(project_dir, source_path);
+    fn collect_imports(
+        &self,
+        project_dir: &Path,
+        source_path: &Path,
+    ) -> FnParseResult<Vec<ModuleImport>> {
+        let module = self.parse_es_module(project_dir, source_path)?;
         let mut visitor = ImportVisitor::new();
         module.fold_with(&mut visitor);
-        visitor
+        let imports = visitor
             .result()
             .into_iter()
             .map(|import| {
                 self.import_resolver
                     .resolve(project_dir, source_path, import.as_str())
             })
-            .collect()
+            .collect();
+        Ok(imports)
     }
 }
 
@@ -117,7 +150,7 @@ impl FnSourceParser for NodeFnSourceParser {
         source_path: PathBuf,
     ) -> FnParseResult<FnEntrypoint> {
         Ok(FnEntrypoint {
-            handlers: self.collect_handlers(project_dir, &source_path),
+            handlers: self.collect_handlers(project_dir, &source_path)?,
             source: self.parse_for_imports(project_dir, source_path)?,
         })
     }
@@ -131,7 +164,7 @@ impl FnSourceParser for NodeFnSourceParser {
         debug_assert!(project_dir.is_dir());
         debug_assert!(source_path.is_relative());
         Ok(FnSource {
-            imports: self.collect_imports(project_dir, &source_path),
+            imports: self.collect_imports(project_dir, &source_path)?,
             path: source_path.to_path_buf(),
         })
     }

@@ -1,0 +1,4 @@
+{
+  "entrypoint": "routes/data/lambda.js",
+  "handler_fn_name": "PATCH"
+}

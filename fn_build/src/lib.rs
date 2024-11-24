@@ -26,6 +26,7 @@ pub use crate::result::*;
 pub use crate::routing::*;
 pub use crate::spec::*;
 
+/// Builds a lambda function.
 pub async fn build_fn(build_spec: FnBuildSpec) -> FnBuildResult<FnBuildManifest> {
     debug_assert!(build_spec.entrypoint.is_relative());
     debug_assert!(build_spec.entrypoint.parent().is_some());
@@ -41,6 +42,24 @@ pub async fn build_fn(build_spec: FnBuildSpec) -> FnBuildResult<FnBuildManifest>
     }
 }
 
+/// Parses a source file for exported functions that could be lambdas.
+pub async fn parse_entrypoint(parse_spec: FnParseSpec) -> FnParseResult<Vec<FnHandler>> {
+    debug_assert!(parse_spec.entrypoint.is_relative());
+    debug_assert!(parse_spec.entrypoint.parent().is_some());
+    debug_assert!(parse_spec.project_dir.is_absolute());
+    debug_assert!(parse_spec.project_dir.is_dir());
+    match parse_spec.entrypoint.extension() {
+        None => Err(FnParseError::InvalidFileType),
+        Some(extension) => match extension.to_string_lossy().as_ref() {
+            "js" | "mjs" => runtime::node::parse_node_entrypoint(parse_spec).await,
+            "py" => runtime::python::parse_python_entrypoint(parse_spec).await,
+            "ts" => todo!(),
+            &_ => Err(FnParseError::InvalidFileType),
+        },
+    }
+}
+
+/// Pareses the source tree of a lambda.
 pub async fn parse_fn(parse_spec: FnParseSpec) -> FnParseResult<FnParseManifest> {
     debug_assert!(parse_spec.entrypoint.is_relative());
     debug_assert!(parse_spec.entrypoint.parent().is_some());

@@ -29,7 +29,7 @@ pub enum FnDependencies {
     Unused,
 }
 
-#[derive(Clone, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FnHandler {
     /// Function name matching case in source file.
@@ -52,6 +52,10 @@ pub enum FnParseError {
     InvalidFileType,
     #[error("{0}")]
     IoError(#[from] io::Error),
+    #[error("syntax error")]
+    SyntaxError,
+    #[error("unknown error: {0}")]
+    UnknownError(String),
 }
 
 pub type FnParseResult<T> = Result<T, FnParseError>;
