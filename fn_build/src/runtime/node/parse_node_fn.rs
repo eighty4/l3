@@ -41,7 +41,7 @@ impl From<CompileError> for FnParseError {
                 dbg!(diagnostics);
                 FnParseError::SyntaxError
             }
-            CompileError::OperationError(err) => FnParseError::UnknownError(err),
+            CompileError::OperationError(err) => todo!("compiler op error: {}", err),
             CompileError::ReadError(err) => FnParseError::IoError(err),
         }
     }

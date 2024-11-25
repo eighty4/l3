@@ -1,5 +1,5 @@
 mod archive;
-mod fs;
+mod checksum;
 mod paths;
 mod result;
 mod routing;
@@ -9,6 +9,9 @@ mod swc;
 
 #[cfg(test)]
 mod build_test;
+
+#[cfg(test)]
+mod checksum_test;
 
 #[cfg(test)]
 mod parse_test;
@@ -59,7 +62,7 @@ pub async fn parse_entrypoint(parse_spec: FnParseSpec) -> FnParseResult<Vec<FnHa
     }
 }
 
-/// Pareses the source tree of a lambda.
+/// Parses the source tree of a lambda.
 pub async fn parse_fn(parse_spec: FnParseSpec) -> FnParseResult<FnParseManifest> {
     debug_assert!(parse_spec.entrypoint.is_relative());
     debug_assert!(parse_spec.entrypoint.parent().is_some());

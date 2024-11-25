@@ -3,6 +3,7 @@ use crate::{FnHandler, FnParseResult, FnSource, ModuleImport};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+mod build_fn;
 pub mod node;
 mod parse_fn;
 pub mod python;

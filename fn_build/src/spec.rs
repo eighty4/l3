@@ -46,4 +46,22 @@ impl FnBuildSpec {
             runtime: self.runtime.clone(),
         }
     }
+
+    pub fn output_build_root(&self) -> PathBuf {
+        self.output.build_root.join(match self.mode {
+            BuildMode::Debug => "debug",
+            BuildMode::Release => "release",
+        })
+    }
+
+    pub fn output_archive_file(&self) -> Option<PathBuf> {
+        if self.output.create_archive {
+            Some(self.output.build_root.join(match self.mode {
+                BuildMode::Debug => "debug.zip",
+                BuildMode::Release => "release.zip",
+            }))
+        } else {
+            None
+        }
+    }
 }

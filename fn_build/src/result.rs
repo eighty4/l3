@@ -1,5 +1,7 @@
+use crate::checksum::Checksum;
 use crate::FnRouting;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::io;
 use std::path::{Path, PathBuf};
 
@@ -54,8 +56,6 @@ pub enum FnParseError {
     IoError(#[from] io::Error),
     #[error("syntax error")]
     SyntaxError,
-    #[error("unknown error: {0}")]
-    UnknownError(String),
 }
 
 pub type FnParseResult<T> = Result<T, FnParseError>;
@@ -63,11 +63,14 @@ pub type FnParseResult<T> = Result<T, FnParseError>;
 #[derive(Clone, Deserialize)]
 pub struct FnBuildOutput {
     pub archive_file: Option<PathBuf>,
+    /// PathBuf to the build's output directory partitioned by the build's BuildMode.
     pub build_dir: PathBuf,
 }
 
 #[derive(Clone, Deserialize)]
 pub struct FnBuildManifest {
+    /// Checksums of the original sources of the function's build.
+    pub checksums: HashMap<PathBuf, Checksum>,
     pub dependencies: FnDependencies,
     pub entrypoint: PathBuf,
     pub handler: FnHandler,
@@ -79,8 +82,10 @@ pub struct FnBuildManifest {
 pub enum FnBuildError {
     #[error("{0}")]
     IoError(#[from] io::Error),
-    #[error("error parsing function entrypoint: {0}")]
+    #[error("error parsing function: {0}")]
     ParseError(#[from] FnParseError),
+    #[error("build task error: {0}")]
+    KnownError(#[from] anyhow::Error),
 }
 
 pub type FnBuildResult<T> = Result<T, FnBuildError>;
@@ -89,5 +94,11 @@ impl FnHandler {
     pub fn from_handler_fn(path: &Path, fn_name: String) -> Self {
         let routing = FnRouting::from_handler_fn(path, fn_name.as_str());
         Self { fn_name, routing }
+    }
+}
+
+impl FnParseManifest {
+    pub fn source_paths(&self) -> Vec<PathBuf> {
+        self.sources.iter().map(|s| s.path.clone()).collect()
     }
 }

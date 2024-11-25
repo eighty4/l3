@@ -59,14 +59,13 @@ async fn build_fn_produces_archive() {
     assert!(build_manifest.output.archive_file.is_some());
     let unzipped_root = build_root_temp.child("test_output");
     unzip(&build_manifest.output.archive_file.unwrap(), &unzipped_root);
-    let build_dir = build_root_temp.child("debug");
     for source in &build_manifest.sources {
         assert_eq!(
-            fs::read_to_string(build_dir.join(&source.path)).unwrap(),
+            fs::read_to_string(build_manifest.output.build_dir.join(&source.path)).unwrap(),
             fs::read_to_string(unzipped_root.join(&source.path)).unwrap(),
             "unzipped fn source {} did not match build output in {}",
             source.path.to_string_lossy(),
-            build_dir.to_string_lossy(),
+            build_manifest.output.build_dir.to_string_lossy(),
         );
     }
 
@@ -82,4 +81,44 @@ async fn build_fn_produces_archive() {
             fs::read_to_string(unzipped_root.join(&path)).unwrap(),
         );
     }
+}
+
+#[tokio::test]
+async fn build_fn_produces_checksums() {
+    let fixture_path = "fixtures/node/js/npm_dependencies/with_subpath";
+    let build_root_temp = TempDir::new().unwrap();
+    let project_dir = Arc::new(env::current_dir().unwrap().join(fixture_path));
+    let build_manifest = build_node_fn(FnBuildSpec {
+        entrypoint: PathBuf::from("routes/data/lambda.js"),
+        handler_fn_name: "GET".to_string(),
+        mode: BuildMode::Debug,
+        output: FnOutputConfig {
+            build_root: build_root_temp.path().to_path_buf(),
+            create_archive: false,
+        },
+        project_dir: project_dir.clone(),
+        runtime: Runtime::Node(Arc::new(
+            NodeConfig::read_node_config(&project_dir).unwrap(),
+        )),
+    })
+    .await
+    .unwrap();
+    assert!(build_manifest.output.archive_file.is_none());
+    assert_eq!(build_manifest.checksums.iter().len(), 2);
+    assert_eq!(
+        build_manifest
+            .checksums
+            .get(&PathBuf::from("package.json"))
+            .unwrap()
+            .as_str(),
+        "5G0Lzp2wdhOfGUaMl4gvnoTmd8R3eY8i2pF4VBf0ZMU="
+    );
+    assert_eq!(
+        build_manifest
+            .checksums
+            .get(&PathBuf::from("routes/data/lambda.js"))
+            .unwrap()
+            .as_str(),
+        "3J+cILog3YLTlG6I2gyQGH+JF+Rcun3KUEBFCt0cHOo="
+    );
 }

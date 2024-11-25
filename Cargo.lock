@@ -1598,9 +1598,11 @@ name = "l3_fn_build"
 version = "0.0.1"
 dependencies = [
  "anyhow",
+ "base64 0.22.1",
  "rustpython-parser",
  "serde",
  "serde_json",
+ "sha2",
  "swc",
  "swc_common",
  "swc_ecma_ast",

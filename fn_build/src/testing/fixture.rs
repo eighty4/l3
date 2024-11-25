@@ -109,7 +109,9 @@ impl TestFixture {
         result: BuildResult,
         expected_parse_manifest: &FnParseManifest,
     ) {
-        self.build(mode.clone()).await.unwrap();
+        self.build(mode.clone())
+            .await
+            .expect(format!("building {}", self.fixture_label()).as_str());
         self.expect_build_result(&mode, result, &expected_parse_manifest);
         self.verify_build_with_runtime(&self.build_output_dir(&mode))
             .await;
