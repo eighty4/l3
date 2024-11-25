@@ -5,20 +5,11 @@ members = [
 
 [workspace.dependencies]
 anyhow = "1.0.92"
-base64 = "0.22.1"
-rustpython-parser = "0.4.0"
 serde = { version = "1.0.213", features = ["derive"] }
 serde_json = { version = "1.0.132", features = ["preserve_order"] }
-sha2 = "0.10.8"
-swc = "4.0.0"
-swc_common = { version = "3.0.0", features = ["concurrent"] }
-swc_ecma_ast = "3.0.0"
-swc_ecma_parser = { version = "4.0.0", features = ["typescript"] }
-swc_ecma_visit = { version = "3.0.0" }
 thiserror = "2.0.0"
 temp-dir = "0.1.14"
 tokio = { version = "1.41.0", features = ["full"] }
-zip = "2.2.0"
 
 [workspace.package]
 authors = ["Adam McKee <adam.be.g84d@gmail.com>"]
@@ -38,22 +29,23 @@ aws-config = "1.5.9"
 aws-sdk-apigatewayv2 = "1.48.0"
 aws-sdk-iam = "1.50.0"
 aws-sdk-lambda = "1.53.0"
-base64 = { workspace = true }
+base64 = "0.22.1"
 clap = { version = "4.5.20", features = ["derive"] }
 crossterm = "0.28.1"
 lazy_static = "1.5.0"
 notify = { version = "7.0.0", default-features = false, features = ["macos_fsevent"] }
 regex = "1.11.1"
 serde_json = { workspace = true }
-sha2 = { workspace = true }
-swc = { workspace = true }
-swc_common = { workspace = true }
-swc_ecma_ast = { workspace = true }
-swc_ecma_parser = { workspace = true }
+sha2 = "0.10.8"
+swc = "4.0.0"
+swc_common = { version = "3.0.0", features = ["concurrent"] }
+swc_ecma_ast = "3.0.0"
+swc_ecma_parser = { version = "4.0.0", features = ["typescript"] }
+swc_ecma_visit = { version = "3.0.0" }
 tokio = { workspace = true }
 toml = "0.8.19"
 yaml-rust = "0.4.5"
-zip = { workspace = true }
+zip = "2.2.0"
 
 [dev-dependencies]
 temp-dir = { workspace = true }
