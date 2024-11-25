@@ -8,11 +8,6 @@ pub mod node;
 mod parse_fn;
 pub mod python;
 
-struct FnEntrypoint {
-    handlers: Vec<FnHandler>,
-    source: FnSource,
-}
-
 trait ImportResolver: Send + Sync {
     fn resolve(&self, project_dir: &Path, from: &Path, import: &str) -> ModuleImport;
 }
@@ -26,7 +21,7 @@ trait FnSourceParser: Send + Sync {
         &self,
         project_dir: &Path,
         source_path: PathBuf,
-    ) -> FnParseResult<FnEntrypoint>;
+    ) -> FnParseResult<(FnSource, Vec<FnHandler>)>;
     /// Parse a source file to find imported sources for a function's source tree.
     fn parse_for_imports(
         &self,

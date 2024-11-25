@@ -1,23 +1,28 @@
 use crate::runtime::node::imports::resolver::NodeImportResolver;
 use crate::runtime::node::NodeConfig;
 use crate::runtime::parse_fn::parse_fn_inner;
-use crate::runtime::{FnEntrypoint, FnSourceParser, ImportResolver, Runtime};
+use crate::runtime::{FnSourceParser, ImportResolver, Runtime};
 use crate::swc::compiler::{CompileError, SwcCompiler};
 use crate::swc::visitors::ImportVisitor;
 use crate::{
-    FnHandler, FnParseError, FnParseManifest, FnParseResult, FnParseSpec, FnSource, ModuleImport,
+    FnEntrypoint, FnHandler, FnParseError, FnParseManifest, FnParseResult, FnParseSpec, FnSource,
+    ModuleImport,
 };
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use swc_ecma_ast::{Decl, ExportDecl, Module, ModuleDecl};
 use swc_ecma_visit::FoldWith;
 
-pub async fn parse_node_entrypoint(parse_spec: FnParseSpec) -> FnParseResult<Vec<FnHandler>> {
+pub async fn parse_node_entrypoint(parse_spec: FnParseSpec) -> FnParseResult<FnEntrypoint> {
     let source_parser = match &parse_spec.runtime {
         Runtime::Node(node_config) => NodeFnSourceParser::new(node_config.clone()),
         _ => panic!(),
     };
-    source_parser.collect_handlers(&parse_spec.project_dir, &parse_spec.entrypoint)
+    Ok(FnEntrypoint {
+        handlers: source_parser
+            .collect_handlers(&parse_spec.project_dir, &parse_spec.entrypoint)?,
+        path: parse_spec.entrypoint,
+    })
 }
 
 pub async fn parse_node_fn(parse_spec: FnParseSpec) -> FnParseResult<FnParseManifest> {
@@ -148,11 +153,10 @@ impl FnSourceParser for NodeFnSourceParser {
         &self,
         project_dir: &Path,
         source_path: PathBuf,
-    ) -> FnParseResult<FnEntrypoint> {
-        Ok(FnEntrypoint {
-            handlers: self.collect_handlers(project_dir, &source_path)?,
-            source: self.parse_for_imports(project_dir, source_path)?,
-        })
+    ) -> FnParseResult<(FnSource, Vec<FnHandler>)> {
+        let handlers = self.collect_handlers(project_dir, &source_path)?;
+        let source = self.parse_for_imports(project_dir, source_path)?;
+        Ok((source, handlers))
     }
 
     fn parse_for_imports(

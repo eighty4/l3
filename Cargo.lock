@@ -1595,6 +1595,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "l3_api_base"
+version = "0.0.1"
+
+[[package]]
+name = "l3_cli"
+version = "0.0.1"
+dependencies = [
+ "l3_api_base",
+ "l3_fn_build",
+ "tokio",
+]
+
+[[package]]
 name = "l3_fn_build"
 version = "0.0.1"
 dependencies = [

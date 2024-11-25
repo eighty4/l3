@@ -1,25 +1,27 @@
 {
   "dependencies": "unused",
-  "entrypoint": "routes/data/lambda.js",
-  "handlers": [
-    {
-      "fnName": "POST",
-      "routing": {
-        "httpRoute": {
-          "method": "POST",
-          "path": "data"
+  "entrypoint": {
+    "handlers": [
+      {
+        "fnName": "POST",
+        "routing": {
+          "httpRoute": {
+            "method": "POST",
+            "path": "data"
+          }
         }
       }
-    }
-  ],
+    ],
+    "path": "routes/data/lambda.js"
+  },
   "sources": [
     {
       "imports": [],
-      "path": "package.json"
+      "path": "routes/data/lambda.js"
     },
     {
       "imports": [],
-      "path": "routes/data/lambda.js"
+      "path": "package.json"
     }
   ]
 }

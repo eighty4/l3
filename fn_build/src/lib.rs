@@ -46,7 +46,7 @@ pub async fn build_fn(build_spec: FnBuildSpec) -> FnBuildResult<FnBuildManifest>
 }
 
 /// Parses a source file for exported functions that could be lambdas.
-pub async fn parse_entrypoint(parse_spec: FnParseSpec) -> FnParseResult<Vec<FnHandler>> {
+pub async fn parse_entrypoint(parse_spec: FnParseSpec) -> FnParseResult<FnEntrypoint> {
     debug_assert!(parse_spec.entrypoint.is_relative());
     debug_assert!(parse_spec.entrypoint.parent().is_some());
     debug_assert!(parse_spec.project_dir.is_absolute());

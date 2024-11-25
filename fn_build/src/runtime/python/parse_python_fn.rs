@@ -1,8 +1,9 @@
 use crate::paths::join_file_paths;
 use crate::runtime::parse_fn::parse_fn_inner;
-use crate::runtime::{FnEntrypoint, FnSourceParser, ImportResolver};
+use crate::runtime::{FnSourceParser, ImportResolver};
 use crate::{
-    FnHandler, FnParseError, FnParseManifest, FnParseResult, FnParseSpec, FnSource, ModuleImport,
+    FnEntrypoint, FnHandler, FnParseError, FnParseManifest, FnParseResult, FnParseSpec, FnSource,
+    ModuleImport,
 };
 use rustpython_parser::ast::Stmt;
 use rustpython_parser::{ast, Parse, ParseError};
@@ -10,10 +11,13 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-pub async fn parse_python_entrypoint(parse_spec: FnParseSpec) -> FnParseResult<Vec<FnHandler>> {
+pub async fn parse_python_entrypoint(parse_spec: FnParseSpec) -> FnParseResult<FnEntrypoint> {
     let ast = PythonSourceParser::parse_ast(&parse_spec.project_dir, &parse_spec.entrypoint)?;
     let handlers = PythonSourceParser::collect_handlers(&parse_spec.entrypoint, &ast);
-    Ok(handlers)
+    Ok(FnEntrypoint {
+        handlers,
+        path: parse_spec.entrypoint,
+    })
 }
 
 pub async fn parse_python_fn(parse_spec: FnParseSpec) -> FnParseResult<FnParseManifest> {
@@ -96,14 +100,11 @@ impl FnSourceParser for PythonSourceParser {
         &self,
         project_dir: &Path,
         path: PathBuf,
-    ) -> FnParseResult<FnEntrypoint> {
+    ) -> FnParseResult<(FnSource, Vec<FnHandler>)> {
         let ast = Self::parse_ast(project_dir, &path)?;
         let handlers = Self::collect_handlers(&path, &ast);
         let imports = self.collect_imports(project_dir, &path, &ast);
-        Ok(FnEntrypoint {
-            handlers,
-            source: FnSource { imports, path },
-        })
+        Ok((FnSource { imports, path }, handlers))
     }
 
     fn parse_for_imports(&self, project_dir: &Path, path: PathBuf) -> FnParseResult<FnSource> {

@@ -1,25 +1,27 @@
 {
   "dependencies": "unused",
-  "entrypoint": "routes/data/lambda.js",
-  "handlers": [
-    {
-      "fnName": "GET",
-      "routing": {
-        "httpRoute": {
-          "method": "GET",
-          "path": "data"
+  "entrypoint": {
+    "handlers": [
+      {
+        "fnName": "GET",
+        "routing": {
+          "httpRoute": {
+            "method": "GET",
+            "path": "data"
+          }
         }
       }
-    }
-  ],
+    ],
+    "path": "routes/data/lambda.js"
+  },
   "sources": [
     {
       "imports": [],
-      "path": "package.json"
+      "path": "data/abstraction/orm.js"
     },
     {
       "imports": [],
-      "path": "data/abstraction/orm.js"
+      "path": "data/raw.js"
     },
     {
       "imports": [
@@ -34,7 +36,7 @@
     },
     {
       "imports": [],
-      "path": "data/raw.js"
+      "path": "package.json"
     }
   ]
 }

@@ -94,13 +94,13 @@ where
         }
     }
     let handler = FnHandler::from_handler_fn(
-        &parse_manifest.entrypoint,
+        &parse_manifest.entrypoint.path,
         build_spec.handler_fn_name.clone(),
     );
     Ok(FnBuildManifest {
         checksums,
         dependencies: parse_manifest.dependencies,
-        entrypoint: parse_manifest.entrypoint,
+        entrypoint: parse_manifest.entrypoint.path,
         sources: parse_manifest.sources,
         handler,
         output: FnBuildOutput {

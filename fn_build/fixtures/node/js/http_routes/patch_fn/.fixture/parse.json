@@ -1,17 +1,19 @@
 {
   "dependencies": "unused",
-  "entrypoint": "routes/data/lambda.js",
-  "handlers": [
-    {
-      "fnName": "PATCH",
-      "routing": {
-        "httpRoute": {
-          "method": "PATCH",
-          "path": "data"
+  "entrypoint": {
+    "handlers": [
+      {
+        "fnName": "PATCH",
+        "routing": {
+          "httpRoute": {
+            "method": "PATCH",
+            "path": "data"
+          }
         }
       }
-    }
-  ],
+    ],
+    "path": "routes/data/lambda.js"
+  },
   "sources": [
     {
       "imports": [],

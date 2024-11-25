@@ -1,6 +1,8 @@
 [workspace]
 members = [
     "fn_build",
+    "l3_base",
+    "l3_cli",
 ]
 
 [workspace.dependencies]

@@ -40,11 +40,16 @@ pub struct FnHandler {
     pub routing: FnRouting,
 }
 
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+pub struct FnEntrypoint {
+    pub handlers: Vec<FnHandler>,
+    pub path: PathBuf,
+}
+
 #[derive(Clone, Deserialize, Serialize)]
 pub struct FnParseManifest {
     pub dependencies: FnDependencies,
-    pub entrypoint: PathBuf,
-    pub handlers: Vec<FnHandler>,
+    pub entrypoint: FnEntrypoint,
     pub sources: Vec<FnSource>,
 }
 

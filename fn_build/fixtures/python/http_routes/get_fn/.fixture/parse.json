@@ -1,17 +1,19 @@
 {
   "dependencies": "unused",
-  "entrypoint": "routes/data/lambda.py",
-  "handlers": [
-    {
-      "fnName": "get",
-      "routing": {
-        "httpRoute": {
-          "method": "GET",
-          "path": "data"
+  "entrypoint": {
+    "handlers": [
+      {
+        "fnName": "get",
+        "routing": {
+          "httpRoute": {
+            "method": "GET",
+            "path": "data"
+          }
         }
       }
-    }
-  ],
+    ],
+    "path": "routes/data/lambda.py"
+  },
   "sources": [
     {
       "imports": [],

@@ -1,0 +1,13 @@
+[package]
+name = "l3_cli"
+version = "0.0.1"
+authors = { workspace = true }
+edition = { workspace = true }
+repository = { workspace = true }
+
+[dependencies]
+l3_api_base = { path = "../l3_base" }
+l3_fn_build = { path = "../fn_build" }
+tokio = { workspace = true }
+
+[dev-dependencies]

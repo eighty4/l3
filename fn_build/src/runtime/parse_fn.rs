@@ -1,5 +1,8 @@
 use crate::runtime::FnSourceParser;
-use crate::{FnDependencies, FnParseManifest, FnParseResult, FnParseSpec, FnSource, ModuleImport};
+use crate::{
+    FnDependencies, FnEntrypoint, FnParseManifest, FnParseResult, FnParseSpec, FnSource,
+    ModuleImport,
+};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -23,14 +26,11 @@ pub async fn parse_fn_inner(
     let mut parsing: usize = 1;
     let (tx, mut rx) = unbounded_channel::<ParseFnMessage>();
     let (handlers, entrypoint) = {
-        let entrypoint = source_parser
+        let (source_file, handlers) = source_parser
             .parse_fn_entrypoint(&parse_spec.project_dir, parse_spec.entrypoint.clone())?;
-        let path = entrypoint.source.path.clone();
-        let handlers = entrypoint.handlers;
-        tx.send(ParseFnMessage::ParsedSourceFile {
-            source_file: entrypoint.source,
-        })
-        .unwrap();
+        let path = source_file.path.clone();
+        tx.send(ParseFnMessage::ParsedSourceFile { source_file })
+            .unwrap();
         (handlers, path)
     };
     source_parser
@@ -80,8 +80,10 @@ pub async fn parse_fn_inner(
         } else {
             FnDependencies::Unused
         },
-        entrypoint,
-        handlers,
+        entrypoint: FnEntrypoint {
+            handlers,
+            path: entrypoint,
+        },
         sources: sources
             .into_values()
             .map(|source_parsing_state| match source_parsing_state {
