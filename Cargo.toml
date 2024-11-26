@@ -19,38 +19,3 @@ authors = ["Adam McKee <adam.be.g84d@gmail.com>"]
 edition = "2021"
 license = "BSD-2-Clause"
 repository = "https://github.com/eighty4/l3"
-
-[package]
-name = "l3"
-version = "0.0.1"
-authors = { workspace = true }
-edition = { workspace = true }
-license = { workspace = true }
-repository = { workspace = true }
-
-[dependencies]
-anyhow = { workspace = true }
-aws-config = "1.5.9"
-aws-sdk-apigatewayv2 = "1.48.0"
-aws-sdk-iam = "1.50.0"
-aws-sdk-lambda = "1.53.0"
-base64 = "0.22.1"
-clap = { version = "4.5.20", features = ["derive"] }
-crossterm = "0.28.1"
-lazy_static = "1.5.0"
-notify = { version = "7.0.0", default-features = false, features = ["macos_fsevent"] }
-regex = "1.11.1"
-serde_json = { workspace = true }
-sha2 = "0.10.8"
-swc = "4.0.0"
-swc_common = { version = "3.0.0", features = ["concurrent"] }
-swc_ecma_ast = "3.0.0"
-swc_ecma_parser = { version = "4.0.0", features = ["typescript"] }
-swc_ecma_visit = { version = "3.0.0" }
-tokio = { workspace = true }
-toml = "0.8.19"
-yaml-rust = "0.4.5"
-zip = "2.2.0"
-
-[dev-dependencies]
-temp-dir = { workspace = true }
