@@ -1,6 +1,6 @@
 [package]
 name = "l3_cli"
-version = "0.0.1"
+version = "0.0.2"
 description = "Lambda compute tooling"
 authors = { workspace = true }
 edition = { workspace = true }

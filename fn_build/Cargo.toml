@@ -1,6 +1,6 @@
 [package]
 name = "l3_fn_build"
-version = "0.0.1"
+version = "0.0.2"
 description = "Lib for Lambda function builds"
 authors = { workspace = true }
 edition = { workspace = true }
