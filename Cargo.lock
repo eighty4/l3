@@ -1613,6 +1613,7 @@ version = "0.0.1"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
+ "l3_api_base",
  "rustpython-parser",
  "serde",
  "serde_json",

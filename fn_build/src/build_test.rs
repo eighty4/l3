@@ -1,4 +1,3 @@
-use crate::paths::collect_files;
 use crate::runtime::node::{build_node_fn, NodeConfig};
 use crate::runtime::Runtime;
 use crate::testing::unzip;
@@ -70,10 +69,11 @@ async fn build_fn_produces_archive() {
     }
 
     assert!(unzipped_root.join("node_modules").is_dir());
-    let dependency_source_paths: Vec<PathBuf> = collect_files(&project_dir.join("node_modules"))
-        .iter()
-        .map(|p| p.strip_prefix(project_dir.as_ref()).unwrap().to_path_buf())
-        .collect();
+    let dependency_source_paths: Vec<PathBuf> =
+        l3_api_base::collect_files(&project_dir.join("node_modules"))
+            .iter()
+            .map(|p| p.strip_prefix(project_dir.as_ref()).unwrap().to_path_buf())
+            .collect();
     assert!(!dependency_source_paths.is_empty());
     for path in dependency_source_paths {
         assert_eq!(

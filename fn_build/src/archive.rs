@@ -3,7 +3,6 @@ use std::fs::File;
 use std::io::{Read, Write};
 use std::path::Path;
 
-use crate::paths::collect_files;
 use zip::write::FileOptions;
 use zip::ZipWriter;
 
@@ -21,7 +20,7 @@ pub fn write_archive(archive_file: &Path, build_dir: &Path) -> Result<(), anyhow
         FileOptions::default().compression_method(zip::CompressionMethod::Deflated);
 
     let mut buf = Vec::new();
-    for abs in collect_files(build_dir) {
+    for abs in l3_api_base::collect_files(build_dir) {
         File::open(build_dir.join(&abs))?.read_to_end(&mut buf)?;
         let rel = abs.strip_prefix(build_dir)?;
         zip_writer.start_file(rel.to_string_lossy(), compress_options)?;

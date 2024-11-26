@@ -1,9 +1,15 @@
 [package]
 name = "l3_cli"
 version = "0.0.1"
+description = "Lambda compute tooling"
 authors = { workspace = true }
 edition = { workspace = true }
+license = { workspace = true }
 repository = { workspace = true }
+
+[[bin]]
+name = "l3"
+path = "src/main.rs"
 
 [dependencies]
 l3_api_base = { path = "../l3_base" }

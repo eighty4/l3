@@ -1,6 +1,5 @@
 use crate::archive::write_archive;
 use crate::checksum::Checksum;
-use crate::paths::collect_files;
 use crate::{
     FnBuildError, FnBuildManifest, FnBuildOutput, FnBuildResult, FnBuildSpec, FnHandler,
     FnParseManifest,
@@ -140,7 +139,7 @@ async fn copy_directory(
     build_dir: Arc<PathBuf>,
     path: PathBuf,
 ) -> FnBuildResult<BuildTaskResult> {
-    for abs in collect_files(&project_dir.join(&path)) {
+    for abs in l3_api_base::collect_files(&project_dir.join(&path)) {
         let rel = abs
             .strip_prefix(project_dir.as_path())
             .unwrap()

@@ -4,6 +4,7 @@ members = [
     "l3_base",
     "l3_cli",
 ]
+resolver = "2"
 
 [workspace.dependencies]
 anyhow = "1.0.92"
@@ -16,6 +17,7 @@ tokio = { version = "1.41.0", features = ["full"] }
 [workspace.package]
 authors = ["Adam McKee <adam.be.g84d@gmail.com>"]
 edition = "2021"
+license = "BSD-2-Clause"
 repository = "https://github.com/eighty4/l3"
 
 [package]
@@ -23,6 +25,7 @@ name = "l3"
 version = "0.0.1"
 authors = { workspace = true }
 edition = { workspace = true }
+license = { workspace = true }
 repository = { workspace = true }
 
 [dependencies]
