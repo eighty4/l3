@@ -1,21 +1,19 @@
 [package]
-name = "l3_cli"
-version = "0.0.2"
-description = "Lambda compute tooling"
+name = "l3_fn_sync"
+version = "0.0.1"
 authors = { workspace = true }
 edition = { workspace = true }
 license = { workspace = true }
 repository = { workspace = true }
 
-[[bin]]
-name = "l3"
-path = "src/main.rs"
+[lib]
+name = "l3_fn_sync"
+path = "src/lib.rs"
 
 [dependencies]
-l3_api_base = { path = "../l3_base" }
+anyhow = { workspace = true }
 l3_fn_build = { path = "../fn_build" }
-l3_fn_sync = { path = "../fn_sync" }
-l3_fn_sync_aws = { path = "../fn_sync_aws" }
+thiserror = { workspace = true }
 tokio = { workspace = true }
 
 [dev-dependencies]

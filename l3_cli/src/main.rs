@@ -1,6 +1,8 @@
 use l3_fn_build::runtime::node::NodeConfig;
 use l3_fn_build::runtime::Runtime;
 use l3_fn_build::{FnEntrypoint, FnParseSpec};
+use l3_fn_sync::CloudPlatform;
+use l3_fn_sync_aws::AwsCloudPlatform;
 use std::env;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -19,8 +21,25 @@ async fn main() {
 async fn sync(project_dir: Arc<PathBuf>) {
     assert!(project_dir.is_absolute());
     assert!(project_dir.is_dir());
-    for entrypoint in collect_handlers(&project_dir).await {
-        dbg!(entrypoint);
+    let handlers = collect_handlers(&project_dir).await;
+    if handlers.is_empty() {
+        println!("nothing to sync");
+    } else {
+        let aws_cloud = AwsCloudPlatform::initialize();
+        let mut lambdas = Vec::new();
+        for entrypoint in handlers {
+            dbg!(entrypoint);
+            for handler in entrypoint.handlers {
+                lambdas.push(
+                    aws_cloud
+                        .create_fn(entrypoint.path.clone(), handler)
+                        .unwrap(),
+                );
+            }
+        }
+        for lambda in lambdas {
+            lambda.sync();
+        }
     }
 }
 
