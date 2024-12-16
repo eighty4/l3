@@ -1,0 +1,111 @@
+package l3:fn-build;
+
+world fn-building {
+    record fn-build-spec {
+        entrypoint: string,
+        handler-fn-name: string,
+        mode: build-mode,
+        output: fn-output-config,
+        project-dir: string,
+        runtime: runtime,
+    }
+
+    enum build-mode {
+        debug,
+        release,
+    }
+
+    record fn-output-config {
+        build-root: string,
+        create-archive: bool,
+    }
+
+    // todo remove fn-parsing duplicate
+    enum runtime {
+        node,
+        python,
+    }
+
+    record fn-build-manifest {
+        checksums: list<source-checksum>,
+        dependencies: fn-dependencies,
+        entrypoint: string,
+        handler: fn-handler,
+        output: fn-build-output,
+        sources: list<fn-source>,
+    }
+
+    record source-checksum {
+        checksum: string,
+        path: string,
+    }
+
+    // todo remove fn-parsing duplicate
+    // todo explicitly announce package dependencies in manifest
+    // todo achieve with variant fn-dependencies::packages(list<string>)
+    enum fn-dependencies {
+        // function build will require project's production dependencies
+        required,
+        // function build does not require dependencies
+        unused,
+    }
+
+    // todo remove fn-parsing duplicate
+    record fn-handler {
+        fn-name: string,
+        routing: fn-routing,
+    }
+
+    // todo remove fn-parsing duplicate
+    variant fn-routing {
+        http-route(http-route),
+        unsupported,
+    }
+
+    // todo remove fn-parsing duplicate
+    record http-route {
+        method: http-method,
+        path: string,
+    }
+
+    // todo remove fn-parsing duplicate
+    enum http-method {
+        get,
+        delete,
+        patch,
+        post,
+        put,
+    }
+
+    record fn-build-output {
+        archive-file: option<string>,
+        build-dir: string,
+    }
+
+    // todo remove fn-parsing duplicate
+    // a project source file
+    record fn-source {
+        // resolved and unresolved imports from a source file
+        imports: list<module-import>,
+        // relative source path from project-dir
+        path: string,
+    }
+
+    // todo remove fn-parsing duplicate
+    variant module-import {
+        // import of a package's production dependency
+        package-dependency(dependency-import),
+        // path to a project source relative to project-dir
+        relative-source(string),
+        // an unresolved import and error condition for function builds
+        unknown(string),
+    }
+
+    // todo remove fn-parsing duplicate
+    record dependency-import {
+        %package: string,
+        subpath: option<string>,
+    }
+
+    export build-fn: func(spec: fn-build-spec) -> fn-build-manifest;
+}

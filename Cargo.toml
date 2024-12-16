@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "fn_build",
+    "fn_build_wasm",
     "l3_base",
     "l3_cli",
 ]

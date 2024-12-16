@@ -1,0 +1,14 @@
+[package]
+name = "l3_fn_build_wasm"
+version = "0.0.1"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+l3_fn_build = { path = "../fn_build" }
+wit-bindgen = "0.36.0"
