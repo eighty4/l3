@@ -20,8 +20,9 @@ async fn main() {
         handler_fn_name: "DELETE".to_string(),
         mode: BuildMode::Debug,
         output: FnOutputConfig {
-            create_archive: false,
             build_root: out_dir.path().to_path_buf(),
+            create_archive: false,
+            use_build_mode: true,
         },
         project_dir: Arc::new(env::current_dir().unwrap().join(&project_dir)),
         runtime: Runtime::Node(Arc::new(node_config)),

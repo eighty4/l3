@@ -49,7 +49,8 @@ impl TestFixture {
         if self.gold_update {
             self.update_gold().await
         } else {
-            self.verify_build_with_runtime(&self.fixture_dir).await;
+            self.verify_build_with_runtime(&self.fixture_dir, None)
+                .await;
             let expected_manifest = self.verify_parse().await.unwrap();
             if let Some(debug_result) = BuildResult::read_json(&self.fixture_dir, &BuildMode::Debug)
             {
@@ -96,6 +97,7 @@ impl TestFixture {
                 output: FnOutputConfig {
                     build_root: self.build_root_temp.path().to_path_buf(),
                     create_archive: false,
+                    use_build_mode: true,
                 },
                 project_dir: self.fixture_dir.clone(),
                 runtime: self.runtime.config(&self.fixture_dir),
@@ -113,8 +115,11 @@ impl TestFixture {
             .await
             .expect(format!("building {}", self.fixture_label()).as_str());
         self.expect_build_result(&mode, result, &expected_parse_manifest);
-        self.verify_build_with_runtime(&self.build_output_dir(&mode))
-            .await;
+        self.verify_build_with_runtime(
+            &self.build_output_dir(&mode, &expected_parse_manifest),
+            Some(mode),
+        )
+        .await;
     }
 
     fn expect_build_result(
@@ -123,7 +128,7 @@ impl TestFixture {
         build_result: BuildResult,
         expected_parse_manifest: &FnParseManifest,
     ) {
-        let build_dir = self.build_output_dir(&build_mode);
+        let build_dir = self.build_output_dir(build_mode, expected_parse_manifest);
         for expected_file in &build_result.files {
             let built_file_path = build_dir.join(&expected_file.path);
             let built_content = fs::read_to_string(&built_file_path).expect(
@@ -204,14 +209,27 @@ impl TestFixture {
             "fixture {} parsing has incorrect number of sources",
             self.fixture_label(),
         );
+        assert_eq!(
+            parse_manifest.entrypoint,
+            expected_parse_manifest.entrypoint,
+            "fixture {} parsing has incorrect number of sources",
+            self.fixture_label(),
+        );
         Ok(expected_parse_manifest)
     }
 
-    pub fn build_output_dir(&self, build_mode: &BuildMode) -> PathBuf {
-        self.build_root_temp.child(match build_mode {
-            BuildMode::Debug => "debug",
-            BuildMode::Release => "release",
-        })
+    pub fn build_output_dir(&self, mode: &BuildMode, parse_manifest: &FnParseManifest) -> PathBuf {
+        self.build_root_temp
+            .child(match mode {
+                BuildMode::Debug => "debug",
+                BuildMode::Release => "release",
+            })
+            .join(
+                parse_manifest
+                    .entrypoint
+                    .to_fn_identifier(&self.spec.handler_fn_name)
+                    .unwrap(),
+            )
     }
 
     fn fixture_label(&self) -> String {
@@ -235,15 +253,14 @@ impl TestFixture {
             .unwrap()
     }
 
-    async fn verify_build_with_runtime(&self, project_dir: &Path) {
+    async fn verify_build_with_runtime(&self, project_dir: &Path, mode: Option<BuildMode>) {
         if let Some(result) = self.runtime.verify(project_dir, &self.spec.entrypoint) {
             let output = result.unwrap();
             if !output.status.success() {
-                let verify_label = match project_dir.file_name().unwrap().to_string_lossy().as_ref()
-                {
-                    "debug" => "debug build",
-                    "release" => "release build",
-                    _ => "fixture directory",
+                let verify_label = match mode {
+                    Some(BuildMode::Debug) => "debug build",
+                    Some(BuildMode::Release) => "release build",
+                    None => "fixture directory",
                 };
                 let stderr = String::from_utf8(output.stderr).unwrap();
                 let stdout = String::from_utf8(output.stdout).unwrap();

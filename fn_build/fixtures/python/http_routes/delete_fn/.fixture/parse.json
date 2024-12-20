@@ -3,10 +3,10 @@
   "entrypoint": {
     "handlers": [
       {
-        "fnName": "get",
+        "fnName": "delete",
         "routing": {
           "httpRoute": {
-            "method": "GET",
+            "method": "DELETE",
             "path": "data"
           }
         }

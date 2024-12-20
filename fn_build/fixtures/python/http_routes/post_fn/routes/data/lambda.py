@@ -1,2 +1,2 @@
-def get():
+def post():
     return 'data'

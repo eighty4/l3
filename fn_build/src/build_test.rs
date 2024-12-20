@@ -20,6 +20,7 @@ async fn build_fn_errors_for_invalid_extension() {
             output: FnOutputConfig {
                 build_root: build_dir.path().to_path_buf(),
                 create_archive: true,
+                use_build_mode: true,
             },
             project_dir: Arc::new(
                 env::current_dir()
@@ -36,17 +37,45 @@ async fn build_fn_errors_for_invalid_extension() {
 }
 
 #[tokio::test]
+async fn build_fn_errors_for_missing_handler() {
+    let fixture_path = "fixtures/node/js/npm_dependencies/with_subpath";
+    let build_root_temp = TempDir::new().unwrap();
+    let project_dir = Arc::new(env::current_dir().unwrap().join(fixture_path));
+    let result = build_node_fn(FnBuildSpec {
+        entrypoint: PathBuf::from("routes/data/lambda.js"),
+        handler_fn_name: "someWackyFunctionName".to_string(),
+        mode: BuildMode::Debug,
+        output: FnOutputConfig {
+            build_root: build_root_temp.path().to_path_buf(),
+            create_archive: true,
+            use_build_mode: true,
+        },
+        project_dir: project_dir.clone(),
+        runtime: Runtime::Node(Arc::new(
+            NodeConfig::read_node_config(&project_dir).unwrap(),
+        )),
+    })
+    .await;
+    assert!(result.is_err());
+    assert_eq!(
+        result.err().unwrap().to_string(),
+        "entrypoint routes/data/lambda.js does not have a handler fn someWackyFunctionName"
+    );
+}
+
+#[tokio::test]
 async fn build_fn_produces_archive() {
     let fixture_path = "fixtures/node/js/npm_dependencies/with_subpath";
     let build_root_temp = TempDir::new().unwrap();
     let project_dir = Arc::new(env::current_dir().unwrap().join(fixture_path));
     let build_manifest = build_node_fn(FnBuildSpec {
         entrypoint: PathBuf::from("routes/data/lambda.js"),
-        handler_fn_name: "GET".to_string(),
+        handler_fn_name: "DELETE".to_string(),
         mode: BuildMode::Debug,
         output: FnOutputConfig {
             build_root: build_root_temp.path().to_path_buf(),
             create_archive: true,
+            use_build_mode: true,
         },
         project_dir: project_dir.clone(),
         runtime: Runtime::Node(Arc::new(
@@ -90,11 +119,12 @@ async fn build_fn_produces_checksums() {
     let project_dir = Arc::new(env::current_dir().unwrap().join(fixture_path));
     let build_manifest = build_node_fn(FnBuildSpec {
         entrypoint: PathBuf::from("routes/data/lambda.js"),
-        handler_fn_name: "GET".to_string(),
+        handler_fn_name: "DELETE".to_string(),
         mode: BuildMode::Debug,
         output: FnOutputConfig {
             build_root: build_root_temp.path().to_path_buf(),
             create_archive: false,
+            use_build_mode: true,
         },
         project_dir: project_dir.clone(),
         runtime: Runtime::Node(Arc::new(

@@ -3,10 +3,10 @@
   "entrypoint": {
     "handlers": [
       {
-        "fnName": "get",
+        "fnName": "post",
         "routing": {
           "httpRoute": {
-            "method": "GET",
+            "method": "POST",
             "path": "data"
           }
         }

@@ -38,8 +38,12 @@ pub async fn build_fn_inner<F>(
 where
     F: (Fn(&Path) -> FnBuildResult<String>) + Send + Sync + 'static,
 {
+    let fn_identifier = parse_manifest
+        .entrypoint
+        .to_fn_identifier(&build_spec.handler_fn_name)?;
+    let build_root = build_spec.output_build_root();
+    let build_dir = Arc::new(build_root.join(&fn_identifier));
     let transform = Arc::new(transform);
-    let build_dir = Arc::new(build_spec.output_build_root());
     let mut join_set: JoinSet<FnBuildResult<BuildTaskResult>> = JoinSet::new();
     for build_task in build_tasks {
         match build_task {
@@ -103,13 +107,14 @@ where
         sources: parse_manifest.sources,
         handler,
         output: FnBuildOutput {
-            archive_file: if let Some(archive_file) = build_spec.output_archive_file() {
+            archive_file: if build_spec.output.create_archive {
+                let archive_file = build_root.join(format!("{}.zip", fn_identifier));
                 write_archive(&archive_file, &build_dir)?;
                 Some(archive_file)
             } else {
                 None
             },
-            build_dir: build_spec.output_build_root(),
+            build_dir: build_dir.to_path_buf(),
         },
     })
 }

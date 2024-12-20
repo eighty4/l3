@@ -16,17 +16,17 @@ pub struct FnParseSpec {
 }
 
 /// Output config for the build.
-///
-/// Builds will be keyed in FnBuildOutput::build_dir by the build's BuildMode, such as
-/// `/example/build/debug` and `/example/build/release`.
 #[derive(Clone, Deserialize)]
 pub struct FnOutputConfig {
-    /// Absolute path to root build directory, parent of debug and release output directories.
+    /// Absolute path to root build directory, parent of debug and release output directories if
+    /// use_build_mode is true. A function's build output will be a directory with the name of the
+    /// function's unique identifier.
     pub build_root: PathBuf,
-    /// Providing an archive filename will create an archive of the build output in build_root.
-    /// With a build_dir of /example/build, BuildMode::Debug and create_archive of true,
-    /// an archive of the build output will be created at /example/build/debug.zip.
+    /// Whether to create a {fn_identifier}.zip archive file in the output directory.
     pub create_archive: bool,
+    /// Build output will be nested in build_root by the build's BuildMode, such as
+    /// `/example/build/debug` and `/example/build/release`.
+    pub use_build_mode: bool,
 }
 
 pub struct FnBuildSpec {
@@ -48,10 +48,14 @@ impl FnBuildSpec {
     }
 
     pub fn output_build_root(&self) -> PathBuf {
-        self.output.build_root.join(match self.mode {
-            BuildMode::Debug => "debug",
-            BuildMode::Release => "release",
-        })
+        if self.output.use_build_mode {
+            self.output.build_root.join(match self.mode {
+                BuildMode::Debug => "debug",
+                BuildMode::Release => "release",
+            })
+        } else {
+            self.output.build_root.clone()
+        }
     }
 
     pub fn output_archive_file(&self) -> Option<PathBuf> {

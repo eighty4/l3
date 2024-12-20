@@ -1,2 +1,2 @@
-def get():
+def patch():
     return 'data'
