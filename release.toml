@@ -1,4 +1,7 @@
 # config for https://github.com/crate-ci/cargo-release
+
+pre-release-commit-message = "cargo release"
+
 pre-release-replacements = [
     { file = "CHANGELOG.md", search = "## Unreleased - ReleaseDate", replace = "## Unreleased - ReleaseDate\n\n## {{version}} - {{date}}", exactly = 1 },
     { file = "CHANGELOG.md", search = "\\.\\.\\.HEAD", replace = "...{{tag_name}}", exactly = 1 },
