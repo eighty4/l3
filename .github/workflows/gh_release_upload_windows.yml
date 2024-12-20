@@ -1,0 +1,46 @@
+name: Upload Windows
+
+on:
+  workflow_call:
+    inputs:
+      release_id:
+        required: true
+        type: string
+      tag_name:
+        required: true
+        type: string
+      upload_hostname:
+        required: true
+        type: string
+
+jobs:
+
+  publish-asset:
+    runs-on: windows-2022
+    strategy:
+      matrix:
+        include:
+          - filename: l3-windows-aarch64.exe
+            target: aarch64-pc-windows-msvc
+          - filename: l3-windows-x86_64.exe
+            target: x86_64-pc-windows-msvc
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag_name }}
+      - run: rustup install stable
+      - run: rustup target add  ${{ matrix.target }}
+      - name: build
+        shell: powershell
+        run: cargo build -p l3_cli --release --target ${{ matrix.target }}
+      - name: upload
+        shell: powershell
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          RELEASE_ID: ${{ inputs.release_id }}
+          UPLOAD_HOSTNAME: ${{ inputs.upload_hostname }}
+        run: |
+          Move-Item -Path target\${{ matrix.target }}\release\l3.exe -Destination ${{ matrix.filename }}
+          Move-Item -Path .github/workflows/windows_upload_asset.mjs -Destination upload_asset.mjs
+          npm i @octokit/core
+          node upload_asset.mjs eighty4 l3 $env:RELEASE_ID ${{ matrix.filename }} application/x-dosexec $env:UPLOAD_HOSTNAME

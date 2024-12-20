@@ -9,6 +9,18 @@ use std::pin::Pin;
 use std::process::{Command, Output};
 use std::sync::Arc;
 
+#[cfg(target_os = "windows")]
+mod bin {
+    pub const NODE: &str = "node.exe";
+    pub const PYTHON: &str = "python.exe";
+}
+
+#[cfg(not(target_os = "windows"))]
+mod bin {
+    pub const NODE: &str = "node";
+    pub const PYTHON: &str = "python3";
+}
+
 pub fn create_test_runtime(entrypoint: &Path) -> Arc<Box<dyn TestRuntime>> {
     let extension = entrypoint.extension().expect("source with extension");
     let runtime: Arc<Box<dyn TestRuntime>> = match extension.to_string_lossy().as_ref() {
@@ -50,7 +62,7 @@ impl TestRuntime for TestNodeRuntime {
 
     fn verify(&self, project_dir: &Path, entrypoint: &Path) -> Option<io::Result<Output>> {
         Some(
-            Command::new("node")
+            Command::new(bin::NODE)
                 .arg(entrypoint)
                 .current_dir(project_dir)
                 .output(),
@@ -75,7 +87,7 @@ impl TestRuntime for TestPythonRuntime {
 
     fn verify(&self, project_dir: &Path, entrypoint: &Path) -> Option<io::Result<Output>> {
         Some(
-            Command::new("python3")
+            Command::new(bin::PYTHON)
                 .arg(entrypoint)
                 .current_dir(project_dir)
                 .output(),
