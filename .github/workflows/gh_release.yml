@@ -1,0 +1,67 @@
+name: Release
+
+on:
+  workflow_dispatch:
+
+jobs:
+
+  verify:
+    uses: ./.github/workflows/verify.yml
+
+  publish-cargo-crates:
+    runs-on: ubuntu-latest
+    needs: verify
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup install stable
+      - run: cargo install cargo-release
+      - run: cargo release --no-confirm -x patch
+      - id: version
+        run: |
+          VERSION=$(awk -F ' = ' '$1 ~ /version/ { gsub(/[\"]/, "", $2); printf("%s",$2) }' l3_cli/Cargo.toml)
+          TAG_NAME="l3_cli-v$VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag_name=$TAG_NAME" >> "$GITHUB_OUTPUT"
+    outputs:
+      tag_name: ${{ steps.version.outputs.tag_name }}
+      version: ${{ steps.version.outputs.version }}
+
+  create-gh-release:
+    runs-on: ubuntu-22.04
+    needs: publish-cargo-crates
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create release
+        id: create
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          TAG_NAME: ${{ needs.publish-cargo-crates.outputs.tag_name }}
+          VERSION: ${{ needs.publish-cargo-crates.outputs.version }}
+        run: |
+          NOTES=$(cat l3_cli/CHANGELOG.md | awk -v p="## $VERSION" -F":" '$0 ~ p{f=1;next} /## /{f=0} f')
+          CREATED_RELEASE=$(gh api \
+            --method POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            /repos/eighty4/l3/releases \
+            -f tag_name="$TAG_NAME" \
+            -f name="CLI v$VERSION" \
+            -F body="# Release notes\r\n\r\n$NOTES" \
+            -F draft=false \
+            -F prerelease=false \
+            -F generate_release_notes=false)
+          echo "release_id=$(echo $CREATED_RELEASE | jq '.id')" >> "$GITHUB_OUTPUT"
+          echo "upload_hostname=$(echo $CREATED_RELEASE | jq '.upload_url' | cut -d'/' -f3)" >> "$GITHUB_OUTPUT"
+    outputs:
+      release_id: ${{ steps.create.outputs.release_id }}
+      tag_name: ${{ needs.publish-cargo-crates.outputs.tag_name }}
+      upload_hostname: ${{ steps.create.outputs.upload_hostname }}
+
+  publish-linux-and-macos-assets:
+    needs: create-gh-release
+    uses: ./.github/workflows/gh_release_upload.yml
+    with:
+      release_id: ${{ needs.create-gh-release.outputs.release_id }}
+      tag_name: ${{ needs.create-gh-release.outputs.tag_name }}
+      upload_hostname: ${{ needs.create-gh-release.outputs.upload_hostname }}
+    secrets: inherit
