@@ -20,6 +20,10 @@ cargo test --workspace
 echo '\n*** cargo clippy -- -D warnings ***'
 cargo clippy --all -- -D warnings
 
+echo '\n*** cargo run --example(s) ***'
+(cd fn_build && cargo run --example build_fn)
+(cd fn_build && cargo run --example parse_fn)
+
 if [ -n "$_git_status_output" ]; then
   echo
   echo "all ci verifications passed"
