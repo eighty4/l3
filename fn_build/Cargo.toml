@@ -1,6 +1,6 @@
 [package]
 name = "l3_fn_build"
-version = "0.0.2"
+version = "0.0.3"
 description = "Lib for Lambda function builds"
 authors = { workspace = true }
 edition = { workspace = true }
@@ -14,7 +14,7 @@ path = "src/lib.rs"
 [dependencies]
 anyhow = { workspace = true }
 base64 = "0.22.1"
-l3_api_base = { path = "../l3_base", version = "0.0.2" }
+l3_api_base = { path = "../l3_base", version = "0.0.3" }
 rustpython-parser = "0.4.0"
 serde = { workspace = true }
 serde_json = { workspace = true }

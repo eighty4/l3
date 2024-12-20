@@ -1,6 +1,6 @@
 [package]
 name = "l3_cli"
-version = "0.0.2"
+version = "0.0.3"
 description = "Lambda compute tooling"
 authors = { workspace = true }
 edition = { workspace = true }
@@ -13,8 +13,8 @@ path = "src/main.rs"
 
 [dependencies]
 clap = { version = "4.5.23", features = ["derive"] }
-l3_api_base = { path = "../l3_base", version = "0.0.2" }
-l3_fn_build = { path = "../fn_build", version = "0.0.2" }
+l3_api_base = { path = "../l3_base", version = "0.0.3" }
+l3_fn_build = { path = "../fn_build", version = "0.0.3" }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
