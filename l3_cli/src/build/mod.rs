@@ -65,7 +65,7 @@ async fn build_all_fns(mode: BuildMode) -> LLLCommandRunResult {
         BuildMode::Debug => "debug",
         BuildMode::Release => "release",
     });
-    fs::remove_dir_all(&build_root).expect("rm existing build dir");
+    _ = fs::remove_dir_all(&build_root);
     for entrypoint in entrypoints {
         for handler in &entrypoint.handlers {
             l3_fn_build::build_fn(FnBuildSpec {
