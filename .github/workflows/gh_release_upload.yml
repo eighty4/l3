@@ -48,6 +48,7 @@ jobs:
           mkdir -p $HOME/.cargo
           mv ./.github/workflows/linkers.toml $HOME/.cargo/config.toml
       - run: rustup install stable
+      - uses: swatinem/rust-cache@v2
       - run: rustup target add $TARGET
       - name: build
         run: cargo build --release --target $TARGET

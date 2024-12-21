@@ -30,6 +30,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: rustup install stable
+      - uses: swatinem/rust-cache@v2
       - name: cargo build
         run: cargo build --all-features --release --workspace
 
@@ -41,6 +42,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: rustup install stable
+      - uses: swatinem/rust-cache@v2
       - name: cargo build
         run: |
           cargo run --example build_fn
@@ -52,6 +54,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: rustup install stable
+      - uses: swatinem/rust-cache@v2
       - name: cargo fmt
         run: cargo fmt --all -v
       - run: git diff --exit-code
@@ -61,6 +64,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: rustup install stable
+      - uses: swatinem/rust-cache@v2
       - run: cargo clippy --all -- -D warnings
         if: github.ref == 'refs/heads/main'
       - run: cargo clippy --all
@@ -78,6 +82,7 @@ jobs:
         with:
           node-version: 20
       - run: rustup install stable
+      - uses: swatinem/rust-cache@v2
       - name: cargo test
         run: cargo test --workspace
 
@@ -94,6 +99,7 @@ jobs:
         with:
           node-version: ${{ matrix.node_version }}
       - run: rustup install stable
+      - uses: swatinem/rust-cache@v2
       - name: cargo test
         run: cargo test -p l3_fn_build testing::test_node_fixtures
 
@@ -106,6 +112,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: rustup install stable
+      - uses: swatinem/rust-cache@v2
       - run: cargo install --path l3_cli
       - run: l3 build --all
         working-directory: fn_build/fixtures/node/js/http_routes/get_fn
