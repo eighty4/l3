@@ -87,3 +87,16 @@ jobs:
       - run: rustup install stable
       - name: cargo test
         run: cargo test -p l3_fn_build testing::test_node_fixtures
+
+  test-cli-build-all:
+    runs-on: ${{ matrix.runs_on }}
+    continue-on-error: true
+    strategy:
+      matrix:
+        runs_on: [macos-latest, ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup install stable
+      - run: cargo install --path l3_cli
+      - run: l3 build --all
+        working-directory: fn_build/fixtures/node/js/http_routes/get_fn
