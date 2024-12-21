@@ -18,6 +18,7 @@ jobs:
       - fmt
       - lint
       - test
+      - test-node-runtime-fixtures
     steps:
       - run: echo "We're gonna face it"
 
@@ -70,3 +71,19 @@ jobs:
       - run: rustup install stable
       - name: cargo test
         run: cargo test --workspace
+
+  test-node-runtime-fixtures:
+    runs-on: ${{ matrix.runs_on }}
+    continue-on-error: true
+    strategy:
+      matrix:
+        node_version: [18, 20, 22, 23]
+        runs_on: [macos-latest, ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node_version }}
+      - run: rustup install stable
+      - name: cargo test
+        run: cargo test -p l3_fn_build testing::test_node_fixtures
