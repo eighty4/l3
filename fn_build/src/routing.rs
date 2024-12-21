@@ -1,6 +1,6 @@
 use anyhow::anyhow;
 use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -49,12 +49,12 @@ impl HttpRoute {
 
     fn extract_http_path(path: &Path) -> Option<String> {
         debug_assert!(path.is_relative());
-        let mut parts = Vec::new();
+        let mut parts: Vec<String> = Vec::new();
         for p in path.parent()?.components().rev() {
             if p.as_os_str().to_string_lossy().as_ref() == "routes" {
-                return Some(PathBuf::from_iter(parts).to_string_lossy().to_string());
+                return Some(parts.join("/"));
             } else {
-                parts.insert(0, p);
+                parts.insert(0, p.as_os_str().to_string_lossy().to_string());
             }
         }
         None

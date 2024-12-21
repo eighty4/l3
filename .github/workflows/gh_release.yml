@@ -65,3 +65,12 @@ jobs:
       tag_name: ${{ needs.create-gh-release.outputs.tag_name }}
       upload_hostname: ${{ needs.create-gh-release.outputs.upload_hostname }}
     secrets: inherit
+
+  publish-windows-assets:
+    needs: create-gh-release
+    uses: ./.github/workflows/gh_release_upload_windows.yml
+    with:
+      release_id: ${{ needs.create-gh-release.outputs.release_id }}
+      tag_name: ${{ needs.create-gh-release.outputs.tag_name }}
+      upload_hostname: ${{ needs.create-gh-release.outputs.upload_hostname }}
+    secrets: inherit
