@@ -1,0 +1,33 @@
+package l3:configure;
+
+world configure {
+
+  variant api-instance {
+    create-new,
+    use-api-id(string),
+  }
+
+  record api-gateway-config {
+    api: api-instance
+  }
+
+  record load-balancer-config {
+  }
+
+  variant cloudfront-origin {
+    api-gateway(api-gateway-config),
+    application-load-balancer(load-balancer-config),
+  }
+
+  record cloudfront-config {
+    origin: cloudfront-origin,
+  }
+
+  variant http-config {
+    api-gateway(api-gateway-config),
+    application-load-balancer(load-balancer-config),
+    cloudfront-origin(cloudfront-config),
+  }
+
+  export configure: func() -> http-config;
+}

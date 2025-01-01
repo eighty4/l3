@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "poc_config/aws_wasi_host",
     "fn_build",
     "l3_base",
     "l3_cli",
