@@ -1,4 +1,5 @@
 name: Upload Windows
+run-name: Upload ${{ inputs.tag_name }} bins for Windows
 
 on:
   workflow_call:
@@ -16,6 +17,7 @@ on:
 jobs:
 
   publish-asset:
+    name: "publish ${{ matrix.filename}}"
     runs-on: windows-2022
     strategy:
       matrix:

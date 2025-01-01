@@ -1,4 +1,5 @@
 name: Upload Linux/MacOS
+run-name: Upload ${{ inputs.tag_name }} bins for Linux/MacOS
 
 on:
   workflow_call:
@@ -16,6 +17,7 @@ on:
 jobs:
 
   publish-asset:
+    name: "publish ${{ matrix.filename}}"
     runs-on: ${{ matrix.runner }}
     strategy:
       matrix:
