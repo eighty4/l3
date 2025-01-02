@@ -3,6 +3,11 @@ name: Verify
 on:
   push:
     branches: [ '*' ]
+    paths:
+      - .github/workflows/verify.yml
+      - fn_*/**/*
+      - l3_*/**/*
+      - Cargo.*
   pull_request:
     branches: [ '*' ]
   workflow_call:
