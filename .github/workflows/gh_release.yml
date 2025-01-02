@@ -39,7 +39,8 @@ jobs:
           TAG_NAME: ${{ needs.publish-cargo-crates.outputs.tag_name }}
           VERSION: ${{ needs.publish-cargo-crates.outputs.version }}
         run: |
-          NOTES=$(cat l3_cli/CHANGELOG.md | awk -v p="## $VERSION" -F":" '$0 ~ p{f=1;next} /## /{f=0} f')
+          CHANGELOG=$(cat l3_cli/CHANGELOG.md | awk -v p="## $VERSION" -F":" '$0 ~ p{f=1;next} /## /{f=0} f')
+          NOTES="[Published to crates.io](https://crates.io/crates/l3_cli)  \r\n\r\n# Release notes  \r\n\r\n$CHANGELOG"
           CREATED_RELEASE=$(gh api \
             --method POST \
             -H "Accept: application/vnd.github+json" \
@@ -47,7 +48,7 @@ jobs:
             /repos/eighty4/l3/releases \
             -f tag_name="$TAG_NAME" \
             -f name="CLI v$VERSION" \
-            -F body="# Release notes\r\n\r\n$NOTES" \
+            -F body="$NOTES" \
             -F draft=false \
             -F prerelease=false \
             -F generate_release_notes=false)
