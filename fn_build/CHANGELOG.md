@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased - ReleaseDate
 
+## 0.0.4 - 2024-01-02
+
 ### Added
 
 - Windows fs path compatibility
@@ -25,7 +27,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Parse and build APIs for creating deployable Lambda functions
 
-[Unreleased]: https://github.com/eighty4/l3/compare/l3_fn_build-v0.0.3...HEAD
+[Unreleased]: https://github.com/eighty4/l3/compare/l3_fn_build-v0.0.4...HEAD
+[0.0.4]: https://github.com/eighty4/l3/compare/l3_fn_build-v0.0.3...l3_fn_build-v0.0.4
 [0.0.3]: https://github.com/eighty4/l3/compare/l3_fn_build-v0.0.2...l3_fn_build-v0.0.3
 [0.0.2]: https://github.com/eighty4/l3/compare/v0.0.1...l3_fn_build-v0.0.2
 [0.0.1]: https://github.com/eighty4/l3/releases/tag/v0.0.1

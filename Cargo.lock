@@ -860,11 +860,11 @@ dependencies = [
 
 [[package]]
 name = "l3_api_base"
-version = "0.0.3"
+version = "0.0.4"
 
 [[package]]
 name = "l3_cli"
-version = "0.0.3"
+version = "0.0.4"
 dependencies = [
  "clap",
  "l3_api_base",
@@ -876,7 +876,7 @@ dependencies = [
 
 [[package]]
 name = "l3_fn_build"
-version = "0.0.3"
+version = "0.0.4"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
