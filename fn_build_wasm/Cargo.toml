@@ -1,0 +1,18 @@
+[package]
+name = "l3_fn_build_wasm"
+version = "0.0.1"
+description = "WASI component of the l3_fn_build crate"
+publish = false
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lib]
+name = "l3_fn_build"
+crate-type = ["cdylib"]
+
+[dependencies]
+l3_fn_build = { path = "../fn_build" }
+tokio = { workspace = true, features = ["rt"] }
+wit-bindgen = "0.36.0"

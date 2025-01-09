@@ -17,6 +17,6 @@ l3_api_base = { path = "../l3_base", version = "0.0.4" }
 l3_fn_build = { path = "../fn_build", version = "0.0.4" }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
-tokio = { workspace = true }
+tokio = { workspace = true, features = ["macros", "rt", "rt-multi-thread", "sync", "test-util"] }
 
 [dev-dependencies]

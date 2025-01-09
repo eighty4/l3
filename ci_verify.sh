@@ -6,7 +6,8 @@ set -e
 _git_status_output=$(git status --porcelain)
 
 echo '\n*** cargo build ***'
-cargo build --workspace
+cargo build --workspace --exclude l3_fn_build_wasm
+cargo build -p l3_fn_build_wasm --target wasm32-wasip2
 
 echo '\n*** cargo fmt -v ***'
 cargo fmt --all -v

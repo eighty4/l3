@@ -1,0 +1,101 @@
+package l3:fn-build;
+
+// todo parse result and parse error
+world fn-parsing {
+    record fn-parse-spec {
+        // relative source path from project-dir
+        entrypoint: string,
+        // absolute directory path to project root
+        project-dir: string,
+        runtime: runtime,
+    }
+
+    // todo variant and binding for runtime::node::node_config::NodeConfig
+    enum runtime {
+        node,
+        python,
+    }
+
+//    record node-config {
+//        // Configured dependencies from package.json, excluding devDependencies
+//        dependencies: list<string>,
+//        // Whether package.json declares the package type as ES module
+//        module-type: bool,
+//        subpath-imports: 
+//    }
+
+    record fn-parse-manifest {
+        // package dependency requirements for 
+        dependencies: fn-dependencies,
+        // the entrypoint source file containing the function's handler function
+        entrypoint: fn-entrypoint,
+        // source files included in a function manifest and build
+        sources: list<fn-source>,
+    }
+
+    // todo explicitly announce package dependencies in manifest
+    // todo achieve with variant fn-dependencies::packages(list<string>)
+    enum fn-dependencies {
+        // function build will require project's production dependencies
+        required,
+        // function build does not require dependencies
+        unused,
+    }
+
+    // metadata of function entrypoint
+    record fn-entrypoint {
+        // exported handler functions
+        handlers: list<fn-handler>,
+        // relative path to entrypoint source file from project-dir
+        path: string,
+    }
+
+    record fn-handler {
+        fn-name: string,
+        routing: fn-routing,
+    }
+
+    variant fn-routing {
+        http-route(http-route),
+        unsupported,
+    }
+
+    record http-route {
+        method: http-method,
+        path: string,
+    }
+
+    enum http-method {
+        get,
+        delete,
+        patch,
+        post,
+        put,
+    }
+
+    // a project source file
+    record fn-source {
+        // resolved and unresolved imports from a source file
+        imports: list<module-import>,
+        // relative source path from project-dir
+        path: string,
+    }
+
+    variant module-import {
+        // import of a package's production dependency
+        package-dependency(dependency-import),
+        // path to a project source relative to project-dir
+        relative-source(string),
+        // an unresolved import and error condition for function builds
+        unknown(string),
+    }
+
+    record dependency-import {
+        %package: string,
+        subpath: option<string>,
+    }
+
+    export parse-entrypoint: func(spec: fn-parse-spec) -> result<fn-entrypoint, string>;
+
+    export parse-fn: func(spec: fn-parse-spec) -> result<fn-parse-manifest, string>;
+}

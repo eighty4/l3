@@ -68,19 +68,21 @@ jobs:
       tag_name: ${{ needs.publish-cargo-crates.outputs.tag_name }}
       upload_hostname: ${{ steps.create.outputs.upload_hostname }}
 
-  publish-linux-and-macos-assets:
+  upload:
     needs: create-gh-release
     uses: ./.github/workflows/gh_release_upload.yml
+    strategy:
+      matrix:
+        include:
+          - filename: l3-linux-x86_64
+          - filename: l3-linux-aarch64
+          - filename: l3-macos-x86_64
+          - filename: l3-macos-aarch64
+          - filename: l3-windows-aarch64.exe
+          - filename: l3-windows-x86_64.exe
+          - filename: l3-fn-build.wasm
     with:
-      release_id: ${{ needs.create-gh-release.outputs.release_id }}
-      tag_name: ${{ needs.create-gh-release.outputs.tag_name }}
-      upload_hostname: ${{ needs.create-gh-release.outputs.upload_hostname }}
-    secrets: inherit
-
-  publish-windows-assets:
-    needs: create-gh-release
-    uses: ./.github/workflows/gh_release_upload_windows.yml
-    with:
+      filename: ${{ matrix.filename }}
       release_id: ${{ needs.create-gh-release.outputs.release_id }}
       tag_name: ${{ needs.create-gh-release.outputs.tag_name }}
       upload_hostname: ${{ needs.create-gh-release.outputs.upload_hostname }}
