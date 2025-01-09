@@ -12,7 +12,7 @@ name = "l3"
 path = "src/main.rs"
 
 [dependencies]
-clap = { version = "4.5.23", features = ["derive"] }
+clap = { version = "4.5.25", features = ["derive"] }
 l3_api_base = { path = "../l3_base", version = "0.0.4" }
 l3_fn_build = { path = "../fn_build", version = "0.0.4" }
 serde_json = { workspace = true }

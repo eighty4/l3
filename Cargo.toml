@@ -8,11 +8,11 @@ resolver = "2"
 
 [workspace.dependencies]
 anyhow = "1.0.92"
-serde = { version = "1.0.213", features = ["derive"] }
-serde_json = { version = "1.0.132", features = ["preserve_order"] }
-thiserror = "2.0.0"
+serde = { version = "1.0.217", features = ["derive"] }
+serde_json = { version = "1.0.135", features = ["preserve_order"] }
+thiserror = "2.0.10"
 temp-dir = "0.1.14"
-tokio = { version = "1.41.0", features = ["full"] }
+tokio = { version = "1.43.0", features = ["full"] }
 
 [workspace.package]
 authors = ["Adam McKee <adam.be.g84d@gmail.com>"]
