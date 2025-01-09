@@ -1,5 +1,9 @@
+use crate::checksum::Checksum;
 use crate::runtime::Runtime;
+use crate::{FnDependencies, FnHandler, FnParseError, FnParseSpec, FnSource};
 use serde::Deserialize;
+use std::collections::HashMap;
+use std::io;
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -7,12 +11,6 @@ use std::sync::Arc;
 pub enum BuildMode {
     Debug,
     Release,
-}
-
-pub struct FnParseSpec {
-    pub entrypoint: PathBuf,
-    pub project_dir: Arc<PathBuf>,
-    pub runtime: Runtime,
 }
 
 /// Output config for the build.
@@ -69,3 +67,33 @@ impl FnBuildSpec {
         }
     }
 }
+
+#[derive(Clone, Deserialize)]
+pub struct FnBuildOutput {
+    pub archive_file: Option<PathBuf>,
+    /// PathBuf to the build's output directory partitioned by the build's BuildMode.
+    pub build_dir: PathBuf,
+}
+
+#[derive(Clone, Deserialize)]
+pub struct FnBuildManifest {
+    /// Checksums of the original sources of the function's build.
+    pub checksums: HashMap<PathBuf, Checksum>,
+    pub dependencies: FnDependencies,
+    pub entrypoint: PathBuf,
+    pub handler: FnHandler,
+    pub output: FnBuildOutput,
+    pub sources: Vec<FnSource>,
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum FnBuildError {
+    #[error("{0}")]
+    IoError(#[from] io::Error),
+    #[error("error parsing function: {0}")]
+    ParseError(#[from] FnParseError),
+    #[error("build task error: {0}")]
+    KnownError(#[from] anyhow::Error),
+}
+
+pub type FnBuildResult<T> = Result<T, FnBuildError>;

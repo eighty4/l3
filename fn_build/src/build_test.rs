@@ -59,7 +59,7 @@ async fn build_fn_errors_for_missing_handler() {
     assert!(result.is_err());
     assert_eq!(
         result.err().unwrap().to_string(),
-        "entrypoint routes/data/lambda.js does not have a handler fn someWackyFunctionName"
+        "error parsing function: entrypoint routes/data/lambda.js does not have a handler fn someWackyFunctionName"
     );
 }
 

@@ -1,10 +1,10 @@
 mod archive;
+mod build;
 mod checksum;
+mod parse;
 mod paths;
-mod result;
 mod routing;
 pub mod runtime;
-mod spec;
 mod swc;
 
 #[cfg(test)]
@@ -25,9 +25,9 @@ mod testing;
 #[cfg(test)]
 mod routing_test;
 
-pub use crate::result::*;
+pub use crate::build::*;
+pub use crate::parse::*;
 pub use crate::routing::*;
-pub use crate::spec::*;
 
 /// Builds a lambda function.
 pub async fn build_fn(build_spec: FnBuildSpec) -> FnBuildResult<FnBuildManifest> {
