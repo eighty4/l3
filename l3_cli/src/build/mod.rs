@@ -70,7 +70,7 @@ async fn build_all_fns(mode: BuildMode) -> LLLCommandRunResult {
         for handler in &entrypoint.handlers {
             l3_fn_build::build_fn(FnBuildSpec {
                 project_dir: project_dir.clone(),
-                runtime: Runtime::Node(node_config.clone()),
+                runtime: Runtime::Node(Some(node_config.clone())),
                 entrypoint: entrypoint.path.clone(),
                 mode: mode.clone(),
                 handler_fn_name: handler.fn_name.clone(),

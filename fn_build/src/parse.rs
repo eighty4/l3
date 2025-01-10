@@ -1,3 +1,4 @@
+use crate::runtime::node::NodeConfigError;
 use crate::runtime::Runtime;
 use crate::{FnRouting, HttpMethod};
 use serde::{Deserialize, Serialize};
@@ -111,6 +112,8 @@ pub enum FnParseError {
     IoError(#[from] io::Error),
     #[error("entrypoint {0} does not have a handler fn {1}")]
     MissingHandler(PathBuf, String),
+    #[error("error reading package.json: {0}")]
+    NodeConfig(#[from] NodeConfigError),
     #[error("syntax error")]
     SyntaxError,
 }

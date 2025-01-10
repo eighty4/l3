@@ -55,9 +55,7 @@ impl FnParsingWasm {
             entrypoint: PathBuf::from(parse_spec.entrypoint),
             project_dir: Arc::new(PathBuf::from(parse_spec.project_dir)),
             runtime: match parse_spec.runtime {
-                Runtime::Node => l3_fn_build::runtime::Runtime::Node(Arc::new(
-                    l3_fn_build::runtime::node::NodeConfig::default(),
-                )),
+                Runtime::Node => l3_fn_build::runtime::Runtime::Node(None),
                 Runtime::Python => l3_fn_build::runtime::Runtime::Python,
             },
         }

@@ -16,7 +16,7 @@ async fn main() {
     let fn_manifest = parse_fn(FnParseSpec {
         entrypoint: PathBuf::from("routes/data/lambda.js"),
         project_dir: Arc::new(env::current_dir().unwrap().join(&project_dir)),
-        runtime: Runtime::Node(Arc::new(node_config)),
+        runtime: Runtime::Node(Some(Arc::new(node_config))),
     })
     .await
     .unwrap();

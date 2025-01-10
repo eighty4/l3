@@ -25,7 +25,7 @@ async fn main() {
             use_build_mode: true,
         },
         project_dir: Arc::new(env::current_dir().unwrap().join(&project_dir)),
-        runtime: Runtime::Node(Arc::new(node_config)),
+        runtime: Runtime::Node(Some(Arc::new(node_config))),
     })
     .await
     .unwrap();

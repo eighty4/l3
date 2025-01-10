@@ -12,8 +12,9 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 pub async fn parse_python_entrypoint(parse_spec: FnParseSpec) -> FnParseResult<FnEntrypoint> {
-    let ast = PythonSourceParser::parse_ast(&parse_spec.project_dir, &parse_spec.entrypoint)?;
-    let handlers = PythonSourceParser::collect_handlers(&parse_spec.entrypoint, &ast);
+    let source_parser = PythonSourceParser::new();
+    let handlers =
+        source_parser.collect_handlers(&parse_spec.project_dir, &parse_spec.entrypoint)?;
     Ok(FnEntrypoint {
         handlers,
         path: parse_spec.entrypoint,
@@ -50,21 +51,6 @@ impl PythonSourceParser {
         Ok(ast)
     }
 
-    fn collect_handlers(source_path: &Path, ast: &Vec<Stmt>) -> Vec<FnHandler> {
-        let mut handlers: Vec<FnHandler> = Vec::new();
-        for stmt in ast {
-            match stmt {
-                Stmt::FunctionDef(function) => handlers.push(FnHandler::from_handler_fn(
-                    source_path,
-                    function.name.to_string(),
-                )),
-                Stmt::AsyncFunctionDef(_) => todo!("to support python async functions as handlers, build_python_fn will have to generate code for a non async handler that launches teh async python function with the python async runtime"),
-                _ => {}
-            }
-        }
-        handlers
-    }
-
     fn collect_imports(
         &self,
         project_dir: &Path,
@@ -92,6 +78,26 @@ impl PythonSourceParser {
 }
 
 impl FnSourceParser for PythonSourceParser {
+    fn collect_handlers(
+        &self,
+        project_dir: &Path,
+        source_path: &Path,
+    ) -> FnParseResult<Vec<FnHandler>> {
+        let ast = Self::parse_ast(project_dir, source_path)?;
+        let mut handlers: Vec<FnHandler> = Vec::new();
+        for stmt in ast {
+            match stmt {
+                Stmt::FunctionDef(function) => handlers.push(FnHandler::from_handler_fn(
+                    source_path,
+                    function.name.to_string(),
+                )),
+                Stmt::AsyncFunctionDef(_) => todo!("to support python async functions as handlers, build_python_fn will have to generate code for a non async handler that launches the async python function with the python async runtime"),
+                _ => {}
+            }
+        }
+        Ok(handlers)
+    }
+
     fn collect_runtime_sources(&self, _project_dir: &Path) -> Vec<FnSource> {
         Vec::new()
     }
@@ -102,7 +108,7 @@ impl FnSourceParser for PythonSourceParser {
         path: PathBuf,
     ) -> FnParseResult<(FnSource, Vec<FnHandler>)> {
         let ast = Self::parse_ast(project_dir, &path)?;
-        let handlers = Self::collect_handlers(&path, &ast);
+        let handlers = self.collect_handlers(project_dir, &path)?;
         let imports = self.collect_imports(project_dir, &path, &ast);
         Ok((FnSource { imports, path }, handlers))
     }

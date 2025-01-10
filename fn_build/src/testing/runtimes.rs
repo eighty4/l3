@@ -55,9 +55,9 @@ impl TestRuntime for TestNodeRuntime {
     }
 
     fn config(&self, project_dir: &Path) -> Runtime {
-        Runtime::Node(Arc::new(
+        Runtime::Node(Some(Arc::new(
             NodeConfig::read_node_config(&project_dir).unwrap(),
-        ))
+        )))
     }
 
     fn verify(&self, project_dir: &Path, entrypoint: &Path) -> Option<io::Result<Output>> {

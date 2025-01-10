@@ -38,9 +38,9 @@ pub async fn collect_handlers(project_dir: &Arc<PathBuf>) -> Vec<FnEntrypoint> {
 
 async fn parse_entrypoint(entrypoint: PathBuf, project_dir: Arc<PathBuf>) -> Option<FnEntrypoint> {
     let runtime = match entrypoint.extension().unwrap().to_string_lossy().as_ref() {
-        "js" | "mjs" | "ts" => Runtime::Node(Arc::new(
+        "js" | "mjs" | "ts" => Runtime::Node(Some(Arc::new(
             NodeConfig::read_node_config(project_dir.as_path()).unwrap(),
-        )),
+        ))),
         "py" => Runtime::Python,
         _ => panic!(),
     };

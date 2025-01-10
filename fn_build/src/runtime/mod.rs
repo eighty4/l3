@@ -13,6 +13,12 @@ trait ImportResolver: Send + Sync {
 }
 
 trait FnSourceParser: Send + Sync {
+    /// Parse a source file for exported functions that can be bound as a FnHandler.
+    fn collect_handlers(
+        &self,
+        project_dir: &Path,
+        source_path: &Path,
+    ) -> FnParseResult<Vec<FnHandler>>;
     /// Provide sources for deployment to a serverless runtime that are not explicit imports of the
     /// function's source tree. For Node.js this would include package.json.
     fn collect_runtime_sources(&self, project_dir: &Path) -> Vec<FnSource>;
@@ -32,6 +38,8 @@ trait FnSourceParser: Send + Sync {
 
 #[derive(Clone)]
 pub enum Runtime {
-    Node(Arc<NodeConfig>),
+    /// A Node.js build. `package.json` will be parsed from the project directory unless
+    /// NodeConfig is explicitly provided.
+    Node(Option<Arc<NodeConfig>>),
     Python,
 }

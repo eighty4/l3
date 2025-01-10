@@ -51,9 +51,9 @@ async fn build_fn_errors_for_missing_handler() {
             use_build_mode: true,
         },
         project_dir: project_dir.clone(),
-        runtime: Runtime::Node(Arc::new(
+        runtime: Runtime::Node(Some(Arc::new(
             NodeConfig::read_node_config(&project_dir).unwrap(),
-        )),
+        ))),
     })
     .await;
     assert!(result.is_err());
@@ -78,9 +78,9 @@ async fn build_fn_produces_archive() {
             use_build_mode: true,
         },
         project_dir: project_dir.clone(),
-        runtime: Runtime::Node(Arc::new(
+        runtime: Runtime::Node(Some(Arc::new(
             NodeConfig::read_node_config(&project_dir).unwrap(),
-        )),
+        ))),
     })
     .await
     .unwrap();
@@ -127,9 +127,9 @@ async fn build_fn_produces_checksums() {
             use_build_mode: true,
         },
         project_dir: project_dir.clone(),
-        runtime: Runtime::Node(Arc::new(
+        runtime: Runtime::Node(Some(Arc::new(
             NodeConfig::read_node_config(&project_dir).unwrap(),
-        )),
+        ))),
     })
     .await
     .unwrap();

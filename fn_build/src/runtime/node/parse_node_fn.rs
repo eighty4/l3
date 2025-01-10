@@ -15,7 +15,9 @@ use swc_ecma_visit::FoldWith;
 
 pub async fn parse_node_entrypoint(parse_spec: FnParseSpec) -> FnParseResult<FnEntrypoint> {
     let source_parser = match &parse_spec.runtime {
-        Runtime::Node(node_config) => NodeFnSourceParser::new(node_config.clone()),
+        Runtime::Node(node_config) => {
+            NodeFnSourceParser::resolve(node_config, &parse_spec.project_dir)?
+        }
         _ => panic!(),
     };
     Ok(FnEntrypoint {
@@ -30,7 +32,7 @@ pub async fn parse_node_fn(parse_spec: FnParseSpec) -> FnParseResult<FnParseMani
         &parse_spec,
         match &parse_spec.runtime {
             Runtime::Node(node_config) => {
-                Arc::new(Box::new(NodeFnSourceParser::new(node_config.clone())))
+                NodeFnSourceParser::resolve(node_config, &parse_spec.project_dir)?
             }
             _ => panic!(),
         },
@@ -64,6 +66,16 @@ impl NodeFnSourceParser {
             import_resolver: Arc::new(NodeImportResolver::new(node_config)),
         }
     }
+
+    fn resolve(
+        maybe_node_config: &Option<Arc<NodeConfig>>,
+        project_dir: &Path,
+    ) -> FnParseResult<Arc<Box<dyn FnSourceParser>>> {
+        Ok(Arc::new(Box::new(Self::new(match maybe_node_config {
+            None => Arc::new(NodeConfig::read_node_config(project_dir)?),
+            Some(node_config) => node_config.clone(),
+        }))))
+    }
 }
 
 impl NodeFnSourceParser {
@@ -74,6 +86,27 @@ impl NodeFnSourceParser {
             .parse_es_module(&project_dir.join(source_path))?)
     }
 
+    fn collect_imports(
+        &self,
+        project_dir: &Path,
+        source_path: &Path,
+    ) -> FnParseResult<Vec<ModuleImport>> {
+        let module = self.parse_es_module(project_dir, source_path)?;
+        let mut visitor = ImportVisitor::new();
+        module.fold_with(&mut visitor);
+        let imports = visitor
+            .result()
+            .into_iter()
+            .map(|import| {
+                self.import_resolver
+                    .resolve(project_dir, source_path, import.as_str())
+            })
+            .collect();
+        Ok(imports)
+    }
+}
+
+impl FnSourceParser for NodeFnSourceParser {
     fn collect_handlers(
         &self,
         project_dir: &Path,
@@ -116,27 +149,6 @@ impl NodeFnSourceParser {
         Ok(handlers)
     }
 
-    fn collect_imports(
-        &self,
-        project_dir: &Path,
-        source_path: &Path,
-    ) -> FnParseResult<Vec<ModuleImport>> {
-        let module = self.parse_es_module(project_dir, source_path)?;
-        let mut visitor = ImportVisitor::new();
-        module.fold_with(&mut visitor);
-        let imports = visitor
-            .result()
-            .into_iter()
-            .map(|import| {
-                self.import_resolver
-                    .resolve(project_dir, source_path, import.as_str())
-            })
-            .collect();
-        Ok(imports)
-    }
-}
-
-impl FnSourceParser for NodeFnSourceParser {
     fn collect_runtime_sources(&self, project_dir: &Path) -> Vec<FnSource> {
         let package_json_path = PathBuf::from("package.json");
         if project_dir.join(&package_json_path).is_file() {
