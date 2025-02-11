@@ -8,9 +8,15 @@ jobs:
   verify:
     uses: ./.github/workflows/verify.yml
 
+  check-changelog:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./.github/workflows/changelog_check.sh l3_cli/CHANGELOG.md
+
   publish-cargo-crates:
     runs-on: ubuntu-latest
-    needs: verify
+    needs: [ verify, check-changelog ]
     steps:
       - uses: actions/checkout@v4
       - run: rustup install stable
@@ -41,6 +47,8 @@ jobs:
     needs: publish-cargo-crates
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.publish-cargo-crates.outputs.tag_name }}
       - name: Create release
         id: create
         env:
@@ -48,9 +56,10 @@ jobs:
           TAG_NAME: ${{ needs.publish-cargo-crates.outputs.tag_name }}
           VERSION: ${{ needs.publish-cargo-crates.outputs.version }}
         run: |
-          CHANGELOG=$(cat l3_cli/CHANGELOG.md | awk -v p="## $VERSION" -F":" '$0 ~ p{f=1;next} /## /{f=0} f')
-          NOTES="[Published to crates.io](https://crates.io/crates/l3_cli)  \r\n\r\n# Release notes  \r\n\r\n$CHANGELOG"
-          CREATED_RELEASE=$(gh api \
+          CHANGELOG=$(./.github/workflows/changelog_get.sh l3_cli/CHANGELOG.md $VERSION)
+          CRATES_URL="https://crates.io/crates/l3_cli/$VERSION"
+          RELEASE_NOTES="[Published on crates.io]($CRATES_URL)\r\n\r\n## Release notes\r\n\r\n$CHANGELOG"
+          CREATED_RELEASE=$(echo "$RELEASE_NOTES" | gh api \
             --method POST \
             -H "Accept: application/vnd.github+json" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
