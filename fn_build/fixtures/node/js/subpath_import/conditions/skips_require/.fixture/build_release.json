@@ -5,12 +5,6 @@
       "result": "identical"
     },
     {
-      "path": "lib/not-module-sync.js",
-      "result": {
-        "content": "export function isModuleSync(){return!1}"
-      }
-    },
-    {
       "path": "lib/not-require.js",
       "result": {
         "content": "export function isRequire(){return!1}"
@@ -19,7 +13,7 @@
     {
       "path": "routes/data/lambda.js",
       "result": {
-        "content": "import{isModuleSync as o}from\"#not-module-sync\";import{isRequire as r}from\"#not-require\";export const GET=()=>{console.log(o(),r())};"
+        "content": "import{isRequire as o}from\"#not-require\";export const GET=()=>{console.log(o())};"
       }
     }
   ]

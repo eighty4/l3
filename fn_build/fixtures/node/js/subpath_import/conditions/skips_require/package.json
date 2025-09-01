@@ -4,10 +4,6 @@
     "cjs-dep": "0.0.1"
   },
   "imports": {
-    "#not-module-sync": {
-      "module-sync": "cjs-dep",
-      "node": "./lib/not-module-sync.js"
-    },
     "#not-require": {
       "require": "cjs-dep",
       "node": "./lib/not-require.js"

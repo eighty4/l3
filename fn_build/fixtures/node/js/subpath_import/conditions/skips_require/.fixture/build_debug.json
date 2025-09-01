@@ -5,10 +5,6 @@
       "result": "identical"
     },
     {
-      "path": "lib/not-module-sync.js",
-      "result": "identical"
-    },
-    {
       "path": "lib/not-require.js",
       "result": "identical"
     },
