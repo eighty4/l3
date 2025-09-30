@@ -18,6 +18,18 @@ enum FixtureTestMode {
 }
 
 #[tokio::test]
+async fn test_single_fixture() {
+    for fixture in collect_fixtures(FixtureTestMode::SingleFixture(PathBuf::from(
+        "fixtures/node/ts/import_uses_js",
+    )))
+    .into_iter()
+    .map(create_fixture)
+    {
+        fixture.run().await;
+    }
+}
+
+#[tokio::test]
 async fn test_node_fixtures() {
     for fixture in collect_fixtures(FixtureTestMode::AllFixtures(PathBuf::from("fixtures/node")))
         .into_iter()

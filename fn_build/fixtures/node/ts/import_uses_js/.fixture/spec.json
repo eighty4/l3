@@ -1,0 +1,4 @@
+{
+  "entrypoint": "routes/data/lambda.ts",
+  "handler_fn_name": "GET"
+}

@@ -7,6 +7,13 @@ mod build_fn;
 pub mod node;
 mod parse_fn;
 pub mod python;
+mod ts_imports;
+
+#[cfg(test)]
+mod build_fn_test;
+
+#[cfg(test)]
+mod ts_imports_test;
 
 trait ImportResolver: Send + Sync {
     fn resolve(&self, project_dir: &Path, from: &Path, import: &str) -> ModuleImport;

@@ -7,9 +7,8 @@ use std::sync::Arc;
 
 fn create_import_resolver_for_fixture(fixture_dir: &str) -> (PathBuf, NodeImportResolver) {
     let project_dir = PathBuf::from(fixture_dir);
-    let import_resolver = NodeImportResolver::new(Arc::new(
-        NodeConfig::read_node_config(&project_dir).unwrap(),
-    ));
+    let import_resolver =
+        NodeImportResolver::new(Arc::new(NodeConfig::read_configs(&project_dir).unwrap()));
     (project_dir, import_resolver)
 }
 

@@ -1,4 +1,4 @@
-use crate::runtime::build_fn::{build_fn_inner, BuildTask};
+use crate::runtime::build_fn::{build_fn_inner, BuildTask, TransformResult};
 use crate::runtime::python::parse_python_fn;
 use crate::{FnBuildManifest, FnBuildResult, FnBuildSpec, FnDependencies};
 use std::path::Path;
@@ -13,6 +13,6 @@ pub async fn build_python_fn(build_spec: FnBuildSpec) -> FnBuildResult<FnBuildMa
     build_fn_inner(&build_spec, parse_manifest, build_tasks, noop_transform).await
 }
 
-fn noop_transform(_: &Path) -> FnBuildResult<String> {
-    Ok("".to_string())
+fn noop_transform(_: &Path, _: String) -> FnBuildResult<TransformResult> {
+    Ok(TransformResult::RetainPath("".to_string()))
 }

@@ -1,12 +1,12 @@
 use std::io;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
-use swc::config::IsModule;
-use swc::Compiler;
+use swc::config::{Config, IsModule, JscConfig, Options};
+use swc::{BoolConfig, Compiler};
 use swc_common::errors::{Diagnostic, DiagnosticBuilder, Emitter, Handler, HANDLER};
 use swc_common::{SourceFile, SourceMap, GLOBALS};
 use swc_ecma_ast::{EsVersion, Module, Program};
-use swc_ecma_parser::{EsSyntax, Syntax};
+use swc_ecma_parser::{EsSyntax, Syntax, TsSyntax};
 
 #[derive(Clone)]
 struct CapturingEmitter {
@@ -53,8 +53,8 @@ impl SwcCompiler {
         }
     }
 
-    pub fn minify_js(self, path: &Path) -> CompileResult<String> {
-        self.source_with_compiler(path, |compiler, handler, source_file| {
+    pub fn minify_js(self, path: PathBuf, js: String) -> CompileResult<String> {
+        self.string_source_with_compiler(path, js, |compiler, handler, source_file| {
             compiler
                 .minify(
                     source_file,
@@ -66,16 +66,21 @@ impl SwcCompiler {
         })
     }
 
-    pub fn parse_es_module(self, path: &Path) -> CompileResult<Module> {
+    pub fn parse_module(self, path: &Path) -> CompileResult<Module> {
         debug_assert!(path.is_absolute());
-        debug_assert!(path.is_file());
-        self.source_with_compiler(path, |compiler, handler, source_file| {
+        debug_assert!(path.is_file(), "{} does not exist", path.to_string_lossy());
+        self.fs_source_with_compiler(path, |compiler, handler, source_file| {
             compiler
                 .parse_js(
                     source_file,
                     handler,
                     EsVersion::EsNext,
-                    Syntax::Es(EsSyntax::default()),
+                    path.extension()
+                        .map(|ext| match ext.to_str().unwrap() {
+                            "ts" => Syntax::Typescript(TsSyntax::default()),
+                            _ => Syntax::Es(EsSyntax::default()),
+                        })
+                        .unwrap(),
                     IsModule::Bool(true),
                     None,
                 )
@@ -86,11 +91,57 @@ impl SwcCompiler {
         })
     }
 
-    fn source_with_compiler<F, R>(self, p: &Path, f: F) -> CompileResult<R>
+    pub fn transpile_ts(self, path: PathBuf, js: String) -> CompileResult<String> {
+        self.process_ts(path, js, false)
+    }
+
+    pub fn transpile_and_minify_ts(self, path: PathBuf, js: String) -> CompileResult<String> {
+        self.process_ts(path, js, true)
+    }
+
+    fn process_ts(self, path: PathBuf, js: String, minify: bool) -> CompileResult<String> {
+        self.string_source_with_compiler(path, js, |compiler, handler, source_file| {
+            compiler
+                .process_js_file(
+                    source_file,
+                    handler,
+                    &Options {
+                        config: Config {
+                            jsc: JscConfig {
+                                syntax: Some(Syntax::Typescript(TsSyntax {
+                                    decorators: false,
+                                    disallow_ambiguous_jsx_like: true,
+                                    tsx: false,
+                                    dts: false,
+                                    no_early_errors: false,
+                                })),
+                                target: Some(EsVersion::Es2024),
+                                ..Default::default()
+                            },
+                            is_module: Some(IsModule::Bool(true)),
+                            minify: BoolConfig::new(Some(minify)),
+                            ..Default::default()
+                        },
+                        ..Default::default()
+                    },
+                )
+                .map(|transform_output| transform_output.code)
+        })
+    }
+
+    fn fs_source_with_compiler<F, R>(self, p: &Path, f: F) -> CompileResult<R>
     where
         F: FnOnce(&Compiler, &Handler, Arc<SourceFile>) -> Result<R, anyhow::Error>,
     {
         let source_file = self.source_map.load_file(p)?;
+        self.with_compiler(|compiler, handler| f(compiler, handler, source_file))
+    }
+
+    fn string_source_with_compiler<F, R>(self, p: PathBuf, js: String, f: F) -> CompileResult<R>
+    where
+        F: FnOnce(&Compiler, &Handler, Arc<SourceFile>) -> Result<R, anyhow::Error>,
+    {
+        let source_file = self.source_map.new_source_file(Arc::new(p.into()), js);
         self.with_compiler(|compiler, handler| f(compiler, handler, source_file))
     }
 

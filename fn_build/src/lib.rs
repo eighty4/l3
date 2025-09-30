@@ -6,6 +6,7 @@ mod paths;
 mod routing;
 pub mod runtime;
 mod swc;
+mod typescript;
 
 #[cfg(test)]
 mod build_test;
@@ -37,9 +38,8 @@ pub async fn build_fn(build_spec: FnBuildSpec) -> FnBuildResult<FnBuildManifest>
     match build_spec.entrypoint.extension() {
         None => Err(FnBuildError::from(FnParseError::InvalidFileType)),
         Some(extension) => match extension.to_string_lossy().as_ref() {
-            "js" | "mjs" => runtime::node::build_node_fn(build_spec).await,
+            "ts" | "js" | "mjs" => runtime::node::build_node_fn(build_spec).await,
             "py" => runtime::python::build_python_fn(build_spec).await,
-            "ts" => todo!(),
             &_ => Err(FnBuildError::from(FnParseError::InvalidFileType)),
         },
     }
@@ -54,9 +54,8 @@ pub async fn parse_entrypoint(parse_spec: FnParseSpec) -> FnParseResult<FnEntryp
     match parse_spec.entrypoint.extension() {
         None => Err(FnParseError::InvalidFileType),
         Some(extension) => match extension.to_string_lossy().as_ref() {
-            "js" | "mjs" => runtime::node::parse_node_entrypoint(parse_spec).await,
+            "ts" | "js" | "mjs" => runtime::node::parse_node_entrypoint(parse_spec).await,
             "py" => runtime::python::parse_python_entrypoint(parse_spec).await,
-            "ts" => todo!(),
             &_ => Err(FnParseError::InvalidFileType),
         },
     }
@@ -71,9 +70,8 @@ pub async fn parse_fn(parse_spec: FnParseSpec) -> FnParseResult<FnParseManifest>
     match parse_spec.entrypoint.extension() {
         None => Err(FnParseError::InvalidFileType),
         Some(extension) => match extension.to_string_lossy().as_ref() {
-            "js" | "mjs" => runtime::node::parse_node_fn(parse_spec).await,
+            "ts" | "js" | "mjs" => runtime::node::parse_node_fn(parse_spec).await,
             "py" => runtime::python::parse_python_fn(parse_spec).await,
-            "ts" => todo!(),
             &_ => Err(FnParseError::InvalidFileType),
         },
     }

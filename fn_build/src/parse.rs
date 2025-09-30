@@ -12,7 +12,7 @@ pub struct FnParseSpec {
     pub runtime: Runtime,
 }
 
-#[derive(Clone, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum FnDependencies {
     Required,
@@ -91,7 +91,7 @@ pub struct FnSource {
     pub path: PathBuf,
 }
 
-#[derive(Clone, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct FnParseManifest {
     pub dependencies: FnDependencies,
     pub entrypoint: FnEntrypoint,
@@ -116,6 +116,8 @@ pub enum FnParseError {
     NodeConfig(#[from] NodeConfigError),
     #[error("syntax error")]
     SyntaxError,
+    #[error("could not resolve \"{import}\" from \"{from}\"")]
+    UnresolvedImport { from: PathBuf, import: String },
 }
 
 pub type FnParseResult<T> = Result<T, FnParseError>;

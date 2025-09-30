@@ -59,7 +59,7 @@ async fn build_all_fns(mode: BuildMode) -> LLLCommandRunResult {
     if entrypoints.is_empty() {
         return Err(LambdasNotFound);
     }
-    let node_config = Arc::new(NodeConfig::read_node_config(&project_dir).unwrap());
+    let node_config = Arc::new(NodeConfig::read_configs(&project_dir).unwrap());
     let mut build_json: Vec<Value> = Vec::new();
     let build_root = project_dir.join(".l3/build").join(match mode {
         BuildMode::Debug => "debug",
@@ -77,6 +77,7 @@ async fn build_all_fns(mode: BuildMode) -> LLLCommandRunResult {
                 output: FnOutputConfig {
                     build_root: build_root.clone(),
                     create_archive: true,
+                    dirname: handler.to_fn_identifier(),
                     use_build_mode: false,
                 },
             })

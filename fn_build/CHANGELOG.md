@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- `build_fn` loads `tsconfig.json` and compiles .ts to .js
+- `FnBuildManifest` maps input sources to outputs with a new `paths` map
+  found in the `FnBuildOutput`
+- `FnOutputConfig` has a new param `dirname` used to build out dir instead of
+  dynamically building the dirname from the function's routing to keep `l3_fn_build`
+  API agnostic of its integration or upstream tooling
+
 ## 0.0.4 - 2024-01-02
 
 ### Added

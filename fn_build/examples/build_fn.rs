@@ -14,7 +14,7 @@ async fn main() {
             .unwrap_or_else(|| "fixtures/node/js/circular_imports".to_string()),
     );
     let out_dir = TempDir::new().unwrap();
-    let node_config = NodeConfig::read_node_config(&project_dir).unwrap();
+    let node_config = NodeConfig::read_configs(&project_dir).unwrap();
     let fn_build = build_fn(FnBuildSpec {
         entrypoint: PathBuf::from("routes/data/lambda.js"),
         handler_fn_name: "GET".to_string(),
@@ -22,6 +22,7 @@ async fn main() {
         output: FnOutputConfig {
             build_root: out_dir.path().to_path_buf(),
             create_archive: false,
+            dirname: "my-sweet-lambda".to_string(),
             use_build_mode: true,
         },
         project_dir: Arc::new(env::current_dir().unwrap().join(&project_dir)),

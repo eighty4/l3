@@ -1,7 +1,7 @@
 use crate::checksum::Checksum;
 use crate::runtime::Runtime;
 use crate::{FnDependencies, FnHandler, FnParseError, FnParseSpec, FnSource};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::io;
 use std::path::PathBuf;
@@ -13,16 +13,21 @@ pub enum BuildMode {
     Release,
 }
 
-/// Output config for the build.
+/// Output config for a function build. A function's output will be written to
+/// a path constructed from: `build_root/build_mode?/dirname`.
+///
+/// FnOutputConfig's dirname must be unique within a batch build process.
 #[derive(Clone, Deserialize)]
 pub struct FnOutputConfig {
-    /// Absolute path to root build directory, parent of debug and release output directories if
-    /// use_build_mode is true. A function's build output will be a directory with the name of the
-    /// function's unique identifier.
+    /// Absolute path to root build directory. This path will either contain the build_mode
+    /// partitioned outputs or directly contain the function builds depending on
+    /// the value of use_build_mode.
     pub build_root: PathBuf,
-    /// Whether to create a {fn_identifier}.zip archive file in the output directory.
+    /// Whether to create a {lambda_fn_name}.zip archive file in the output directory.
     pub create_archive: bool,
-    /// Build output will be nested in build_root by the build's BuildMode, such as
+    /// Output directory of the function within the build directory.
+    pub dirname: String,
+    /// Build output will be nested in build_root by the BuildMode of the build, such as
     /// `/example/build/debug` and `/example/build/release`.
     pub use_build_mode: bool,
 }
@@ -68,14 +73,17 @@ impl FnBuildSpec {
     }
 }
 
-#[derive(Clone, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct FnBuildOutput {
+    /// Path to .zip file of build output if configured by FnOutputConfig.
     pub archive_file: Option<PathBuf>,
-    /// PathBuf to the build's output directory partitioned by the build's BuildMode.
+    /// PathBuf to the build's output directory as resolved by FnOutputConfig.
     pub build_dir: PathBuf,
+    // Map of source paths to their original or rewritten name as they.
+    pub paths: HashMap<PathBuf, PathBuf>,
 }
 
-#[derive(Clone, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct FnBuildManifest {
     /// Checksums of the original sources of the function's build.
     pub checksums: HashMap<PathBuf, Checksum>,

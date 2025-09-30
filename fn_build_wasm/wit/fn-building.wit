@@ -18,6 +18,8 @@ world fn-building {
     record fn-output-config {
         build-root: string,
         create-archive: bool,
+        dirname: string,
+        use-build-mode: bool,
     }
 
     // todo remove fn-parsing duplicate
@@ -80,6 +82,7 @@ world fn-building {
     record fn-build-output {
         archive-file: option<string>,
         build-dir: string,
+        paths: list<tuple<string, string>>,
     }
 
     // todo remove fn-parsing duplicate

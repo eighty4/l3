@@ -9,7 +9,7 @@ fn parse_imports(js: &str) -> Vec<String> {
     let path = temp_dir.child("index.js");
     fs::write(&path, js).unwrap();
     let compiler = SwcCompiler::new();
-    let module = compiler.clone().parse_es_module(&path).unwrap();
+    let module = compiler.clone().parse_module(&path).unwrap();
     let mut visitor = ImportVisitor::new();
     module.fold_with(&mut visitor);
     visitor.result()

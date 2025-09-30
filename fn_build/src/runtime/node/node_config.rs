@@ -1,9 +1,12 @@
 use crate::runtime::node::imports::{read_subpath_imports, NodeSubpathImports, SubpathImportError};
+use crate::typescript::TsConfigJson;
 use serde_json::Value;
 use std::path::Path;
+use std::sync::Arc;
 use std::{fs, io};
 
-/// Errors that occur when building a NodeConfig from package.json.
+/// Errors that occur when building a NodeConfig from package.json
+/// and tsconfig.json.
 #[derive(Debug, thiserror::Error)]
 #[error("error initializing package.json: {0}")]
 pub enum NodeConfigError {
@@ -12,9 +15,15 @@ pub enum NodeConfigError {
     SubpathImport(#[from] SubpathImportError),
 }
 
-/// Representation of package.json used when building functions for Node.js runtime.
-#[derive(Default)]
 pub struct NodeConfig {
+    pub package: PackageJson,
+    pub ts: Option<Arc<TsConfigJson>>,
+    // version: Option<NodeVersion>
+}
+
+/// Parsed data from package.json necessary for building functions for Node.js.
+#[derive(Default)]
+pub struct PackageJson {
     /// Package names from package.json's "dependencies" object.
     dependencies: Vec<String>,
     /// True if package.json's "type" is explicitly set to "module".
@@ -23,11 +32,31 @@ pub struct NodeConfig {
 }
 
 impl NodeConfig {
-    pub fn parse_node_config(package_json: &str) -> Result<Self, NodeConfigError> {
+    pub fn read_configs(project_dir: &Path) -> Result<Self, NodeConfigError> {
+        let package_json_p = project_dir.join("package.json");
+        let ts_config_p = project_dir.join("tsconfig.json");
+
+        Ok(Self {
+            package: if package_json_p.exists() {
+                PackageJson::read_package_json(&package_json_p)?
+            } else {
+                Default::default()
+            },
+            ts: if ts_config_p.is_file() {
+                Some(TsConfigJson::read_tsconfig_json(&ts_config_p)?)
+            } else {
+                None
+            },
+        })
+    }
+}
+
+impl PackageJson {
+    fn parse_package_json(package_json: &str) -> Result<Self, NodeConfigError> {
         Self::try_from(serde_json::from_str::<Value>(package_json)?)
     }
 
-    pub fn read_node_config(path: &Path) -> Result<Self, NodeConfigError> {
+    pub fn read_package_json(path: &Path) -> Result<Self, NodeConfigError> {
         let path = if path
             .file_name()
             .map(|filename| filename == "package.json")
@@ -38,7 +67,7 @@ impl NodeConfig {
             path.join("package.json")
         };
         if path.is_file() {
-            Self::parse_node_config(fs::read_to_string(path)?.as_str())
+            Self::parse_package_json(fs::read_to_string(path)?.as_str())
         } else {
             Ok(Default::default())
         }
@@ -53,7 +82,7 @@ impl NodeConfig {
     }
 }
 
-impl TryFrom<Value> for NodeConfig {
+impl TryFrom<Value> for PackageJson {
     type Error = NodeConfigError;
 
     fn try_from(package_json: Value) -> Result<Self, Self::Error> {

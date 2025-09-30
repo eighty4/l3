@@ -1,12 +1,12 @@
 use base64::Engine;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::io::Write;
 use std::path::Path;
 use std::{fs, io};
 
 /// Sha256 checksum.
-#[derive(Clone, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Checksum(String);
 
 impl Checksum {

@@ -49,8 +49,11 @@ impl TestFixture {
         if self.gold_update {
             self.update_gold().await
         } else {
-            self.verify_build_with_runtime(&self.fixture_dir, None)
-                .await;
+            // if not a typescript project, let's run fixture with runtime pre-build to verify fixture set up
+            if !self.fixture_dir.join("tsconfig.json").exists() {
+                self.verify_build_with_runtime(&self.fixture_dir, None, None)
+                    .await;
+            }
             let expected_manifest = self.verify_parse().await.unwrap();
             if let Some(debug_result) = BuildResult::read_json(&self.fixture_dir, &BuildMode::Debug)
             {
@@ -97,6 +100,7 @@ impl TestFixture {
                 output: FnOutputConfig {
                     build_root: self.build_root_temp.path().to_path_buf(),
                     create_archive: false,
+                    dirname: "build-fixture-test".into(),
                     use_build_mode: true,
                 },
                 project_dir: self.fixture_dir.clone(),
@@ -111,13 +115,15 @@ impl TestFixture {
         result: BuildResult,
         expected_parse_manifest: &FnParseManifest,
     ) {
-        self.build(mode.clone())
+        let build_manifest = self
+            .build(mode.clone())
             .await
             .expect(format!("building {}", self.fixture_label()).as_str());
         self.expect_build_result(&mode, result, &expected_parse_manifest);
         self.verify_build_with_runtime(
-            &self.build_output_dir(&mode, &expected_parse_manifest),
+            &self.build_output_dir(&mode),
             Some(mode),
+            Some(build_manifest),
         )
         .await;
     }
@@ -128,14 +134,14 @@ impl TestFixture {
         build_result: BuildResult,
         expected_parse_manifest: &FnParseManifest,
     ) {
-        let build_dir = self.build_output_dir(build_mode, expected_parse_manifest);
+        let build_dir = self.build_output_dir(build_mode);
         for expected_file in &build_result.files {
-            let built_file_path = build_dir.join(&expected_file.path);
+            let built_file_path: PathBuf = build_dir.join(&expected_file.path);
             let built_content = fs::read_to_string(&built_file_path).expect(
                 format!(
                     "failed reading fixture {} build output file {}",
                     self.fixture_label(),
-                    built_file_path.to_string_lossy()
+                    built_file_path.to_string_lossy(),
                 )
                 .as_str(),
             );
@@ -154,8 +160,8 @@ impl TestFixture {
                 }
             };
             assert_eq!(
-                &built_content,
-                expected_content,
+                built_content.replace("\r\n", "\n").as_str(),
+                expected_content.replace("\r\n", "\n").as_str(),
                 "{} from fixture {} did not match expected content in build dir {}",
                 expected_file.path.to_string_lossy(),
                 self.fixture_label(),
@@ -218,18 +224,13 @@ impl TestFixture {
         Ok(expected_parse_manifest)
     }
 
-    pub fn build_output_dir(&self, mode: &BuildMode, parse_manifest: &FnParseManifest) -> PathBuf {
+    pub fn build_output_dir(&self, mode: &BuildMode) -> PathBuf {
         self.build_root_temp
             .child(match mode {
                 BuildMode::Debug => "debug",
                 BuildMode::Release => "release",
             })
-            .join(
-                parse_manifest
-                    .entrypoint
-                    .to_fn_identifier(&self.spec.handler_fn_name)
-                    .unwrap(),
-            )
+            .join("build-fixture-test")
     }
 
     fn fixture_label(&self) -> String {
@@ -253,8 +254,20 @@ impl TestFixture {
             .unwrap()
     }
 
-    async fn verify_build_with_runtime(&self, project_dir: &Path, mode: Option<BuildMode>) {
-        if let Some(result) = self.runtime.verify(project_dir, &self.spec.entrypoint) {
+    async fn verify_build_with_runtime(
+        &self,
+        project_dir: &Path,
+        mode: Option<BuildMode>,
+        build_manifest: Option<FnBuildManifest>,
+    ) {
+        let verify_result = match build_manifest {
+            Some(build_manifest) => match build_manifest.output.paths.get(&self.spec.entrypoint) {
+                Some(entrypoint) => self.runtime.verify(project_dir, entrypoint),
+                None => self.runtime.verify(project_dir, &self.spec.entrypoint),
+            },
+            _ => self.runtime.verify(project_dir, &self.spec.entrypoint),
+        };
+        if let Some(result) = verify_result {
             let output = result.unwrap();
             if !output.status.success() {
                 let verify_label = match mode {

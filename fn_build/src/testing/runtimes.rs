@@ -56,7 +56,7 @@ impl TestRuntime for TestNodeRuntime {
 
     fn config(&self, project_dir: &Path) -> Runtime {
         Runtime::Node(Some(Arc::new(
-            NodeConfig::read_node_config(&project_dir).unwrap(),
+            NodeConfig::read_configs(&project_dir).unwrap(),
         )))
     }
 

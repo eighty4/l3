@@ -14,14 +14,14 @@ use std::sync::Arc;
 //  https://github.com/swc-project/swc/blob/main/crates/swc_ecma_loader/src/resolvers/node.rs
 pub struct NodeImportResolver {
     pub node_config: Arc<NodeConfig>,
-    package_json: PathBuf,
+    package_json_path: PathBuf,
 }
 
 impl NodeImportResolver {
     pub fn new(node_config: Arc<NodeConfig>) -> NodeImportResolver {
         Self {
             node_config,
-            package_json: PathBuf::from("package.json"),
+            package_json_path: PathBuf::from("package.json"),
         }
     }
 
@@ -45,7 +45,7 @@ impl NodeImportResolver {
             None => (import.to_string(), None),
             Some((before, after)) => (before.to_string(), Some(after.to_string())),
         };
-        if self.node_config.has_npm_dependency(&package) {
+        if self.node_config.package.has_npm_dependency(&package) {
             Some(ModuleImport::PackageDependency { package, subpath })
         } else {
             None
@@ -53,7 +53,7 @@ impl NodeImportResolver {
     }
 
     fn resolve_subpath_import(&self, project_dir: &Path, import: &str) -> Option<ModuleImport> {
-        for mapping in &self.node_config.subpath_imports {
+        for mapping in &self.node_config.package.subpath_imports {
             match &mapping {
                 NodeSubpathImportMapping::Explicit { from, to } => {
                     if import == from {
@@ -95,7 +95,7 @@ impl NodeImportResolver {
         to: &str,
     ) -> Option<ModuleImport> {
         if to.starts_with('.') {
-            self.resolve_relative_path(project_dir, &self.package_json, to)
+            self.resolve_relative_path(project_dir, &self.package_json_path, to)
                 .map(ModuleImport::RelativeSource)
         } else {
             self.resolve_npm_dependency(to)
@@ -114,7 +114,7 @@ impl NodeImportResolver {
             NodeSubpathImportAsterisks::Multiple => to.replace('*', substitution),
         };
         if to.starts_with('.') {
-            self.resolve_relative_path(project_dir, &self.package_json, to.as_str())
+            self.resolve_relative_path(project_dir, &self.package_json_path, to.as_str())
                 .map(ModuleImport::RelativeSource)
         } else {
             self.resolve_npm_dependency(to.as_str())
@@ -127,7 +127,7 @@ impl NodeImportResolver {
         to: &str,
     ) -> Option<ModuleImport> {
         if to.starts_with('.') {
-            self.resolve_relative_path(project_dir, &self.package_json, to)
+            self.resolve_relative_path(project_dir, &self.package_json_path, to)
                 .map(ModuleImport::RelativeSource)
         } else {
             self.resolve_npm_dependency(to)

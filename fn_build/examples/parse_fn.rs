@@ -12,7 +12,7 @@ async fn main() {
             .nth(1)
             .unwrap_or_else(|| "fixtures/node/js/circular_imports".to_string()),
     );
-    let node_config = NodeConfig::read_node_config(&project_dir).unwrap();
+    let node_config = NodeConfig::read_configs(&project_dir).unwrap();
     let fn_manifest = parse_fn(FnParseSpec {
         entrypoint: PathBuf::from("routes/data/lambda.js"),
         project_dir: Arc::new(env::current_dir().unwrap().join(&project_dir)),

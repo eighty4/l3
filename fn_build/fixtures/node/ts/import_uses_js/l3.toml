@@ -1,0 +1,4 @@
+[lambda]
+name = "foofoo"
+handler = "GET"
+source = "routes/data/lambda.ts"

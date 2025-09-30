@@ -1,0 +1,35 @@
+{
+  "dependencies": "unused",
+  "entrypoint": {
+    "handlers": [
+      {
+        "fnName": "GET",
+        "routing": {
+          "httpRoute": {
+            "method": "GET",
+            "path": "data"
+          }
+        }
+      }
+    ],
+    "path": "routes/data/lambda.ts"
+  },
+  "sources": [
+    {
+      "imports": [],
+      "path": "lib/data.ts"
+    },
+    {
+      "imports": [
+        {
+          "relativeSource": "lib/data.ts"
+        }
+      ],
+      "path": "routes/data/lambda.ts"
+    },
+    {
+      "imports": [],
+      "path": "package.json"
+    }
+  ]
+}

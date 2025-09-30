@@ -1,6 +1,7 @@
 use crate::runtime::node::imports::resolver::NodeImportResolver;
 use crate::runtime::node::NodeConfig;
 use crate::runtime::parse_fn::parse_fn_inner;
+use crate::runtime::ts_imports::TypeScriptImportResolver;
 use crate::runtime::{FnSourceParser, ImportResolver, Runtime};
 use crate::swc::compiler::{CompileError, SwcCompiler};
 use crate::swc::visitors::ImportVisitor;
@@ -15,9 +16,7 @@ use swc_ecma_visit::FoldWith;
 
 pub async fn parse_node_entrypoint(parse_spec: FnParseSpec) -> FnParseResult<FnEntrypoint> {
     let source_parser = match &parse_spec.runtime {
-        Runtime::Node(node_config) => {
-            NodeFnSourceParser::resolve(node_config, &parse_spec.project_dir)?
-        }
+        Runtime::Node(node_config) => create_parser(node_config, &parse_spec.project_dir)?,
         _ => panic!(),
     };
     Ok(FnEntrypoint {
@@ -31,13 +30,24 @@ pub async fn parse_node_fn(parse_spec: FnParseSpec) -> FnParseResult<FnParseMani
     parse_fn_inner(
         &parse_spec,
         match &parse_spec.runtime {
-            Runtime::Node(node_config) => {
-                NodeFnSourceParser::resolve(node_config, &parse_spec.project_dir)?
-            }
+            Runtime::Node(node_config) => create_parser(node_config, &parse_spec.project_dir)?,
             _ => panic!(),
         },
     )
     .await
+}
+
+/// Initializes NodeConfig from project_dir if not provided and creates a NodeFnSourceParser.
+/// NodeFnSourceParser determines whether to use TS+Node or vanilla Node import resolution.
+fn create_parser(
+    maybe_node_config: &Option<Arc<NodeConfig>>,
+    project_dir: &Path,
+) -> FnParseResult<Arc<Box<dyn FnSourceParser>>> {
+    let node_config = match maybe_node_config {
+        Some(nc) => nc.clone(),
+        None => Arc::new(NodeConfig::read_configs(project_dir)?),
+    };
+    Ok(Arc::new(Box::new(NodeFnSourceParser::new(node_config))))
 }
 
 impl From<CompileError> for FnParseError {
@@ -56,34 +66,28 @@ impl From<CompileError> for FnParseError {
 
 struct NodeFnSourceParser {
     compiler: SwcCompiler,
-    import_resolver: Arc<NodeImportResolver>,
+    import_resolver: Arc<Box<dyn ImportResolver>>,
 }
 
 impl NodeFnSourceParser {
     fn new(node_config: Arc<NodeConfig>) -> Self {
         Self {
             compiler: SwcCompiler::new(),
-            import_resolver: Arc::new(NodeImportResolver::new(node_config)),
+            import_resolver: match &node_config.ts {
+                Some(tsconfig) => Arc::new(Box::new(TypeScriptImportResolver::new(
+                    tsconfig.clone(),
+                    Box::new(NodeImportResolver::new(node_config)),
+                ))),
+                None => Arc::new(Box::new(NodeImportResolver::new(node_config))),
+            },
         }
     }
 
-    fn resolve(
-        maybe_node_config: &Option<Arc<NodeConfig>>,
-        project_dir: &Path,
-    ) -> FnParseResult<Arc<Box<dyn FnSourceParser>>> {
-        Ok(Arc::new(Box::new(Self::new(match maybe_node_config {
-            None => Arc::new(NodeConfig::read_node_config(project_dir)?),
-            Some(node_config) => node_config.clone(),
-        }))))
-    }
-}
-
-impl NodeFnSourceParser {
-    fn parse_es_module(&self, project_dir: &Path, source_path: &Path) -> FnParseResult<Module> {
+    fn parse_module(&self, project_dir: &Path, source_path: &Path) -> FnParseResult<Module> {
         Ok(self
             .compiler
             .clone()
-            .parse_es_module(&project_dir.join(source_path))?)
+            .parse_module(&project_dir.join(source_path))?)
     }
 
     fn collect_imports(
@@ -91,7 +95,7 @@ impl NodeFnSourceParser {
         project_dir: &Path,
         source_path: &Path,
     ) -> FnParseResult<Vec<ModuleImport>> {
-        let module = self.parse_es_module(project_dir, source_path)?;
+        let module = self.parse_module(project_dir, source_path)?;
         let mut visitor = ImportVisitor::new();
         module.fold_with(&mut visitor);
         let imports = visitor
@@ -112,7 +116,7 @@ impl FnSourceParser for NodeFnSourceParser {
         project_dir: &Path,
         source_path: &Path,
     ) -> FnParseResult<Vec<FnHandler>> {
-        let module = self.parse_es_module(project_dir, source_path)?;
+        let module = self.parse_module(project_dir, source_path)?;
         let mut handlers: Vec<FnHandler> = Vec::new();
         let parse_fn_name = |s: &str| {
             s.trim_end_matches(char::is_numeric)
