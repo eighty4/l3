@@ -50,8 +50,6 @@ jobs:
             target: aarch64-apple-darwin
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.tag_name }}
       - if: ${{ matrix.apt_package_linker }}
         run: |
           sudo apt update && sudo apt install ${{ matrix.apt_package_linker }}
@@ -61,7 +59,7 @@ jobs:
       - uses: swatinem/rust-cache@v2
       - run: rustup target add ${{ matrix.target }}
       - name: build
-        run: cargo build --release --target ${{ matrix.target }}
+        run: cargo build --locked --release --target ${{ matrix.target }}
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.filename }}
@@ -79,14 +77,12 @@ jobs:
             target: x86_64-pc-windows-msvc
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.tag_name }}
       - run: rustup install stable
       - uses: swatinem/rust-cache@v2
       - run: rustup target add  ${{ matrix.target }}
       - name: build
         shell: powershell
-        run: cargo build -p l3_cli --release --target ${{ matrix.target }}
+        run: cargo build -p l3_cli --locked --release --target ${{ matrix.target }}
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.filename }}
@@ -100,7 +96,7 @@ jobs:
       - uses: swatinem/rust-cache@v2
       - run: rustup target add wasm32-wasip2
       - name: cargo build
-        run: cargo build --all-features --release -p l3_fn_build_wasm --target wasm32-wasip2
+        run: cargo build --all-features --locked --release -p l3_fn_build_wasm --target wasm32-wasip2
       - uses: actions/upload-artifact@v4
         with:
           name: l3-fn-build.wasm
