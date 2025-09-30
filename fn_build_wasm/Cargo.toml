@@ -15,4 +15,4 @@ crate-type = ["cdylib"]
 [dependencies]
 l3_fn_build = { path = "../fn_build" }
 tokio = { workspace = true, features = ["rt"] }
-wit-bindgen = "0.36.0"
+wit-bindgen = "0.46.0"

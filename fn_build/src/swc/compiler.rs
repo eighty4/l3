@@ -20,7 +20,7 @@ impl CapturingEmitter {
 }
 
 impl Emitter for CapturingEmitter {
-    fn emit(&mut self, db: &DiagnosticBuilder<'_>) {
+    fn emit(&mut self, db: &mut DiagnosticBuilder<'_>) {
         self.errors.lock().unwrap().push((**db).clone());
     }
 }
