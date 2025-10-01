@@ -2,19 +2,27 @@
   "files": [
     {
       "path": "package.json",
-      "result": "identical"
+      "result": {
+        "content": "identical"
+      }
     },
     {
       "path": "lib/api.js",
-      "result": "identical"
+      "result": {
+        "content": "identical"
+      }
     },
     {
       "path": "lib/data.js",
-      "result": "identical"
+      "result": {
+        "content": "identical"
+      }
     },
     {
       "path": "routes/data/lambda.js",
-      "result": "identical"
+      "result": {
+        "content": "identical"
+      }
     }
   ]
 }

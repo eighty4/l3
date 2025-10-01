@@ -2,18 +2,24 @@
   "files": [
     {
       "path": "package.json",
-      "result": "identical"
+      "result": {
+        "content": "identical"
+      }
     },
     {
       "path": "lib/not-require.js",
       "result": {
-        "content": "export function isRequire(){return!1}"
+        "content": {
+          "transformed": "export function isRequire(){return!1}"
+        }
       }
     },
     {
       "path": "routes/data/lambda.js",
       "result": {
-        "content": "import{isRequire as o}from\"#not-require\";export const GET=()=>{console.log(o())};"
+        "content": {
+          "transformed": "import{isRequire as o}from\"#not-require\";export const GET=()=>{console.log(o())};"
+        }
       }
     }
   ]

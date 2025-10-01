@@ -2,18 +2,24 @@
   "files": [
     {
       "path": "package.json",
-      "result": "identical"
+      "result": {
+        "content": "identical"
+      }
     },
     {
       "path": "data/data.js",
       "result": {
-        "content": "let t=[];export function getData(){return t}"
+        "content": {
+          "transformed": "let t=[];export function getData(){return t}"
+        }
       }
     },
     {
       "path": "routes/data/lambda.js",
       "result": {
-        "content": "import{getData as o}from\"#lib/data.js\";export const GET=()=>{console.log(\"got\",o())};"
+        "content": {
+          "transformed": "import{getData as o}from\"#lib/data.js\";export const GET=()=>{console.log(\"got\",o())};"
+        }
       }
     }
   ]

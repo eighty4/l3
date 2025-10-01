@@ -1,4 +1,4 @@
-use crate::testing::result::{BuildFileOutput, BuildResult};
+use crate::testing::result::{BuildFileContent, BuildResult};
 use crate::testing::runtimes::{create_test_runtime, TestRuntime};
 use crate::testing::spec::TestFixtureSpec;
 use crate::{
@@ -136,7 +136,10 @@ impl TestFixture {
     ) {
         let build_dir = self.build_output_dir(build_mode);
         for expected_file in &build_result.files {
-            let built_file_path: PathBuf = build_dir.join(&expected_file.path);
+            let built_file_path: PathBuf = match &expected_file.result.path {
+                Some(path) => build_dir.join(path),
+                None => build_dir.join(&expected_file.path),
+            };
             let built_content = fs::read_to_string(&built_file_path).expect(
                 format!(
                     "failed reading fixture {} build output file {}",
@@ -145,9 +148,9 @@ impl TestFixture {
                 )
                 .as_str(),
             );
-            let expected_content = match &expected_file.result {
-                BuildFileOutput::Content(expected_content) => expected_content,
-                BuildFileOutput::Identical => {
+            let expected_content = match &expected_file.result.content {
+                BuildFileContent::Transformed(expected_content) => expected_content,
+                BuildFileContent::Identical => {
                     let original_file_path = self.fixture_dir.join(&expected_file.path);
                     &fs::read_to_string(&original_file_path).expect(
                         format!(

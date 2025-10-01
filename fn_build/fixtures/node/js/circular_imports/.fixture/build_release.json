@@ -2,24 +2,32 @@
   "files": [
     {
       "path": "package.json",
-      "result": "identical"
+      "result": {
+        "content": "identical"
+      }
     },
     {
       "path": "lib/api.js",
       "result": {
-        "content": "import{getBackendData as t}from\"./data.js\";export function getData(){return t()}"
+        "content": {
+          "transformed": "import{getBackendData as t}from\"./data.js\";export function getData(){return t()}"
+        }
       }
     },
     {
       "path": "lib/data.js",
       "result": {
-        "content": "import{getData as t}from\"./api.js\";export function getBackendData(){return t()}"
+        "content": {
+          "transformed": "import{getData as t}from\"./api.js\";export function getBackendData(){return t()}"
+        }
       }
     },
     {
       "path": "routes/data/lambda.js",
       "result": {
-        "content": "import{getData as o}from\"../../lib/api.js\";export const GET=()=>{console.log(\"got\",o())};"
+        "content": {
+          "transformed": "import{getData as o}from\"../../lib/api.js\";export const GET=()=>{console.log(\"got\",o())};"
+        }
       }
     }
   ]

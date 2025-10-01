@@ -16,11 +16,17 @@ pub struct BuildFile {
     pub result: BuildFileOutput,
 }
 
+#[derive(Deserialize, Serialize)]
+pub struct BuildFileOutput {
+    pub content: BuildFileContent,
+    pub path: Option<PathBuf>,
+}
+
 /// Expected content for a build output file.
 #[derive(Deserialize, Serialize)]
 #[serde(rename_all = "lowercase")]
-pub enum BuildFileOutput {
-    Content(String),
+pub enum BuildFileContent {
+    Transformed(String),
     Identical,
 }
 

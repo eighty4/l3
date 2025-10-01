@@ -2,12 +2,16 @@
   "files": [
     {
       "path": "package.json",
-      "result": "identical"
+      "result": {
+        "content": "identical"
+      }
     },
     {
       "path": "routes/data/lambda.js",
       "result": {
-        "content": "export const PATCH=()=>{console.log(\"patch\")};"
+        "content": {
+          "transformed": "export const PATCH=()=>{console.log(\"patch\")};"
+        }
       }
     }
   ]

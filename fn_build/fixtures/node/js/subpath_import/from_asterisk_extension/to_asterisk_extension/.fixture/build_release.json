@@ -2,24 +2,32 @@
   "files": [
     {
       "path": "package.json",
-      "result": "identical"
+      "result": {
+        "content": "identical"
+      }
     },
     {
       "path": "data/raw.js",
       "result": {
-        "content": "let t=[];export function getData(){return t}"
+        "content": {
+          "transformed": "let t=[];export function getData(){return t}"
+        }
       }
     },
     {
       "path": "data/abstraction/orm.js",
       "result": {
-        "content": "let t=[[[]],[]];export function getComplexData(){return t}"
+        "content": {
+          "transformed": "let t=[[[]],[]];export function getComplexData(){return t}"
+        }
       }
     },
     {
       "path": "routes/data/lambda.js",
       "result": {
-        "content": "import{getData as o}from\"#lib/data/raw.js\";import{getComplexData as t}from\"#lib/data/abstraction/orm.js\";export const GET=()=>{console.log(\"got\",o()),console.log(\"getting\",t())};"
+        "content": {
+          "transformed": "import{getData as o}from\"#lib/data/raw.js\";import{getComplexData as t}from\"#lib/data/abstraction/orm.js\";export const GET=()=>{console.log(\"got\",o()),console.log(\"getting\",t())};"
+        }
       }
     }
   ]

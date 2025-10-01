@@ -2,11 +2,15 @@
   "files": [
     {
       "path": "routes/data/lambda.py",
-      "result": "identical"
+      "result": {
+        "content": "identical"
+      }
     },
     {
       "path": "routes/data/lib.py",
-      "result": "identical"
+      "result": {
+        "content": "identical"
+      }
     }
   ]
 }

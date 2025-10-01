@@ -2,18 +2,24 @@
   "files": [
     {
       "path": "package.json",
-      "result": "identical"
+      "result": {
+        "content": "identical"
+      }
     },
     {
       "path": "data/redis/data.js",
       "result": {
-        "content": "export function getData(){return\"redis\"}"
+        "content": {
+          "transformed": "export function getData(){return\"redis\"}"
+        }
       }
     },
     {
       "path": "routes/data/lambda.js",
       "result": {
-        "content": "import{getData as o}from\"#lib/data/redis\";export const GET=()=>{console.log(\"got\",o())};"
+        "content": {
+          "transformed": "import{getData as o}from\"#lib/data/redis\";export const GET=()=>{console.log(\"got\",o())};"
+        }
       }
     }
   ]
