@@ -156,7 +156,6 @@ jobs:
 
   test-node-runtime-fixtures:
     runs-on: ${{ matrix.runs_on }}
-    continue-on-error: true
     strategy:
       matrix:
         node_version: [18, 20, 22, 23]
@@ -171,9 +170,8 @@ jobs:
       - name: cargo test
         run: cargo test -p l3_fn_build testing::test_node_fixtures
 
-  test-cli-build-all:
+  test-cli-build:
     runs-on: ${{ matrix.runs_on }}
-    continue-on-error: true
     strategy:
       matrix:
         runs_on: [macos-latest, ubuntu-latest, windows-latest]
@@ -182,5 +180,5 @@ jobs:
       - run: rustup install stable
       - uses: swatinem/rust-cache@v2
       - run: cargo install --path l3_cli
-      - run: l3 build --all
-        working-directory: fn_build/fixtures/node/js/http_routes/get_fn
+      - run: l3 build --release
+        working-directory: fn_config/fixtures/project_toml_lambdas/explicit_lambda

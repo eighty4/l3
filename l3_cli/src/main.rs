@@ -1,7 +1,6 @@
 mod build;
-mod collect;
 
-use crate::build::BuildCommand;
+use build::BuildCommand;
 use clap::{Parser, Subcommand};
 use std::process::exit;
 use LLLCommand::*;

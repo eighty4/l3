@@ -2,6 +2,8 @@
 members = [
     "fn_build",
     "fn_build_wasm",
+    "fn_config",
+    "fn_env",
     "l3_base",
     "l3_cli",
 ]
