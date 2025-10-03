@@ -1,5 +1,6 @@
 use crate::runtime::build_fn::{build_fn_inner, BuildTask, TransformResult};
 use crate::runtime::node::parse_node_fn;
+use crate::runtime::Runtime;
 use crate::swc::compiler::{CompileError, SwcCompiler};
 use crate::{
     BuildMode, FnBuildError, FnBuildManifest, FnBuildResult, FnBuildSpec, FnDependencies,
@@ -39,15 +40,27 @@ pub async fn build_node_fn(build_spec: FnBuildSpec) -> FnBuildResult<FnBuildMani
             }
         }
     }
+    let rewrite_ts_imports = match &build_spec.runtime {
+        Runtime::Node(Some(node_config)) => {
+            if let Some(tsconfig) = &node_config.ts {
+                tsconfig.compiler.rewrite_relative_imports
+            } else {
+                false
+            }
+        }
+        _ => false,
+    };
     build_tasks.push(BuildTask::CopySourceFiles(copy_sources));
     build_fn_inner(
         &build_spec,
         parse_manifest,
         build_tasks,
-        match (ts, &build_spec.mode) {
-            (true, BuildMode::Debug) => swc_transpile,
-            (true, BuildMode::Release) => swc_transpile_and_minify,
-            (false, BuildMode::Release) => swc_minify,
+        match (ts, rewrite_ts_imports, &build_spec.mode) {
+            (true, false, BuildMode::Debug) => swc_transpile,
+            (true, true, BuildMode::Debug) => swc_transpile_and_rewrite_imports,
+            (true, false, BuildMode::Release) => swc_transpile_and_minify,
+            (true, true, BuildMode::Release) => swc_transpile_and_minify_and_rewrite_imports,
+            (false, _, BuildMode::Release) => swc_minify,
             _ => noop,
         },
     )
@@ -67,7 +80,15 @@ fn swc_minify(p: &Path, s: String) -> FnBuildResult<TransformResult> {
 // if not minifying, js/mjs should be copied as is so this transform does not check for ts or es like swc_transpile_and_minify
 fn swc_transpile(p: &Path, s: String) -> FnBuildResult<TransformResult> {
     Ok(TransformResult::RewriteExt(
-        SwcCompiler::new().transpile_ts(p.to_path_buf(), s)?,
+        SwcCompiler::new().transpile_ts(p.to_path_buf(), s, false)?,
+        "js".into(),
+    ))
+}
+
+// if not minifying, js/mjs should be copied as is so this transform does not check for ts or es like swc_transpile_and_minify
+fn swc_transpile_and_rewrite_imports(p: &Path, s: String) -> FnBuildResult<TransformResult> {
+    Ok(TransformResult::RewriteExt(
+        SwcCompiler::new().transpile_ts(p.to_path_buf(), s, true)?,
         "js".into(),
     ))
 }
@@ -75,9 +96,24 @@ fn swc_transpile(p: &Path, s: String) -> FnBuildResult<TransformResult> {
 fn swc_transpile_and_minify(p: &Path, s: String) -> FnBuildResult<TransformResult> {
     if is_ts(p) {
         Ok(TransformResult::RewriteExt(
-            SwcCompiler::new().transpile_and_minify_ts(p.to_path_buf(), s)?,
+            SwcCompiler::new().transpile_and_minify_ts(p.to_path_buf(), s, false)?,
             "js".into(),
         ))
+    } else {
+        Ok(TransformResult::RetainPath(
+            SwcCompiler::new().minify_js(p.to_path_buf(), s)?,
+        ))
+    }
+}
+
+fn swc_transpile_and_minify_and_rewrite_imports(
+    p: &Path,
+    s: String,
+) -> FnBuildResult<TransformResult> {
+    if is_ts(p) {
+        let compiler = SwcCompiler::new();
+        let compiled = compiler.transpile_and_minify_ts(p.to_path_buf(), s, true)?;
+        Ok(TransformResult::RewriteExt(compiled, "js".into()))
     } else {
         Ok(TransformResult::RetainPath(
             SwcCompiler::new().minify_js(p.to_path_buf(), s)?,

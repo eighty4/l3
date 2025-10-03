@@ -4,7 +4,7 @@ use crate::runtime::parse_fn::parse_fn_inner;
 use crate::runtime::ts_imports::TypeScriptImportResolver;
 use crate::runtime::{FnSourceParser, ImportResolver, Runtime};
 use crate::swc::compiler::{CompileError, SwcCompiler};
-use crate::swc::visitors::ImportVisitor;
+use crate::swc::visitors::CollectImportsVisitor;
 use crate::{
     FnEntrypoint, FnHandler, FnParseError, FnParseManifest, FnParseResult, FnParseSpec, FnSource,
     ModuleImport,
@@ -87,7 +87,7 @@ impl NodeFnSourceParser {
         Ok(self
             .compiler
             .clone()
-            .parse_module(&project_dir.join(source_path))?)
+            .parse_module_from_fs(&project_dir.join(source_path))?)
     }
 
     fn collect_imports(
@@ -96,7 +96,7 @@ impl NodeFnSourceParser {
         source_path: &Path,
     ) -> FnParseResult<Vec<ModuleImport>> {
         let module = self.parse_module(project_dir, source_path)?;
-        let mut visitor = ImportVisitor::new();
+        let mut visitor = CollectImportsVisitor::new();
         module.fold_with(&mut visitor);
         let imports = visitor
             .result()

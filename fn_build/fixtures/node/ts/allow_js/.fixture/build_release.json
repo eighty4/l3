@@ -1,0 +1,28 @@
+{
+  "files": [
+    {
+      "path": "package.json",
+      "result": {
+        "content": "identical"
+      }
+    },
+    {
+      "path": "lib/data.ts",
+      "result": {
+        "content": {
+          "transformed": "const empty=[];export function getData(){return empty}"
+        },
+        "path": "lib/data.js"
+      }
+    },
+    {
+      "path": "routes/data/lambda.ts",
+      "result": {
+        "content": {
+          "transformed": "import{getData as o}from\"../../lib/data.js\";export const GET=()=>{console.log(\"got\",o())};"
+        },
+        "path": "routes/data/lambda.js"
+      }
+    }
+  ]
+}

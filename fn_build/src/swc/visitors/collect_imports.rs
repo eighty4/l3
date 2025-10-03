@@ -1,12 +1,12 @@
 use swc_ecma_ast::{CallExpr, Callee, ImportDecl, Str};
 use swc_ecma_visit::{Fold, FoldWith};
 
-pub struct ImportVisitor {
+pub struct CollectImportsVisitor {
     folding_import_call: bool,
     imports: Vec<String>,
 }
 
-impl ImportVisitor {
+impl CollectImportsVisitor {
     pub fn new() -> Self {
         Self {
             folding_import_call: false,
@@ -19,7 +19,7 @@ impl ImportVisitor {
     }
 }
 
-impl Fold for ImportVisitor {
+impl Fold for CollectImportsVisitor {
     fn fold_call_expr(&mut self, node: CallExpr) -> CallExpr {
         if let Callee::Import(_) = node.callee {
             self.folding_import_call = true;

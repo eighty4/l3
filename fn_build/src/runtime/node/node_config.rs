@@ -1,5 +1,5 @@
 use crate::runtime::node::imports::{read_subpath_imports, NodeSubpathImports, SubpathImportError};
-use crate::typescript::TsConfigJson;
+use crate::typescript::{TsConfigError, TsConfigJson};
 use serde_json::Value;
 use std::path::Path;
 use std::sync::Arc;
@@ -13,6 +13,7 @@ pub enum NodeConfigError {
     IoRead(#[from] io::Error),
     JsonParse(#[from] serde_json::Error),
     SubpathImport(#[from] SubpathImportError),
+    TsConfig(#[from] TsConfigError),
 }
 
 pub struct NodeConfig {

@@ -12,20 +12,20 @@
         }
       }
     ],
-    "path": "routes/data/lambda.js"
+    "path": "routes/data/lambda.ts"
   },
   "sources": [
     {
       "imports": [],
-      "path": "lib/data.js"
+      "path": "lib/data.ts"
     },
     {
       "imports": [
         {
-          "relativeSource": "lib/data.js"
+          "relativeSource": "lib/data.ts"
         }
       ],
-      "path": "routes/data/lambda.js"
+      "path": "routes/data/lambda.ts"
     },
     {
       "imports": [],

@@ -5,6 +5,34 @@ use temp_dir::TempDir;
 use crate::runtime::node::{NodeConfig, NodeConfigError};
 
 #[test]
+pub fn test_parse_node_config_reads_tsconfig() {
+    let temp_dir = TempDir::new().unwrap();
+    fs::write(temp_dir.child("package.json"), r##"{}"##).unwrap();
+    fs::write(
+        temp_dir.child("tsconfig.json"),
+        r#"{
+    "compilerOptions": {
+        "allowImportingTsExtensions": true,
+        "allowJs": true,
+        "rewriteRelativeImportExtensions": true
+    }
+}
+"#,
+    )
+    .unwrap();
+    let node_config = NodeConfig::read_configs(temp_dir.path()).unwrap();
+    assert!(node_config.ts.is_some());
+}
+
+#[test]
+pub fn test_parse_node_config_without_tsconfig() {
+    let temp_dir = TempDir::new().unwrap();
+    fs::write(temp_dir.child("package.json"), r##"{}"##).unwrap();
+    let node_config = NodeConfig::read_configs(temp_dir.path()).unwrap();
+    assert!(node_config.ts.is_none());
+}
+
+#[test]
 pub fn test_parse_node_config_with_dependencies() {
     let temp_dir = TempDir::new().unwrap();
     fs::write(
