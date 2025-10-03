@@ -13,6 +13,7 @@ use temp_dir::TempDir;
 async fn build_fn_errors_for_invalid_extension() {
     let build_dir = TempDir::new().unwrap();
     for entrypoint in &["README", "README.md"] {
+        fs::write(build_dir.child(entrypoint), "").unwrap();
         let build_spec = FnBuildSpec {
             entrypoint: PathBuf::from(entrypoint),
             handler_fn_name: "GET".to_string(),
@@ -23,11 +24,7 @@ async fn build_fn_errors_for_invalid_extension() {
                 dirname: "build-test".into(),
                 use_build_mode: true,
             },
-            project_dir: Arc::new(
-                env::current_dir()
-                    .unwrap()
-                    .join("fixtures/node/js/http_routes/get_fn"),
-            ),
+            project_dir: Arc::new(build_dir.path().to_path_buf()),
             runtime: Runtime::Node(Default::default()),
         };
         match build_fn(build_spec).await {

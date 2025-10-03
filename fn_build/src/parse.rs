@@ -110,6 +110,8 @@ pub enum FnParseError {
     InvalidFileType,
     #[error("{0}")]
     IoError(#[from] io::Error),
+    #[error("could not find entrypoint {0}")]
+    MissingEntrypoint(PathBuf),
     #[error("entrypoint {0} does not have a handler fn {1}")]
     MissingHandler(PathBuf, String),
     #[error("error reading package.json: {0}")]

@@ -35,6 +35,15 @@ pub async fn build_fn(build_spec: FnBuildSpec) -> FnBuildResult<FnBuildManifest>
     debug_assert!(build_spec.entrypoint.is_relative());
     debug_assert!(build_spec.entrypoint.parent().is_some());
     debug_assert!(build_spec.output.build_root.is_absolute());
+    if !build_spec
+        .project_dir
+        .join(&build_spec.entrypoint)
+        .is_file()
+    {
+        return Err(FnBuildError::ParseError(FnParseError::MissingEntrypoint(
+            build_spec.entrypoint,
+        )));
+    }
     match build_spec.entrypoint.extension() {
         None => Err(FnBuildError::from(FnParseError::InvalidFileType)),
         Some(extension) => match extension.to_string_lossy().as_ref() {
@@ -51,6 +60,13 @@ pub async fn parse_entrypoint(parse_spec: FnParseSpec) -> FnParseResult<FnEntryp
     debug_assert!(parse_spec.entrypoint.parent().is_some());
     debug_assert!(parse_spec.project_dir.is_absolute());
     debug_assert!(parse_spec.project_dir.is_dir());
+    if !parse_spec
+        .project_dir
+        .join(&parse_spec.entrypoint)
+        .is_file()
+    {
+        return Err(FnParseError::MissingEntrypoint(parse_spec.entrypoint));
+    }
     match parse_spec.entrypoint.extension() {
         None => Err(FnParseError::InvalidFileType),
         Some(extension) => match extension.to_string_lossy().as_ref() {
@@ -67,6 +83,13 @@ pub async fn parse_fn(parse_spec: FnParseSpec) -> FnParseResult<FnParseManifest>
     debug_assert!(parse_spec.entrypoint.parent().is_some());
     debug_assert!(parse_spec.project_dir.is_absolute());
     debug_assert!(parse_spec.project_dir.is_dir());
+    if !parse_spec
+        .project_dir
+        .join(&parse_spec.entrypoint)
+        .is_file()
+    {
+        return Err(FnParseError::MissingEntrypoint(parse_spec.entrypoint));
+    }
     match parse_spec.entrypoint.extension() {
         None => Err(FnParseError::InvalidFileType),
         Some(extension) => match extension.to_string_lossy().as_ref() {

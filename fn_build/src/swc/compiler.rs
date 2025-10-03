@@ -83,7 +83,6 @@ impl SwcCompiler {
     // from file of ts or js, parse to ast
     pub fn parse_program_from_fs(self, path: &Path) -> CompileResult<Program> {
         debug_assert!(path.is_absolute());
-        debug_assert!(path.is_file(), "{} does not exist", path.to_string_lossy());
         self.fs_source_with_compiler(path, |compiler, handler, source_file| {
             compiler
                 .parse_js(
@@ -106,7 +105,6 @@ impl SwcCompiler {
     // from file of ts or js, parse to ast
     pub fn parse_module_from_fs(self, path: &Path) -> CompileResult<Module> {
         debug_assert!(path.is_absolute());
-        debug_assert!(path.is_file(), "{} does not exist", path.to_string_lossy());
         self.parse_program_from_fs(path)
             .map(|program| match program {
                 Program::Module(module) => module,

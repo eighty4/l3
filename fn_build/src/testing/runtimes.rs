@@ -1,5 +1,4 @@
-use crate::runtime::node::{build_node_fn, parse_node_fn, NodeConfig};
-use crate::runtime::python::{build_python_fn, parse_python_fn};
+use crate::runtime::node::NodeConfig;
 use crate::runtime::Runtime;
 use crate::*;
 use std::future::Future;
@@ -47,11 +46,11 @@ struct TestNodeRuntime {}
 
 impl TestRuntime for TestNodeRuntime {
     fn build(&self, build_spec: FnBuildSpec) -> BuildProcessResult<FnBuildResult<FnBuildManifest>> {
-        Box::pin(build_node_fn(build_spec))
+        Box::pin(build_fn(build_spec))
     }
 
     fn parse(&self, parse_spec: FnParseSpec) -> BuildProcessResult<FnParseResult<FnParseManifest>> {
-        Box::pin(parse_node_fn(parse_spec))
+        Box::pin(parse_fn(parse_spec))
     }
 
     fn config(&self, project_dir: &Path) -> Runtime {
@@ -74,11 +73,11 @@ struct TestPythonRuntime {}
 
 impl TestRuntime for TestPythonRuntime {
     fn build(&self, build_spec: FnBuildSpec) -> BuildProcessResult<FnBuildResult<FnBuildManifest>> {
-        Box::pin(build_python_fn(build_spec))
+        Box::pin(build_fn(build_spec))
     }
 
     fn parse(&self, parse_spec: FnParseSpec) -> BuildProcessResult<FnParseResult<FnParseManifest>> {
-        Box::pin(parse_python_fn(parse_spec))
+        Box::pin(parse_fn(parse_spec))
     }
 
     fn config(&self, _project_dir: &Path) -> Runtime {

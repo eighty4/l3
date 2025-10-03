@@ -3,7 +3,7 @@ use crate::testing::runtimes::{create_test_runtime, TestRuntime};
 use crate::testing::spec::TestFixtureSpec;
 use crate::{
     BuildMode, FnBuildManifest, FnBuildResult, FnBuildSpec, FnOutputConfig, FnParseManifest,
-    FnParseSpec,
+    FnParseResult, FnParseSpec,
 };
 use anyhow::anyhow;
 use std::path::{Path, PathBuf};
@@ -49,21 +49,28 @@ impl TestFixture {
         if self.gold_update {
             self.update_gold().await
         } else {
+            let expected_parse_result = self.read_expected_parse_result();
+            let parse_manifest = match expected_parse_result {
+                Ok(expected_manifest) => self.verify_successful_parse(expected_manifest).await,
+                Err(expected_error) => {
+                    self.verify_parse_error(expected_error).await;
+                    return;
+                }
+            };
             // if not a typescript project, let's run fixture with runtime pre-build to verify fixture set up
             if !self.fixture_dir.join("tsconfig.json").exists() {
                 self.verify_build_with_runtime(&self.fixture_dir, None, None)
                     .await;
             }
-            let expected_manifest = self.verify_parse().await.unwrap();
             if let Some(debug_result) = BuildResult::read_json(&self.fixture_dir, &BuildMode::Debug)
             {
-                self.run_build_test(BuildMode::Debug, debug_result, &expected_manifest)
+                self.run_build_test(BuildMode::Debug, debug_result, &parse_manifest)
                     .await;
             }
             if let Some(release_result) =
                 BuildResult::read_json(&self.fixture_dir, &BuildMode::Release)
             {
-                self.run_build_test(BuildMode::Release, release_result, &expected_manifest)
+                self.run_build_test(BuildMode::Release, release_result, &parse_manifest)
                     .await;
             }
         }
@@ -132,7 +139,7 @@ impl TestFixture {
         &self,
         build_mode: &BuildMode,
         build_result: BuildResult,
-        expected_parse_manifest: &FnParseManifest,
+        parse_manifest: &FnParseManifest,
     ) {
         let build_dir = self.build_output_dir(build_mode);
         for expected_file in &build_result.files {
@@ -173,24 +180,26 @@ impl TestFixture {
         }
         assert_eq!(
             build_result.files.len(),
-            expected_parse_manifest.sources.len(),
+            parse_manifest.sources.len(),
             "fixture {} {} build has incorrect number of sources",
             self.fixture_label(),
             build_dir.file_name().unwrap().to_string_lossy(),
         );
     }
 
-    async fn verify_parse(&self) -> Result<FnParseManifest, anyhow::Error> {
-        let expected_parse_manifest = self.read_expected_parse_manifest();
-        let parse_manifest = self
-            .runtime
+    async fn parse_fixture(&self) -> FnParseResult<FnParseManifest> {
+        self.runtime
             .parse(FnParseSpec {
                 entrypoint: self.spec.entrypoint.clone(),
                 project_dir: self.fixture_dir.clone(),
                 runtime: self.runtime.config(&self.fixture_dir),
             })
-            .await?;
-        for expected_source in &expected_parse_manifest.sources {
+            .await
+    }
+
+    async fn verify_successful_parse(&self, expected_manifest: FnParseManifest) -> FnParseManifest {
+        let parse_manifest = self.parse_fixture().await.unwrap();
+        for expected_source in &expected_manifest.sources {
             match parse_manifest
                 .sources
                 .iter()
@@ -214,17 +223,26 @@ impl TestFixture {
         }
         assert_eq!(
             parse_manifest.sources.len(),
-            expected_parse_manifest.sources.len(),
+            expected_manifest.sources.len(),
             "fixture {} parsing has incorrect number of sources",
             self.fixture_label(),
         );
         assert_eq!(
             parse_manifest.entrypoint,
-            expected_parse_manifest.entrypoint,
+            expected_manifest.entrypoint,
             "fixture {} parsing has incorrect number of sources",
             self.fixture_label(),
         );
-        Ok(expected_parse_manifest)
+        parse_manifest
+    }
+
+    async fn verify_parse_error(&self, expected_error: String) {
+        match self.parse_fixture().await {
+            Ok(_) => panic!("parse did not error"),
+            Err(err) => {
+                assert_eq!(err.to_string(), expected_error);
+            }
+        };
     }
 
     pub fn build_output_dir(&self, mode: &BuildMode) -> PathBuf {
@@ -244,17 +262,34 @@ impl TestFixture {
             .to_string()
     }
 
-    fn read_expected_parse_manifest(&self) -> FnParseManifest {
-        let path = self.fixture_dir.join(".fixture").join("parse.json");
-        debug_assert!(path.is_file());
-        serde_json::from_str(fs::read_to_string(&path).unwrap().as_str())
-            .map_err(|err| {
-                anyhow!(
-                    "failed parsing fixture {} parse.json: {err}",
-                    self.fixture_label()
-                )
-            })
-            .unwrap()
+    // Result represents the expected result of verify_parse and not the result of this function
+    fn read_expected_parse_result(&self) -> Result<FnParseManifest, String> {
+        let parse_json_path = self.fixture_dir.join(".fixture").join("parse.json");
+        let parse_error_path = self.fixture_dir.join(".fixture").join("parse_error");
+        assert!(
+            !parse_json_path.is_file() || !parse_error_path.is_file(),
+            "cannot specify .fixture/parse.json and .fixture/parse_error for fixture {}",
+            self.fixture_dir.to_string_lossy()
+        );
+        assert!(
+            parse_json_path.is_file() || parse_error_path.is_file(),
+            "must specify .fixture/parse.json or .fixture/parse_error for fixture {}",
+            self.fixture_dir.to_string_lossy()
+        );
+        if parse_json_path.is_file() {
+            Ok(
+                serde_json::from_str(fs::read_to_string(&parse_json_path).unwrap().as_str())
+                    .map_err(|err| {
+                        anyhow!(
+                            "failed parsing fixture {} parse.json: {err}",
+                            self.fixture_label()
+                        )
+                    })
+                    .unwrap(),
+            )
+        } else {
+            Err(fs::read_to_string(&parse_error_path).unwrap())
+        }
     }
 
     async fn verify_build_with_runtime(
