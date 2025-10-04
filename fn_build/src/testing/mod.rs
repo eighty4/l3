@@ -1,8 +1,11 @@
 mod fixture;
 mod result;
-mod runtimes;
-mod spec;
+mod update;
 mod utilities;
+mod variation;
+mod verify_build;
+mod verify_parse;
+mod verify_runtime;
 
 use crate::testing::fixture::TestFixture;
 use std::env;
@@ -14,6 +17,9 @@ pub use utilities::*;
 // run with `cargo test test_single_fixture -- -- --fixture fixtures/node/ts/import_uses_js`
 #[tokio::test]
 async fn test_single_fixture() {
+    if skip_fixtures() || is_update_gold() {
+        return;
+    }
     let mut fixture: Option<PathBuf> = None;
     let mut args = std::env::args().into_iter();
     while let Some(arg) = args.next() {
@@ -49,52 +55,69 @@ async fn test_single_fixture() {
 
 #[tokio::test]
 async fn test_node_fixtures() {
-    for fixture in collect_fixtures("fixtures/node", false) {
+    if skip_fixtures() || is_update_gold() {
+        return;
+    }
+    for fixture in collect_fixtures("fixtures/node") {
         fixture.run().await;
     }
 }
 
 #[tokio::test]
 async fn test_python_fixtures() {
-    for fixture in collect_fixtures("fixtures/python", false) {
+    if skip_fixtures() || is_update_gold() {
+        return;
+    }
+    for fixture in collect_fixtures("fixtures/python") {
         fixture.run().await;
     }
 }
 
 #[tokio::test]
-#[ignore]
 async fn update_node_gold() {
-    for fixture in collect_fixtures("fixtures/node", true) {
-        fixture.run().await;
+    if !is_update_gold() {
+        return;
+    }
+    for fixture in collect_fixtures("fixtures/node") {
+        fixture.update_gold().await;
     }
 }
 
 #[tokio::test]
-#[ignore]
 async fn update_python_gold() {
-    for fixture in collect_fixtures("fixtures/python", true) {
-        fixture.run().await;
+    if !is_update_gold() {
+        return;
+    }
+    for fixture in collect_fixtures("fixtures/python") {
+        fixture.update_gold().await;
     }
 }
 
-fn collect_fixtures(p: &str, update_gold: bool) -> Vec<TestFixture> {
+fn skip_fixtures() -> bool {
+    env::var("SKIP_BUILD_FIXTURES")
+        .map(|v| v == "true")
+        .unwrap_or(false)
+}
+
+fn is_update_gold() -> bool {
+    for arg in std::env::args() {
+        if arg.as_str() == "--update-gold" {
+            return true;
+        }
+    }
+    false
+}
+
+fn collect_fixtures(p: &str) -> Vec<TestFixture> {
     collect_fixture_dirs(&env::current_dir().unwrap().join(p))
         .unwrap()
         .into_iter()
-        .map(if update_gold {
-            create_update_gold_fixture
-        } else {
-            create_fixture
-        })
+        .map(create_fixture)
         .collect()
 }
 
 pub fn create_fixture(fixture_dir: PathBuf) -> TestFixture {
     TestFixture::new(env::current_dir().unwrap().join(fixture_dir))
-}
-
-fn create_update_gold_fixture(fixture_dir: PathBuf) -> TestFixture {
-    TestFixture::gold_update(env::current_dir().unwrap().join(fixture_dir))
 }
 
 fn collect_fixture_dirs(p: &Path) -> Result<Vec<PathBuf>, anyhow::Error> {

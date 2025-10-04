@@ -1225,6 +1225,7 @@ dependencies = [
  "anyhow",
  "base64",
  "l3_api_base",
+ "l3_fn_config",
  "rustpython-parser",
  "serde",
  "serde_json",

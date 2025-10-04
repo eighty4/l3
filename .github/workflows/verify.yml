@@ -25,7 +25,8 @@ jobs:
       - fmt
       - lint
       - test
-      - test-node-runtime-fixtures
+      - test-fixtures-linux
+      - test-fixtures-osx-win
     steps:
       - run: echo "We're gonna face it"
 
@@ -140,35 +141,52 @@ jobs:
         continue-on-error: true
 
   test:
-    runs-on: ${{ matrix.runs-on }}
-    strategy:
-      matrix:
-        runs-on: [macos-latest, ubuntu-latest, windows-latest]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-      - run: rustup install stable
-      - uses: swatinem/rust-cache@v2
-      - name: cargo test
-        run: cargo test --workspace
-
-  test-node-runtime-fixtures:
     runs-on: ${{ matrix.runs_on }}
     strategy:
       matrix:
-        node_version: [18, 20, 22, 23]
         runs_on: [macos-latest, ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup install stable
+      - uses: swatinem/rust-cache@v2
+      - name: cargo test
+        env:
+          SKIP_BUILD_FIXTURES: true
+        run: cargo test --workspace
+
+  test-fixtures-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup install stable
+      - uses: swatinem/rust-cache@v2
+      - name: nvm
+        run: |
+          curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
+          \. ~/.nvm/nvm.sh
+          nvm install 18
+          nvm install 20
+          nvm install 22
+          nvm install 24
+      - name: cargo test
+        run: cargo test -p l3_fn_build testing
+
+  test-fixtures-osx-win:
+    runs-on: ${{ matrix.runs_on }}
+    strategy:
+      matrix:
+        runs_on: [macos-latest, windows-latest]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node_version }}
+          node-version: 22
       - run: rustup install stable
       - uses: swatinem/rust-cache@v2
       - name: cargo test
-        run: cargo test -p l3_fn_build testing::test_node_fixtures
+        env:
+          SKIP_NVM: true
+        run: cargo test -p l3_fn_build testing
 
   test-cli-build:
     runs-on: ${{ matrix.runs_on }}

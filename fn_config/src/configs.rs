@@ -32,6 +32,7 @@ pub struct NodeLambdaConfig {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum NodeVersion {
+    TwentyFour,
     TwentyTwo,
     Twenty,
     Eighteen,
@@ -43,6 +44,7 @@ impl fmt::Display for NodeVersion {
             f,
             "{}",
             match self {
+                NodeVersion::TwentyFour => "24",
                 NodeVersion::TwentyTwo => "22",
                 NodeVersion::Twenty => "20",
                 NodeVersion::Eighteen => "18",

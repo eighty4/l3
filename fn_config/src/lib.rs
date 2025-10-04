@@ -17,6 +17,8 @@ use configs::{LambdaRuntimeConfig, ProjectConfig};
 
 use crate::configs::{NodeLambdaConfig, PythonLambdaConfig};
 
+pub use configs::NodeVersion;
+
 #[derive(thiserror::Error, Debug, PartialEq)]
 pub enum ConfigParseError {
     #[error("{0}")]

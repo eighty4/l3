@@ -29,5 +29,6 @@ tokio = { workspace = true, features = ["macros", "rt", "sync"] }
 zip = { version = "5.1.1", default-features = false, features = ["deflate"] }
 
 [dev-dependencies]
+l3_fn_config = { path = "../fn_config", version = "0.0.1" }
 temp-dir = { workspace = true }
 tokio = { workspace = true, features = ["macros", "rt", "rt-multi-thread", "sync", "test-util"] }
