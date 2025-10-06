@@ -110,10 +110,8 @@ async fn build_fn_produces_checksums() {
     assert_eq!(build_manifest.checksums.iter().len(), 2);
     assert!(build_manifest
         .checksums
-        .get(&PathBuf::from("package.json"))
-        .is_some());
+        .contains_key(&PathBuf::from("package.json")));
     assert!(build_manifest
         .checksums
-        .get(&PathBuf::from("routes/data/lambda.js"))
-        .is_some());
+        .contains_key(&PathBuf::from("routes/data/lambda.js")));
 }

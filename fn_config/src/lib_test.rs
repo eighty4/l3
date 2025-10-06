@@ -27,7 +27,7 @@ impl ConfigFixture {
             if !from.ends_with(".fixture") {
                 let to = self
                     .temp_dir
-                    .child(from.file_name().unwrap().to_string_lossy().to_string());
+                    .child(from.file_name().unwrap().to_string_lossy());
                 copy(&from, &to).unwrap();
             }
         }

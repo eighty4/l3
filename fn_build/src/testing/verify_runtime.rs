@@ -4,10 +4,8 @@ use std::{
     sync::Arc,
 };
 
-use crate::{
-    testing::{fixture::TestFixtureSpec, result::FixtureError},
-    FnBuildManifest,
-};
+use crate::testing::{fixture::TestFixtureSpec, result::FixtureError};
+use crate::FnBuildManifest;
 
 #[cfg(target_os = "windows")]
 mod bin {
@@ -22,7 +20,7 @@ mod bin {
 }
 
 pub fn verify_with_runtime(
-    spec: Arc<TestFixtureSpec>,
+    spec: &Arc<TestFixtureSpec>,
     build: Option<(PathBuf, FnBuildManifest)>,
     bin_override: Option<PathBuf>,
 ) -> Result<(), FixtureError> {
@@ -53,11 +51,14 @@ fn run_runtime(
         "py" => bin_override.unwrap_or_else(|| PathBuf::from(bin::PYTHON)),
         _ => panic!(),
     };
-    let output = Command::new(&bin)
+    let output = match Command::new(&bin)
         .arg(entrypoint)
         .current_dir(project_dir)
         .output()
-        .unwrap();
+    {
+        Err(err) => panic!("error running {}: {err}", bin.to_string_lossy(),),
+        Ok(output) => output,
+    };
     if output.status.success() {
         Ok(())
     } else {

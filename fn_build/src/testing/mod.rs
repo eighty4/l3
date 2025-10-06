@@ -1,8 +1,8 @@
 mod fixture;
 mod result;
+mod scenarios;
 mod update;
 mod utilities;
-mod variation;
 mod verify_build;
 mod verify_parse;
 mod verify_runtime;
@@ -21,7 +21,7 @@ async fn test_single_fixture() {
         return;
     }
     let mut fixture: Option<PathBuf> = None;
-    let mut args = std::env::args().into_iter();
+    let mut args = env::args();
     while let Some(arg) = args.next() {
         if arg.as_str() == "--fixture" {
             match args.next().map(PathBuf::from) {
@@ -49,8 +49,16 @@ async fn test_single_fixture() {
         }
     }
     if let Some(fixture) = fixture.map(create_fixture) {
-        fixture.run().await;
+        fixture.run().await.print();
     }
+}
+
+#[tokio::test]
+async fn test_errors_fixtures() {
+    if skip_fixtures() || is_update_gold() {
+        return;
+    }
+    run_fixtures(collect_fixtures("fixtures/errors")).await;
 }
 
 #[tokio::test]
@@ -58,9 +66,7 @@ async fn test_node_fixtures() {
     if skip_fixtures() || is_update_gold() {
         return;
     }
-    for fixture in collect_fixtures("fixtures/node") {
-        fixture.run().await;
-    }
+    run_fixtures(collect_fixtures("fixtures/node")).await;
 }
 
 #[tokio::test]
@@ -68,9 +74,19 @@ async fn test_python_fixtures() {
     if skip_fixtures() || is_update_gold() {
         return;
     }
-    for fixture in collect_fixtures("fixtures/python") {
-        fixture.run().await;
+    run_fixtures(collect_fixtures("fixtures/python")).await;
+}
+
+async fn run_fixtures(fixtures: Vec<TestFixture>) {
+    let mut has_errors = false;
+    for fixture in fixtures {
+        let result = fixture.run().await;
+        if result.has_error() {
+            has_errors = true;
+            result.print();
+        }
     }
+    assert!(!has_errors);
 }
 
 #[tokio::test]
@@ -125,13 +141,11 @@ fn collect_fixture_dirs(p: &Path) -> Result<Vec<PathBuf>, anyhow::Error> {
     for dir_entry_result in read_dir(p)? {
         let dir_entry = dir_entry_result?;
         let p = dir_entry.path();
-        if p.is_dir() {
-            if !is_excluded_fixture_dir(&p) {
-                if is_fixture_dir(&p) {
-                    fixture_dirs.push(p);
-                } else {
-                    fixture_dirs.append(&mut collect_fixture_dirs(&p)?);
-                }
+        if p.is_dir() && !is_excluded_fixture_dir(&p) {
+            if is_fixture_dir(&p) {
+                fixture_dirs.push(p);
+            } else {
+                fixture_dirs.append(&mut collect_fixture_dirs(&p)?);
             }
         }
     }

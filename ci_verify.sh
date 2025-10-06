@@ -43,6 +43,9 @@ cargo test --workspace
 echo '\n*** cargo clippy -- -D warnings ***'
 cargo clippy --all -- -D warnings
 
+echo '\n*** cargo clippy --tests -- -D warnings ***'
+cargo clippy --all --tests -- -D warnings
+
 echo '\n*** cargo run --example(s) ***'
 (cd fn_build && cargo run --example build_fn)
 (cd fn_build && cargo run --example parse_fn)

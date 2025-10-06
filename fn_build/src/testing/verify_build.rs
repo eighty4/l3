@@ -1,6 +1,6 @@
 use crate::testing::fixture::TestFixtureSpec;
 use crate::testing::result::FixtureError;
-use crate::testing::variation::BuildVariation;
+use crate::testing::scenarios::BuildVariation;
 use crate::testing::verify_runtime::verify_with_runtime;
 use crate::{build_fn, BuildMode, FnBuildSpec, FnOutputConfig};
 use serde::{Deserialize, Serialize};
@@ -10,12 +10,12 @@ use std::sync::Arc;
 use temp_dir::TempDir;
 
 pub async fn verify_build(
-    spec: Arc<TestFixtureSpec>,
+    spec: &Arc<TestFixtureSpec>,
     mode: &BuildMode,
     variation: &Option<BuildVariation>,
 ) -> Result<(), FixtureError> {
     let temp_dir = TempDir::new().unwrap();
-    let build_manifest = build_fn(FnBuildSpec {
+    let build_manifest = match build_fn(FnBuildSpec {
         entrypoint: spec.entrypoint.to_path_buf(),
         handler_fn_name: spec.handler_fn_name.to_string(),
         mode: mode.clone(),
@@ -29,21 +29,23 @@ pub async fn verify_build(
         runtime: spec.fixture_runtime(),
     })
     .await
-    .unwrap();
+    {
+        Ok(result) => result,
+        Err(build_error) => return Err(FixtureError::Build(build_error)),
+    };
     let build_dir = temp_dir
         .child(match &mode {
             BuildMode::Debug => "debug",
             BuildMode::Release => "release",
         })
         .join("build-fixture-test");
-    expect_build_result(&spec, &build_dir, &mode);
+    expect_build_result(spec, &build_dir, mode);
     verify_with_runtime(
         spec,
         Some((build_dir, build_manifest)),
-        match variation {
-            Some(BuildVariation::Node(variation)) => Some(variation.bin.to_path_buf()),
-            None => None,
-        },
+        variation
+            .as_ref()
+            .map(|BuildVariation::Node(variation)| variation.bin.to_path_buf()),
     )
 }
 
@@ -54,24 +56,12 @@ fn expect_build_result(spec: &Arc<TestFixtureSpec>, build_dir: &Path, mode: &Bui
             Some(path) => build_dir.join(path),
             None => build_dir.join(&expected_file.path),
         };
-        let built_content = fs::read_to_string(&built_file_path).expect(
-            format!(
-                "failed reading fixture {spec} build output file {}",
-                built_file_path.to_string_lossy(),
-            )
-            .as_str(),
-        );
+        let built_content = fs::read_to_string(&built_file_path).unwrap();
         let expected_content = match &expected_file.result.content {
             BuildFileContent::Transformed(expected_content) => expected_content,
             BuildFileContent::Identical => {
                 let original_file_path = spec.fixture_dir.join(&expected_file.path);
-                &fs::read_to_string(&original_file_path).expect(
-                    format!(
-                        "failed reading fixture {spec} original file {}",
-                        original_file_path.to_string_lossy()
-                    )
-                    .as_str(),
-                )
+                &fs::read_to_string(&original_file_path).unwrap()
             }
         };
         assert_eq!(

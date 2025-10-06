@@ -1,11 +1,11 @@
 use crate::runtime::node::NodeConfig;
 use crate::runtime::Runtime;
+use crate::testing::result::{FixtureError, FixtureResult};
+use crate::testing::scenarios::{collect_scenarios, FixtureTestScenario};
 use crate::testing::update::update_gold;
-use crate::testing::variation::{collect_variations, BuildVariation};
 use crate::testing::verify_build::verify_build;
 use crate::testing::verify_parse::verify_parse;
 use crate::testing::verify_runtime::verify_with_runtime;
-use crate::BuildMode;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -86,15 +86,6 @@ impl fmt::Display for TestFixtureSpec {
     }
 }
 
-enum FixtureTestScenario {
-    Build {
-        mode: BuildMode,
-        variation: Option<BuildVariation>,
-    },
-    Parse,
-    Runtime,
-}
-
 pub struct TestFixture {
     spec: Arc<TestFixtureSpec>,
 }
@@ -109,53 +100,25 @@ impl TestFixture {
         update_gold(&self.spec).await;
     }
 
-    pub async fn run(&self) {
-        let mut scenarios: Vec<FixtureTestScenario> = Vec::new();
-        if !self.spec.fixture_dir.join("tsconfig.json").exists() {
-            scenarios.push(FixtureTestScenario::Runtime)
+    pub async fn run(&self) -> FixtureResult {
+        let mut result = FixtureResult::from(self.spec.clone());
+        for scenario in collect_scenarios(&self.spec) {
+            let scenario_result = scenario.run(&self.spec).await;
+            result.scenarios.push((scenario, scenario_result));
         }
-        scenarios.push(FixtureTestScenario::Parse);
-        match collect_variations(&self.spec.entrypoint) {
-            None => {
-                scenarios.push(FixtureTestScenario::Build {
-                    mode: BuildMode::Debug,
-                    variation: None,
-                });
-                scenarios.push(FixtureTestScenario::Build {
-                    mode: BuildMode::Release,
-                    variation: None,
-                });
-            }
-            Some(variations) => {
-                for variation in variations {
-                    scenarios.push(FixtureTestScenario::Build {
-                        mode: BuildMode::Debug,
-                        variation: Some(variation.clone()),
-                    });
-                    scenarios.push(FixtureTestScenario::Build {
-                        mode: BuildMode::Release,
-                        variation: Some(variation),
-                    });
-                }
-            }
-        }
+        result
+    }
+}
 
-        for scenario in scenarios {
-            let spec = self.spec.clone();
-            let result = match &scenario {
-                FixtureTestScenario::Build { mode, variation } => {
-                    verify_build(spec, mode, variation).await
-                }
-                FixtureTestScenario::Parse => verify_parse(spec).await,
-                FixtureTestScenario::Runtime => verify_with_runtime(spec, None, None),
-            };
-            match result {
-                Err(scenario_err) => {
-                    dbg!(scenario_err);
-                    panic!("scenario error");
-                }
-                Ok(_) => println!("scenario finished"),
-            };
+impl FixtureTestScenario {
+    async fn run(&self, spec: &Arc<TestFixtureSpec>) -> Option<FixtureError> {
+        match self {
+            FixtureTestScenario::Build { mode, variation } => {
+                verify_build(spec, mode, variation).await
+            }
+            FixtureTestScenario::Parse => verify_parse(spec).await,
+            FixtureTestScenario::Runtime => verify_with_runtime(spec, None, None),
         }
+        .err()
     }
 }

@@ -3,14 +3,30 @@ use crate::runtime::Runtime;
 use crate::{FnDependencies, FnHandler, FnParseError, FnParseSpec, FnSource};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::io;
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::{fmt, io};
 
-#[derive(Clone, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum BuildMode {
     Debug,
     Release,
+}
+
+impl BuildMode {
+    pub fn to_label(&self) -> String {
+        match self {
+            BuildMode::Debug => "debug",
+            BuildMode::Release => "release",
+        }
+        .into()
+    }
+}
+
+impl fmt::Display for BuildMode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.to_label())
+    }
 }
 
 /// Output config for a function build. A function's output will be written to
@@ -52,10 +68,7 @@ impl FnBuildSpec {
 
     pub fn output_build_root(&self) -> PathBuf {
         if self.output.use_build_mode {
-            self.output.build_root.join(match self.mode {
-                BuildMode::Debug => "debug",
-                BuildMode::Release => "release",
-            })
+            self.output.build_root.join(self.mode.to_label())
         } else {
             self.output.build_root.clone()
         }

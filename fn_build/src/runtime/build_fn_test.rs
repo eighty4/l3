@@ -61,39 +61,36 @@ async fn test_build_fn_represents_transform_with_retained_path() {
     )
     .await
     .unwrap();
-    assert_eq!(
-        read_dir(temp_dir.path())
-            .unwrap()
-            .filter_map(|entry| entry.ok())
-            .map(|entry| entry
+    let mut files = read_dir(temp_dir.path())
+        .unwrap()
+        .filter_map(|entry| entry.ok())
+        .map(|entry| {
+            entry
                 .path()
                 .file_name()
                 .unwrap()
                 .to_string_lossy()
-                .to_string())
-            .collect::<Vec<String>>()
-            .sort(),
-        Vec::from([String::from("source.js"), String::from("build")]).sort()
-    );
+                .to_string()
+        })
+        .collect::<Vec<String>>();
+    files.sort();
     assert_eq!(
-        read_dir(
-            temp_dir
-                .child("build")
-                .join("my-sweet-lambda")
-                .to_path_buf()
-        )
+        files,
+        Vec::from([String::from("build"), String::from("source.js")])
+    );
+    files = read_dir(temp_dir.child("build").join("my-sweet-lambda"))
         .unwrap()
         .filter_map(|entry| entry.ok())
-        .map(|entry| entry
-            .path()
-            .file_name()
-            .unwrap()
-            .to_string_lossy()
-            .to_string())
-        .collect::<Vec<String>>()
-        .sort(),
-        Vec::from([String::from("source.js")]).sort()
-    );
+        .map(|entry| {
+            entry
+                .path()
+                .file_name()
+                .unwrap()
+                .to_string_lossy()
+                .to_string()
+        })
+        .collect::<Vec<String>>();
+    assert_eq!(files, Vec::from([String::from("source.js")]));
     assert_eq!(
         fs::read_to_string(
             temp_dir
@@ -158,39 +155,37 @@ async fn test_build_fn_represents_transform_with_path_rewrite() {
     )
     .await
     .unwrap();
-    assert_eq!(
-        read_dir(temp_dir.path())
-            .unwrap()
-            .filter_map(|entry| entry.ok())
-            .map(|entry| entry
+    let mut files = read_dir(temp_dir.path())
+        .unwrap()
+        .filter_map(|entry| entry.ok())
+        .map(|entry| {
+            entry
                 .path()
                 .file_name()
                 .unwrap()
                 .to_string_lossy()
-                .to_string())
-            .collect::<Vec<String>>()
-            .sort(),
-        Vec::from([String::from("source.ts"), String::from("build")]).sort()
-    );
+                .to_string()
+        })
+        .collect::<Vec<String>>();
+    files.sort();
     assert_eq!(
-        read_dir(
-            temp_dir
-                .child("build")
-                .join("my-sweet-lambda")
-                .to_path_buf()
-        )
+        files,
+        Vec::from([String::from("build"), String::from("source.ts")])
+    );
+    files = read_dir(temp_dir.child("build").join("my-sweet-lambda"))
         .unwrap()
         .filter_map(|entry| entry.ok())
-        .map(|entry| entry
-            .path()
-            .file_name()
-            .unwrap()
-            .to_string_lossy()
-            .to_string())
-        .collect::<Vec<String>>()
-        .sort(),
-        Vec::from([String::from("source.js")]).sort()
-    );
+        .map(|entry| {
+            entry
+                .path()
+                .file_name()
+                .unwrap()
+                .to_string_lossy()
+                .to_string()
+        })
+        .collect::<Vec<String>>();
+    files.sort();
+    assert_eq!(files, Vec::from([String::from("source.js")]));
     assert_eq!(
         fs::read_to_string(
             temp_dir

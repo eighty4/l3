@@ -30,7 +30,7 @@ pub struct NodeLambdaConfig {
     pub version: Option<NodeVersion>,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum NodeVersion {
     TwentyFour,
     TwentyTwo,
@@ -58,6 +58,7 @@ impl TryFrom<&str> for NodeVersion {
 
     fn try_from(s: &str) -> Result<Self, Self::Error> {
         match s {
+            "24" => Ok(NodeVersion::TwentyFour),
             "22" => Ok(NodeVersion::TwentyTwo),
             "20" => Ok(NodeVersion::Twenty),
             "18" => Ok(NodeVersion::Eighteen),

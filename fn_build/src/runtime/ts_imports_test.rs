@@ -21,13 +21,13 @@ impl ImportResolver for TestFallthrough {
     }
 }
 
-fn create_import_resolver_for_fixture(
-    fixture_dir: &str,
-) -> (
-    PathBuf,
-    TypeScriptImportResolver,
-    Arc<Mutex<Vec<(PathBuf, String)>>>,
-) {
+struct TsImportFixture {
+    project_dir: PathBuf,
+    import_resolver: TypeScriptImportResolver,
+    unresolved: Arc<Mutex<Vec<(PathBuf, String)>>>,
+}
+
+fn create_import_resolver_for_fixture(fixture_dir: &str) -> TsImportFixture {
     let project_dir = PathBuf::from(fixture_dir);
     let node_config = NodeConfig::read_configs(&project_dir).unwrap();
     let unresolved: Arc<Mutex<Vec<(PathBuf, String)>>> = Default::default();
@@ -37,37 +37,39 @@ fn create_import_resolver_for_fixture(
             unresolved: unresolved.clone(),
         }),
     );
-    (project_dir, import_resolver, unresolved)
+    TsImportFixture {
+        project_dir,
+        import_resolver,
+        unresolved,
+    }
 }
 
 #[test]
 fn test_ts_import_resolver_resolves_relative_source() {
-    let (project_dir, import_resolver, unresolved) =
-        create_import_resolver_for_fixture("fixtures/node/ts/import_uses_js");
+    let test = create_import_resolver_for_fixture("fixtures/node/ts/import_uses_js");
     assert_eq!(
-        import_resolver.resolve(
-            &project_dir,
+        test.import_resolver.resolve(
+            &test.project_dir,
             &PathBuf::from("routes/data/lambda.ts"),
             "../../lib/data.js",
         ),
         ModuleImport::RelativeSource(PathBuf::from("lib/data.ts"))
     );
-    assert!(unresolved.lock().unwrap().is_empty());
+    assert!(test.unresolved.lock().unwrap().is_empty());
 }
 
 #[test]
 fn test_ts_import_resolver_delegates_to_runtime_resolver() {
-    let (project_dir, import_resolver, unresolved) =
-        create_import_resolver_for_fixture("fixtures/node/ts/import_uses_js");
+    let test = create_import_resolver_for_fixture("fixtures/node/ts/import_uses_js");
     assert_eq!(
-        import_resolver.resolve(
-            &project_dir,
+        test.import_resolver.resolve(
+            &test.project_dir,
             &PathBuf::from("routes/data/lambda.ts"),
             "../../lib/mongodb.js",
         ),
         ModuleImport::Unknown(String::from("../../lib/mongodb.js"))
     );
-    let unresolved = unresolved.lock().unwrap();
+    let unresolved = test.unresolved.lock().unwrap();
     assert!(!unresolved.is_empty());
     let (from, import) = unresolved.first().unwrap();
     assert_eq!(from, &PathBuf::from("routes/data/lambda.ts"));

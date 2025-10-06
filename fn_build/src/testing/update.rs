@@ -1,6 +1,7 @@
 use std::{fs, sync::Arc};
 
-use crate::{parse_fn, testing::fixture::TestFixtureSpec, FnParseSpec};
+use crate::testing::fixture::TestFixtureSpec;
+use crate::{parse_fn, FnParseSpec};
 
 pub async fn update_gold(spec: &Arc<TestFixtureSpec>) {
     let parse_result = parse_fn(FnParseSpec {

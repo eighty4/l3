@@ -1,27 +1,23 @@
 use anyhow::anyhow;
 use std::{fs, sync::Arc};
 
-use crate::{
-    parse_fn,
-    testing::{fixture::TestFixtureSpec, result::FixtureError},
-    FnParseManifest, FnParseResult, FnParseSpec,
-};
+use crate::testing::{fixture::TestFixtureSpec, result::FixtureError};
+use crate::{parse_fn, FnParseManifest, FnParseResult, FnParseSpec};
 
-pub async fn verify_parse(spec: Arc<TestFixtureSpec>) -> Result<(), FixtureError> {
+pub async fn verify_parse(spec: &Arc<TestFixtureSpec>) -> Result<(), FixtureError> {
     let parse_result = parse_fn(FnParseSpec {
         entrypoint: spec.entrypoint.to_path_buf(),
         project_dir: spec.fixture_dir.clone(),
         runtime: spec.fixture_runtime(),
     })
     .await;
-    match read_expected_parse_result(&spec) {
-        Ok(expected_manifest) => verify_successful_parse(&spec, parse_result, expected_manifest),
-        Err(expected_error) => verify_parse_error(&spec, parse_result, expected_error),
+    match read_expected_parse_result(spec) {
+        Ok(expected_manifest) => verify_successful_parse(parse_result, expected_manifest),
+        Err(expected_error) => verify_parse_error(parse_result, expected_error),
     }
 }
 
 fn verify_successful_parse(
-    spec: &Arc<TestFixtureSpec>,
     parse_result: FnParseResult<FnParseManifest>,
     expected_manifest: FnParseManifest,
 ) -> Result<(), FixtureError> {
@@ -32,44 +28,55 @@ fn verify_successful_parse(
             .iter()
             .find(|source| source.path == expected_source.path)
         {
-            None => panic!(
-                "parsing fixture {spec} did not contain source file {}",
-                expected_source.path.to_string_lossy(),
-            ),
+            None => {
+                return Err(FixtureError::ParseSuccess(format!(
+                    "parse manifest did not contain source file {}",
+                    expected_source.path.to_string_lossy(),
+                )));
+            }
             Some(source) => {
-                assert_eq!(
-                    source.imports,
-                    expected_source.imports,
-                    "fixture {spec} source file {} has incorrect imports",
-                    source.path.to_string_lossy(),
-                );
+                if source.imports != expected_source.imports {
+                    return Err(FixtureError::ParseSuccess(format!(
+                        "parse manifest imports did not match for {}",
+                        expected_source.path.to_string_lossy(),
+                    )));
+                }
             }
         }
     }
-    assert_eq!(
-        parse_manifest.sources.len(),
-        expected_manifest.sources.len(),
-        "fixture {spec} parsing has incorrect number of sources",
-    );
-    assert_eq!(
-        parse_manifest.entrypoint, expected_manifest.entrypoint,
-        "fixture {spec} parsing has incorrect number of sources",
-    );
+    if parse_manifest.sources.len() != expected_manifest.sources.len() {
+        return Err(FixtureError::ParseSuccess(
+            "parse manifest has too many sources".into(),
+        ));
+    }
+    if parse_manifest.entrypoint != expected_manifest.entrypoint {
+        return Err(FixtureError::ParseSuccess(
+            "parse manifest entrypoint did not match".into(),
+        ));
+    }
     Ok(())
 }
 
 fn verify_parse_error(
-    spec: &Arc<TestFixtureSpec>,
     parse_result: FnParseResult<FnParseManifest>,
-    expected_error: String,
+    expected: String,
 ) -> Result<(), FixtureError> {
     match parse_result {
-        Ok(_) => panic!("parsing fixture {spec} did not error"),
-        Err(err) => {
-            assert_eq!(err.to_string(), expected_error);
+        Ok(_) => Err(FixtureError::ParseError {
+            expected,
+            actual: None,
+        }),
+        Err(actual) => {
+            if actual.to_string() != expected {
+                Err(FixtureError::ParseError {
+                    expected,
+                    actual: Some(actual),
+                })
+            } else {
+                Ok(())
+            }
         }
-    };
-    Ok(())
+    }
 }
 
 // Result represents the expected result of verify_parse and not the result of this function
