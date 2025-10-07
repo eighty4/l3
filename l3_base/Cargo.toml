@@ -1,6 +1,6 @@
 [package]
 name = "l3_api_base"
-version = "0.0.4"
+version = "0.0.5-alpha.1"
 description = "Shared APIs for LLL crates"
 authors = { workspace = true }
 edition = { workspace = true }

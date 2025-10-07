@@ -1,6 +1,6 @@
 [package]
 name = "l3_fn_build_wasm"
-version = "0.0.1"
+version = "0.0.2-alpha.1"
 description = "WASI component of the l3_fn_build crate"
 publish = false
 authors.workspace = true

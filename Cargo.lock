@@ -1200,11 +1200,11 @@ dependencies = [
 
 [[package]]
 name = "l3_api_base"
-version = "0.0.4"
+version = "0.0.5-alpha.1"
 
 [[package]]
 name = "l3_cli"
-version = "0.0.4"
+version = "0.0.5-alpha.1"
 dependencies = [
  "clap",
  "crossterm 0.29.0",
@@ -1220,7 +1220,7 @@ dependencies = [
 
 [[package]]
 name = "l3_fn_build"
-version = "0.0.4"
+version = "0.0.5-alpha.1"
 dependencies = [
  "anyhow",
  "base64",
@@ -1243,7 +1243,7 @@ dependencies = [
 
 [[package]]
 name = "l3_fn_build_wasm"
-version = "0.0.1"
+version = "0.0.2-alpha.1"
 dependencies = [
  "l3_fn_build",
  "tokio",
@@ -1252,7 +1252,7 @@ dependencies = [
 
 [[package]]
 name = "l3_fn_config"
-version = "0.0.1"
+version = "0.0.2-alpha.1"
 dependencies = [
  "anyhow",
  "l3_fn_env",
@@ -1264,7 +1264,7 @@ dependencies = [
 
 [[package]]
 name = "l3_fn_env"
-version = "0.0.1"
+version = "0.0.2-alpha.1"
 dependencies = [
  "temp-dir",
  "thiserror 2.0.17",
