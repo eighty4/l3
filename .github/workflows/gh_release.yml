@@ -1,22 +1,50 @@
 name: Release
+run-name: ${{ format('Release {0} bump {1}', inputs.semver-bump, inputs.dry-run && '(dry run)' || '') }}
 
 on:
   workflow_dispatch:
+    inputs:
+      semver-bump:
+        description: Semver bump release type
+        required: true
+        type: choice
+        default: alpha
+        options:
+          - major
+          - minor
+          - patch
+          - release
+          - rc
+          - beta
+          - alpha
+      dry-run:
+        required: false
+        type: boolean
+      latest:
+        required: false
+        type: boolean
 
 jobs:
 
-  verify:
-    uses: ./.github/workflows/verify.yml
+  # verify:
+  #   uses: ./.github/workflows/verify.yml
 
-  check-changelog:
+  check-params:
     runs-on: ubuntu-latest
     steps:
+      - id: prerelease
+        env:
+          PRERELEASE: ${{ (inputs.semver-bump == 'alpha' && inputs.semver-bump == 'beta' && inputs.semver-bump == 'rc') && 'true' || 'false' }}
+        run: echo "prerelease=$PRERELEASE" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@v4
-      - run: ./.github/workflows/changelog_check.sh l3_cli/CHANGELOG.md
+      - if: ${{ steps.prerelease.outputs.prelease == 'true' }}
+        run: npx -y @eighty4/changelog check --changelog-file l3_cli/CHANGELOG.md
+    outputs:
+      prerelease: ${{ steps.prerelease.outputs.prerelease == 'true' }}
 
   publish-cargo-crates:
     runs-on: ubuntu-latest
-    needs: [ verify, check-changelog ]
+    needs: [ check-params ]
     steps:
       - uses: actions/checkout@v4
       - run: rustup install stable
@@ -29,8 +57,9 @@ jobs:
         run: |
           git config --global user.name "Adam McKee"
           git config --global user.email "adam.be.g84d@gmail.com"
-          cargo release --no-confirm -x patch
+          cargo release --no-confirm $DRY_RUN_OR_EXEC ${{ inputs.semver-bump }}
         env:
+          DRY_RUN_OR_EXEC: ${{ inputs.dry-run && '' || '-x' }}
           CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
       - id: version
         run: |
@@ -44,7 +73,7 @@ jobs:
 
   create-gh-release:
     runs-on: ubuntu-22.04
-    needs: publish-cargo-crates
+    needs: [ publish-cargo-crates, check-params ]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -55,8 +84,10 @@ jobs:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
           TAG_NAME: ${{ needs.publish-cargo-crates.outputs.tag_name }}
           VERSION: ${{ needs.publish-cargo-crates.outputs.version }}
+          PRERELEASE: ${{ needs.check-params.outputs.prerelease && 'true' || 'false' }}
+          LATEST: ${{ inputs.latest && 'true' || 'false' }}
         run: |
-          CHANGELOG=$(./.github/workflows/changelog_get.sh l3_cli/CHANGELOG.md $VERSION)
+          CHANGELOG=$(npx -y @eighty4/changelog get $VERSION  --changelog-file l3_cli/CHANGELOG.md)
           CRATES_URL="https://crates.io/crates/l3_cli/$VERSION"
           RELEASE_NOTES="[Published on crates.io]($CRATES_URL)\r\n\r\n## Release notes\r\n\r\n$CHANGELOG"
           CREATED_RELEASE=$(echo "$RELEASE_NOTES" | gh api \
@@ -68,7 +99,8 @@ jobs:
             -f name="CLI v$VERSION" \
             -F body="$NOTES" \
             -F draft=false \
-            -F prerelease=false \
+            -f make_latest="$LATEST" \
+            -F prerelease="$PRERELEASE" \
             -F generate_release_notes=false)
           echo "release_id=$(echo $CREATED_RELEASE | jq '.id')" >> "$GITHUB_OUTPUT"
           echo "upload_hostname=$(echo $CREATED_RELEASE | jq '.upload_url' | cut -d'/' -f3)" >> "$GITHUB_OUTPUT"

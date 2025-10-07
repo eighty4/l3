@@ -7,6 +7,11 @@ edition = { workspace = true }
 license = { workspace = true }
 repository = { workspace = true }
 
+[profile.release]
+lto = "fat"
+opt-level = 3
+strip = "symbols"
+
 [[bin]]
 name = "l3"
 path = "src/main.rs"
