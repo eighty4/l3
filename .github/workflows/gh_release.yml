@@ -26,8 +26,8 @@ on:
 
 jobs:
 
-  # verify:
-  #   uses: ./.github/workflows/verify.yml
+  verify:
+    uses: ./.github/workflows/verify.yml
 
   check-params:
     runs-on: ubuntu-latest
@@ -44,7 +44,7 @@ jobs:
 
   publish-cargo-crates:
     runs-on: ubuntu-latest
-    needs: [ check-params ]
+    needs: [ verify, check-params ]
     steps:
       - uses: actions/checkout@v4
       - run: rustup install stable
