@@ -47,8 +47,8 @@ impl LLLCommandRun for BuildCommand {
             JoinSet::new();
         for lambda_spec in lambda_specs {
             let runtime = match &lambda_spec.runtime {
-                LambdaRuntimeSpec::Node(_) => Runtime::Node(Some(node_config.clone())),
-                LambdaRuntimeSpec::Python(_) => Runtime::Python,
+                LambdaRuntimeSpec::Node => Runtime::Node(Some(node_config.clone())),
+                LambdaRuntimeSpec::Python => Runtime::Python,
             };
             join_set.spawn(build_fn(
                 lambda_spec.clone(),
@@ -124,26 +124,26 @@ fn build_lambda_value(
         "name": lambda_spec.name.clone(),
         "source": lambda_spec.source.clone(),
         "handler": lambda_spec.handler.clone(),
-        "runtime": match &lambda_spec.runtime {
-            LambdaRuntimeSpec::Node(nc) => {
-                json!({
-                    "name": "node",
-                    "version": match &nc.version {
-                        Some(v) => Value::String(v.to_string()),
-                        None => serde_json::Value::Null,
-                    }
-                })
-            }
-            LambdaRuntimeSpec::Python(pc) => {
-                json!({
-                    "name": "python",
-                    "version": match &pc.version {
-                        Some(v) => Value::String(v.to_string()),
-                        None => serde_json::Value::Null,
-                    }
-                })
-            }
-        },
+        // "runtime": match &lambda_spec.runtime {
+        //     LambdaRuntimeSpec::Node(nc) => {
+        //         json!({
+        //             "name": "node",
+        //             "version": match &nc.version {
+        //                 Some(v) => Value::String(v.to_string()),
+        //                 None => serde_json::Value::Null,
+        //             }
+        //         })
+        //     }
+        //     LambdaRuntimeSpec::Python(pc) => {
+        //         json!({
+        //             "name": "python",
+        //             "version": match &pc.version {
+        //                 Some(v) => Value::String(v.to_string()),
+        //                 None => serde_json::Value::Null,
+        //             }
+        //         })
+        //     }
+        // },
         "build": json!({
             "manifest": build_result.as_ref().ok().map(|manifest| json!(manifest)).unwrap_or(Value::Null),
             "error": build_result.as_ref().err().map(|err| Value::String(err.to_string())).unwrap_or(Value::Null),

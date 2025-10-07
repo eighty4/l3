@@ -1,6 +1,6 @@
 use crate::{
-    configs::LambdaRuntimeConfig, configs::NodeLambdaConfig, configs::NodeVersion,
-    configs::PythonLambdaConfig, configs::PythonVersion, ConfigParseError, OptionallyParsable,
+    configs::LambdaRuntimeConfig, configs::NodeLambdaConfig, configs::PythonLambdaConfig,
+    ConfigParseError, NodeVersion, OptionallyParsable, PythonVersion,
 };
 
 impl OptionallyParsable<&toml::Table> for LambdaRuntimeConfig {

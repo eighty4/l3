@@ -1,6 +1,7 @@
 use crate::checksum::Checksum;
 use crate::runtime::Runtime;
 use crate::{FnDependencies, FnHandler, FnParseError, FnParseSpec, FnSource};
+use l3_fn_config::Language;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -58,6 +59,11 @@ pub struct FnBuildSpec {
 }
 
 impl FnBuildSpec {
+    pub fn language(&self) -> FnBuildResult<Language> {
+        Language::try_from(self.entrypoint.as_path())
+            .map_err(|_| FnBuildError::from(FnParseError::InvalidFileType))
+    }
+
     pub fn to_parse_spec(&self) -> FnParseSpec {
         FnParseSpec {
             entrypoint: self.entrypoint.clone(),

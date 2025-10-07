@@ -8,6 +8,37 @@ use temp_dir::TempDir;
 
 use crate::LLLConfigs;
 
+#[test]
+fn test_fn_config_fixtures() {
+    for fixture_dir in collect_fixture_dirs(&PathBuf::from("fixtures")).unwrap() {
+        ConfigFixture::for_dir(fixture_dir).run_test();
+    }
+}
+
+fn collect_fixture_dirs(p: &Path) -> Result<Vec<PathBuf>, anyhow::Error> {
+    let mut fixture_dirs = Vec::new();
+    for dir_entry_result in read_dir(p)? {
+        let dir_entry = dir_entry_result?;
+        let p = dir_entry.path();
+        if p.is_dir() {
+            if is_fixture_dir(&p) {
+                fixture_dirs.push(p);
+            } else {
+                fixture_dirs.append(&mut collect_fixture_dirs(&p)?);
+            }
+        }
+    }
+    Ok(fixture_dirs)
+}
+
+fn is_fixture_dir(p: &Path) -> bool {
+    p.join(".fixture").is_dir() && !is_excluded_fixture_dir(p)
+}
+
+fn is_excluded_fixture_dir(p: &Path) -> bool {
+    p.file_name().unwrap().to_string_lossy().starts_with('_')
+}
+
 struct ConfigFixture {
     fixture_dir: PathBuf,
     temp_dir: TempDir,
@@ -21,19 +52,22 @@ impl ConfigFixture {
         }
     }
 
-    fn copy_to_temp_dir(&self) {
-        for p in read_dir(&self.fixture_dir).unwrap() {
+    fn copy_to_temp_dir(&self, path: &Path) {
+        for p in read_dir(path).unwrap() {
             let from = p.unwrap().path();
-            if !from.ends_with(".fixture") {
+            if from.is_file() {
                 let to = self
                     .temp_dir
                     .child(from.file_name().unwrap().to_string_lossy());
                 copy(&from, &to).unwrap();
+            } else if from.is_dir() && !from.ends_with(".fixture") {
+                self.copy_to_temp_dir(&path.join(from));
             }
         }
     }
 
     fn run_test(&self) {
+        self.copy_to_temp_dir(&self.fixture_dir);
         let mut configs = LLLConfigs::new(Arc::new(self.temp_dir.path().to_path_buf()));
         let update = configs.update_all_configs();
         assert!(update.config_errs.is_empty());
@@ -71,37 +105,4 @@ impl ConfigFixture {
             )
         }
     }
-}
-
-#[test]
-fn test_fn_config_fixtures() {
-    for fixture_dir in collect_fixture_dirs(&PathBuf::from("fixtures")).unwrap() {
-        let fixture = ConfigFixture::for_dir(fixture_dir);
-        fixture.copy_to_temp_dir();
-        fixture.run_test();
-    }
-}
-
-fn collect_fixture_dirs(p: &Path) -> Result<Vec<PathBuf>, anyhow::Error> {
-    let mut fixture_dirs = Vec::new();
-    for dir_entry_result in read_dir(p)? {
-        let dir_entry = dir_entry_result?;
-        let p = dir_entry.path();
-        if p.is_dir() {
-            if is_fixture_dir(&p) {
-                fixture_dirs.push(p);
-            } else {
-                fixture_dirs.append(&mut collect_fixture_dirs(&p)?);
-            }
-        }
-    }
-    Ok(fixture_dirs)
-}
-
-fn is_fixture_dir(p: &Path) -> bool {
-    p.join(".fixture").is_dir() && !is_excluded_fixture_dir(p)
-}
-
-fn is_excluded_fixture_dir(p: &Path) -> bool {
-    p.file_name().unwrap().to_string_lossy().starts_with('_')
 }

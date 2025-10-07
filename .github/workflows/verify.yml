@@ -8,8 +8,6 @@ on:
       - fn_*/**/*
       - l3_*/**/*
       - Cargo.*
-  pull_request:
-    branches: [ '*' ]
   workflow_call:
   workflow_dispatch:
 
@@ -205,4 +203,4 @@ jobs:
       - uses: swatinem/rust-cache@v2
       - run: cargo install --path l3_cli
       - run: l3 build --release
-        working-directory: fn_config/fixtures/project_toml_lambdas/explicit_lambda
+        working-directory: fn_config/fixtures/project_toml_lambdas/min_explicit_array

@@ -1,4 +1,4 @@
-use crate::configs::*;
+use crate::{configs::*, NodeVersion, PythonVersion};
 use crate::{ConfigParseError, OptionallyParsable};
 
 #[test]

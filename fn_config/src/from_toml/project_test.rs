@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::configs::*;
+use crate::{configs::*, NodeVersion, PythonVersion};
 
 #[test]
 fn test_parse_l3_toml_with_single_lambda_table() {

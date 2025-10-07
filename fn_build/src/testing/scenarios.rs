@@ -1,11 +1,11 @@
 use std::{
     fmt,
-    path::{Path, PathBuf},
+    path::PathBuf,
     process::Command,
     sync::{Arc, OnceLock},
 };
 
-use l3_fn_config::NodeVersion;
+use l3_fn_config::{Language, NodeVersion};
 
 use crate::{testing::fixture::TestFixtureSpec, BuildMode};
 
@@ -64,7 +64,7 @@ pub fn collect_scenarios(spec: &Arc<TestFixtureSpec>) -> Vec<FixtureTestScenario
     if skip_debug && skip_release {
         return scenarios;
     }
-    match collect_variations(&spec.entrypoint) {
+    match collect_variations(spec) {
         None => {
             if !skip_debug {
                 scenarios.push(FixtureTestScenario::Build {
@@ -100,12 +100,13 @@ pub fn collect_scenarios(spec: &Arc<TestFixtureSpec>) -> Vec<FixtureTestScenario
     scenarios
 }
 
-fn collect_variations(entrypoint: &Path) -> Option<Vec<BuildVariation>> {
+fn collect_variations(spec: &Arc<TestFixtureSpec>) -> Option<Vec<BuildVariation>> {
     static NODE: OnceLock<Option<Vec<BuildVariation>>> = OnceLock::new();
-    match entrypoint.extension().unwrap().to_str().unwrap() {
-        "ts" | "js" | "mjs" => NODE.get_or_init(collect_node_variations).clone(),
-        "py" => None,
-        other => panic!("unsupported extension: {other}"),
+    match spec.language {
+        Language::JavaScript | Language::TypeScript => {
+            NODE.get_or_init(collect_node_variations).clone()
+        }
+        Language::Python => None,
     }
 }
 

@@ -1,6 +1,7 @@
 use crate::runtime::node::NodeConfigError;
 use crate::runtime::Runtime;
 use crate::{FnRouting, HttpMethod};
+use l3_fn_config::Language;
 use serde::{Deserialize, Serialize};
 use std::io;
 use std::path::{Path, PathBuf};
@@ -10,6 +11,12 @@ pub struct FnParseSpec {
     pub entrypoint: PathBuf,
     pub project_dir: Arc<PathBuf>,
     pub runtime: Runtime,
+}
+
+impl FnParseSpec {
+    pub fn language(&self) -> FnParseResult<Language> {
+        Language::try_from(self.entrypoint.as_path()).map_err(|_| FnParseError::InvalidFileType)
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]

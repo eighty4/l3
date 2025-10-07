@@ -6,12 +6,11 @@ use crate::testing::update::update_gold;
 use crate::testing::verify_build::verify_build;
 use crate::testing::verify_parse::verify_parse;
 use crate::testing::verify_runtime::verify_with_runtime;
-use serde::{Deserialize, Serialize};
+use l3_fn_config::Language;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::{env, fmt, fs};
 
-#[derive(Deserialize, Serialize)]
 pub struct TestFixtureSpec {
     /// Fixture directory in //fn_build/fixtures.
     pub fixture_dir: Arc<PathBuf>,
@@ -19,6 +18,7 @@ pub struct TestFixtureSpec {
     pub entrypoint: PathBuf,
     /// Defined in spec.json.
     pub handler_fn_name: String,
+    pub language: Language,
 }
 
 impl TestFixtureSpec {
@@ -48,10 +48,13 @@ impl TestFixtureSpec {
             .as_str()
             .unwrap()
             .to_string();
+        let language =
+            Language::try_from(entrypoint.as_path()).expect("fixture entrypoint language");
         Arc::new(Self {
             fixture_dir: Arc::new(fixture_dir),
             entrypoint,
             handler_fn_name,
+            language,
         })
     }
 
@@ -64,18 +67,11 @@ impl TestFixtureSpec {
     }
 
     pub fn fixture_runtime(&self) -> Runtime {
-        match self
-            .entrypoint
-            .extension()
-            .unwrap()
-            .to_string_lossy()
-            .as_ref()
-        {
-            "js" | "mjs" | "ts" => Runtime::Node(Some(Arc::new(
+        match self.language {
+            Language::JavaScript | Language::TypeScript => Runtime::Node(Some(Arc::new(
                 NodeConfig::read_configs(self.fixture_dir.as_path()).unwrap(),
             ))),
-            "py" => Runtime::Python,
-            _ => panic!(),
+            Language::Python => Runtime::Python,
         }
     }
 }

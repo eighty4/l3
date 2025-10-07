@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-use crate::configs::*;
+use crate::{configs::*, Language, NodeVersion};
 
 #[test]
 fn test_parse_lambda_toml() {
@@ -16,6 +16,7 @@ node_version = 22
     assert_eq!(
         LambdaConfig::try_from(&s.parse::<toml::Table>().unwrap()),
         Ok(LambdaConfig {
+            language: Some(Language::TypeScript),
             name: Some("my-data-fn".into()),
             source: Some("./lambdas/data.ts".into()),
             handler: Some("doDataThings".into()),

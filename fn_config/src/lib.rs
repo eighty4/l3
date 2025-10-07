@@ -1,5 +1,6 @@
 mod configs;
 mod from_toml;
+mod model;
 
 #[cfg(test)]
 mod lib_test;
@@ -13,11 +14,9 @@ use std::{
 
 use l3_fn_env::EnvVarsParseError;
 
-use configs::{LambdaRuntimeConfig, ProjectConfig};
+use configs::ProjectConfig;
 
-use crate::configs::{NodeLambdaConfig, PythonLambdaConfig};
-
-pub use configs::NodeVersion;
+pub use model::*;
 
 #[derive(thiserror::Error, Debug, PartialEq)]
 pub enum ConfigParseError {
@@ -36,6 +35,8 @@ pub enum ConfigParseError {
         expected: String,
         actual: String,
     },
+    #[error("{0}")]
+    UnresolvedLanguage(#[from] UnresolvedLanguage),
     // #[error("error parsing {file_name} env vars: {cause}")]
     // SyntaxError {
     //     cause: String,
@@ -43,20 +44,6 @@ pub enum ConfigParseError {
     //     file_name: String,
     //     line: usize,
     // },
-}
-
-#[derive(Debug, PartialEq)]
-pub struct LambdaSpec {
-    pub name: String,
-    pub source: PathBuf,
-    pub handler: String,
-    pub runtime: LambdaRuntimeSpec,
-}
-
-#[derive(Debug, PartialEq)]
-pub enum LambdaRuntimeSpec {
-    Node(NodeLambdaConfig),
-    Python(PythonLambdaConfig),
 }
 
 #[derive(Default)]
@@ -147,30 +134,15 @@ impl LLLConfigs {
         };
 
         for lambda in &pc.lambdas {
-            if let (Some(name), Some(handler), Some(source)) = (
+            if let (Some(language), Some(name), Some(handler), Some(source)) = (
+                &lambda.language,
                 lambda.name.clone(),
                 lambda.handler.clone(),
                 lambda.source.clone(),
             ) {
-                let runtime = if source
-                    .as_path()
-                    .extension()
-                    .map(|ext| ext == "ts" || ext == "js")
-                    .unwrap()
-                {
-                    LambdaRuntimeSpec::Node(match &pc.runtime {
-                        Some(LambdaRuntimeConfig {
-                            node: Some(nrc), ..
-                        }) => nrc.clone(),
-                        _ => NodeLambdaConfig::default(),
-                    })
-                } else {
-                    LambdaRuntimeSpec::Python(match &pc.runtime {
-                        Some(LambdaRuntimeConfig {
-                            python: Some(prc), ..
-                        }) => prc.clone(),
-                        _ => PythonLambdaConfig::default(),
-                    })
+                let runtime = match language {
+                    Language::JavaScript | Language::TypeScript => LambdaRuntimeSpec::Node,
+                    Language::Python => LambdaRuntimeSpec::Python,
                 };
                 self.lambdas.insert(
                     lambda.name.clone().unwrap(),
