@@ -22,3 +22,8 @@ authors = ["Adam McKee <adam.be.g84d@gmail.com>"]
 edition = "2021"
 license = "BSD-2-Clause"
 repository = "https://github.com/eighty4/l3"
+
+[profile.release]
+lto = "fat"
+opt-level = 3
+strip = "symbols"
