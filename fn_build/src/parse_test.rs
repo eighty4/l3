@@ -1,9 +1,7 @@
 use temp_dir::TempDir;
 
 use crate::runtime::Runtime;
-use crate::{
-    parse_entrypoint, parse_fn, FnEntrypoint, FnHandler, FnRouting, HttpMethod, HttpRoute,
-};
+use crate::{parse_entrypoint, parse_fn, FnEntrypoint};
 use crate::{FnParseError, FnParseSpec};
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -88,13 +86,7 @@ async fn parse_entrypoint_of_js_fn() {
         .await
         .unwrap(),
         FnEntrypoint {
-            handlers: vec!(FnHandler {
-                fn_name: "GET".to_string(),
-                routing: FnRouting::HttpRoute(HttpRoute {
-                    method: HttpMethod::Get,
-                    path: "data".to_string()
-                })
-            }),
+            handlers: vec!("GET".into()),
             path: PathBuf::from("routes/data/lambda.js")
         }
     );
@@ -115,13 +107,7 @@ async fn parse_entrypoint_of_python_fn() {
         .await
         .unwrap(),
         FnEntrypoint {
-            handlers: vec!(FnHandler {
-                fn_name: "get".to_string(),
-                routing: FnRouting::HttpRoute(HttpRoute {
-                    method: HttpMethod::Get,
-                    path: "data".to_string()
-                })
-            }),
+            handlers: vec!("get".into()),
             path: PathBuf::from("routes/data/lambda.py")
         }
     );

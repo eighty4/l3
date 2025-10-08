@@ -39,7 +39,7 @@ interface parse-result {
         // exported handler functions
         handlers: list<string>,
         // relative path to entrypoint source file from project-dir
-        source: string,
+        path: string,
     }
 
     // todo explicitly announce package dependencies in manifest

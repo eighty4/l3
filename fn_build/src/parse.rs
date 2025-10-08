@@ -1,10 +1,9 @@
 use crate::runtime::node::NodeConfigError;
 use crate::runtime::Runtime;
-use crate::{FnRouting, HttpMethod};
 use l3_fn_config::Language;
 use serde::{Deserialize, Serialize};
 use std::io;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::Arc;
 
 pub struct FnParseSpec {
@@ -27,56 +26,10 @@ pub enum FnDependencies {
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct FnHandler {
-    /// Function name matching case in source file.
-    pub fn_name: String,
-    /// Routing method as the function would be deployed.
-    pub routing: FnRouting,
-}
-
-impl FnHandler {
-    pub fn from_handler_fn(path: &Path, fn_name: String) -> Self {
-        let routing = FnRouting::from_handler_fn(path, fn_name.as_str());
-        Self { fn_name, routing }
-    }
-
-    pub fn to_fn_identifier(&self) -> String {
-        match &self.routing {
-            FnRouting::Unsupported => panic!(),
-            FnRouting::HttpRoute(http_route) => {
-                format!(
-                    "{}-{}",
-                    http_route.path.replace("/", "-"),
-                    match http_route.method {
-                        HttpMethod::Get => "get",
-                        HttpMethod::Delete => "delete",
-                        HttpMethod::Patch => "patch",
-                        HttpMethod::Post => "post",
-                        HttpMethod::Put => "put",
-                    }
-                )
-            }
-        }
-    }
-}
-
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct FnEntrypoint {
-    pub handlers: Vec<FnHandler>,
+    /// Exported functions from entrypoint source file.
+    pub handlers: Vec<String>,
     pub path: PathBuf,
-}
-
-impl FnEntrypoint {
-    pub fn to_fn_identifier(&self, handler_fn_name: &str) -> FnParseResult<String> {
-        self.handlers
-            .iter()
-            .find(|h| h.fn_name == handler_fn_name)
-            .map(FnHandler::to_fn_identifier)
-            .ok_or_else(|| {
-                FnParseError::MissingHandler(self.path.clone(), handler_fn_name.to_string())
-            })
-    }
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]

@@ -2,15 +2,7 @@
   "dependencies": "unused",
   "entrypoint": {
     "handlers": [
-      {
-        "fnName": "post",
-        "routing": {
-          "httpRoute": {
-            "method": "POST",
-            "path": "data"
-          }
-        }
-      }
+      "post"
     ],
     "path": "routes/data/lambda.py"
   },

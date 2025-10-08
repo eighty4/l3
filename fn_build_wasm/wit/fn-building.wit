@@ -32,7 +32,6 @@ interface build-result {
         checksums: list<source-checksum>,
         dependencies: fn-dependencies,
         entrypoint: string,
-        handler: string,
         output: fn-build-output,
         sources: list<fn-source>,
     }

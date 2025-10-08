@@ -1,5 +1,5 @@
 use crate::runtime::node::NodeConfig;
-use crate::{FnHandler, FnParseResult, FnSource, ModuleImport};
+use crate::{FnParseResult, FnSource, ModuleImport};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -25,7 +25,7 @@ trait FnSourceParser: Send + Sync {
         &self,
         project_dir: &Path,
         source_path: &Path,
-    ) -> FnParseResult<Vec<FnHandler>>;
+    ) -> FnParseResult<Vec<String>>;
     /// Provide sources for deployment to a serverless runtime that are not explicit imports of the
     /// function's source tree. For Node.js this would include package.json.
     fn collect_runtime_sources(&self, project_dir: &Path) -> Vec<FnSource>;
@@ -34,7 +34,7 @@ trait FnSourceParser: Send + Sync {
         &self,
         project_dir: &Path,
         source_path: PathBuf,
-    ) -> FnParseResult<(FnSource, Vec<FnHandler>)>;
+    ) -> FnParseResult<(FnSource, Vec<String>)>;
     /// Parse a source file to find imported sources for a function's source tree.
     fn parse_for_imports(
         &self,

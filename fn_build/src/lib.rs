@@ -3,7 +3,6 @@ mod build;
 mod checksum;
 mod parse;
 mod paths;
-mod routing;
 pub mod runtime;
 mod swc;
 mod typescript;
@@ -23,14 +22,10 @@ mod paths_test;
 #[cfg(test)]
 mod testing;
 
-#[cfg(test)]
-mod routing_test;
-
 use l3_fn_config::Language;
 
 pub use crate::build::*;
 pub use crate::parse::*;
-pub use crate::routing::*;
 
 /// Builds a lambda function.
 pub async fn build_fn(build_spec: FnBuildSpec) -> FnBuildResult<FnBuildManifest> {

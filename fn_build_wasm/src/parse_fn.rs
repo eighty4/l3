@@ -83,12 +83,8 @@ fn map_out_fn_source(source: l3_fn_build::FnSource) -> FnSource {
 
 fn map_out_fn_entrypoint(entrypoint: l3_fn_build::FnEntrypoint) -> FnEntrypoint {
     FnEntrypoint {
-        handlers: entrypoint
-            .handlers
-            .into_iter()
-            .map(|fn_handler| fn_handler.fn_name)
-            .collect(),
-        source: entrypoint.path.to_string_lossy().to_string(),
+        handlers: entrypoint.handlers,
+        path: entrypoint.path.to_string_lossy().to_string(),
     }
 }
 

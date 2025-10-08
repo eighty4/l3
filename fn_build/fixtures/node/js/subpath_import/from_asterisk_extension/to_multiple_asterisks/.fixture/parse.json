@@ -2,23 +2,11 @@
   "dependencies": "unused",
   "entrypoint": {
     "handlers": [
-      {
-        "fnName": "GET",
-        "routing": {
-          "httpRoute": {
-            "method": "GET",
-            "path": "data"
-          }
-        }
-      }
+      "GET"
     ],
     "path": "routes/data/lambda.js"
   },
   "sources": [
-    {
-      "imports": [],
-      "path": "data/data.js"
-    },
     {
       "imports": [
         {
@@ -26,6 +14,10 @@
         }
       ],
       "path": "routes/data/lambda.js"
+    },
+    {
+      "imports": [],
+      "path": "data/data.js"
     },
     {
       "imports": [],

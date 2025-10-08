@@ -2,26 +2,18 @@
   "dependencies": "unused",
   "entrypoint": {
     "handlers": [
-      {
-        "fnName": "PUT",
-        "routing": {
-          "httpRoute": {
-            "method": "PUT",
-            "path": "data"
-          }
-        }
-      }
+      "PUT"
     ],
     "path": "routes/data/lambda.js"
   },
   "sources": [
     {
       "imports": [],
-      "path": "routes/data/lambda.js"
+      "path": "package.json"
     },
     {
       "imports": [],
-      "path": "package.json"
+      "path": "routes/data/lambda.js"
     }
   ]
 }

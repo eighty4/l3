@@ -1,8 +1,6 @@
 use crate::archive::write_archive;
 use crate::checksum::Checksum;
-use crate::{
-    FnBuildManifest, FnBuildOutput, FnBuildResult, FnBuildSpec, FnHandler, FnParseManifest,
-};
+use crate::{FnBuildManifest, FnBuildOutput, FnBuildResult, FnBuildSpec, FnParseManifest};
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -122,16 +120,11 @@ where
             },
         }
     }
-    let handler = FnHandler::from_handler_fn(
-        &parse_manifest.entrypoint.path,
-        build_spec.handler_fn_name.clone(),
-    );
     Ok(FnBuildManifest {
         checksums,
         dependencies: parse_manifest.dependencies,
         entrypoint: parse_manifest.entrypoint.path,
         sources: parse_manifest.sources,
-        handler,
         output: FnBuildOutput {
             archive_file: if build_spec.output.create_archive {
                 let archive_file = build_root.join(format!("{}.zip", &build_spec.output.dirname));

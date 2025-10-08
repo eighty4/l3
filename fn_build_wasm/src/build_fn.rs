@@ -55,7 +55,6 @@ fn map_in_fn_build_spec(build_spec: FnBuildSpec) -> l3_fn_build::FnBuildSpec {
 fn map_out_fn_build_manifest(build_manifest: l3_fn_build::FnBuildManifest) -> FnBuildManifest {
     FnBuildManifest {
         entrypoint: build_manifest.entrypoint.to_string_lossy().to_string(),
-        handler: build_manifest.handler.fn_name,
         dependencies: match build_manifest.dependencies {
             l3_fn_build::FnDependencies::Required => FnDependencies::Required,
             l3_fn_build::FnDependencies::Unused => FnDependencies::Unused,

@@ -1,6 +1,6 @@
 use crate::checksum::Checksum;
 use crate::runtime::Runtime;
-use crate::{FnDependencies, FnHandler, FnParseError, FnParseSpec, FnSource};
+use crate::{FnDependencies, FnParseError, FnParseSpec, FnSource};
 use l3_fn_config::Language;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -108,7 +108,6 @@ pub struct FnBuildManifest {
     pub checksums: HashMap<PathBuf, Checksum>,
     pub dependencies: FnDependencies,
     pub entrypoint: PathBuf,
-    pub handler: FnHandler,
     pub output: FnBuildOutput,
     pub sources: Vec<FnSource>,
 }

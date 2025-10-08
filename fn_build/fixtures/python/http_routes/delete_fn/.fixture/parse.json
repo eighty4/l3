@@ -2,15 +2,7 @@
   "dependencies": "unused",
   "entrypoint": {
     "handlers": [
-      {
-        "fnName": "delete",
-        "routing": {
-          "httpRoute": {
-            "method": "DELETE",
-            "path": "data"
-          }
-        }
-      }
+      "delete"
     ],
     "path": "routes/data/lambda.py"
   },

@@ -2,8 +2,7 @@ use crate::paths::join_file_paths;
 use crate::runtime::parse_fn::parse_fn_inner;
 use crate::runtime::{FnSourceParser, ImportResolver};
 use crate::{
-    FnEntrypoint, FnHandler, FnParseError, FnParseManifest, FnParseResult, FnParseSpec, FnSource,
-    ModuleImport,
+    FnEntrypoint, FnParseError, FnParseManifest, FnParseResult, FnParseSpec, FnSource, ModuleImport,
 };
 use rustpython_parser::ast::Stmt;
 use rustpython_parser::{ast, Parse, ParseError};
@@ -82,15 +81,12 @@ impl FnSourceParser for PythonSourceParser {
         &self,
         project_dir: &Path,
         source_path: &Path,
-    ) -> FnParseResult<Vec<FnHandler>> {
+    ) -> FnParseResult<Vec<String>> {
         let ast = Self::parse_ast(project_dir, source_path)?;
-        let mut handlers: Vec<FnHandler> = Vec::new();
+        let mut handlers: Vec<String> = Vec::new();
         for stmt in ast {
             match stmt {
-                Stmt::FunctionDef(function) => handlers.push(FnHandler::from_handler_fn(
-                    source_path,
-                    function.name.to_string(),
-                )),
+                Stmt::FunctionDef(function) => handlers.push(function.name.to_string()),
                 Stmt::AsyncFunctionDef(_) => todo!("to support python async functions as handlers, build_python_fn will have to generate code for a non async handler that launches the async python function with the python async runtime"),
                 _ => {}
             }
@@ -106,7 +102,7 @@ impl FnSourceParser for PythonSourceParser {
         &self,
         project_dir: &Path,
         path: PathBuf,
-    ) -> FnParseResult<(FnSource, Vec<FnHandler>)> {
+    ) -> FnParseResult<(FnSource, Vec<String>)> {
         let ast = Self::parse_ast(project_dir, &path)?;
         let handlers = self.collect_handlers(project_dir, &path)?;
         let imports = self.collect_imports(project_dir, &path, &ast);

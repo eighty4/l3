@@ -2,15 +2,7 @@
   "dependencies": "unused",
   "entrypoint": {
     "handlers": [
-      {
-        "fnName": "patch",
-        "routing": {
-          "httpRoute": {
-            "method": "PATCH",
-            "path": "data"
-          }
-        }
-      }
+      "patch"
     ],
     "path": "routes/data/lambda.py"
   },

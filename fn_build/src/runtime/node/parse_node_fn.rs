@@ -6,8 +6,7 @@ use crate::runtime::{FnSourceParser, ImportResolver, Runtime};
 use crate::swc::compiler::{CompileError, SwcCompiler};
 use crate::swc::visitors::CollectImportsVisitor;
 use crate::{
-    FnEntrypoint, FnHandler, FnParseError, FnParseManifest, FnParseResult, FnParseSpec, FnSource,
-    ModuleImport,
+    FnEntrypoint, FnParseError, FnParseManifest, FnParseResult, FnParseSpec, FnSource, ModuleImport,
 };
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -115,23 +114,22 @@ impl FnSourceParser for NodeFnSourceParser {
         &self,
         project_dir: &Path,
         source_path: &Path,
-    ) -> FnParseResult<Vec<FnHandler>> {
+    ) -> FnParseResult<Vec<String>> {
         let module = self.parse_module(project_dir, source_path)?;
-        let mut handlers: Vec<FnHandler> = Vec::new();
+        let mut handlers: Vec<String> = Vec::new();
         let parse_fn_name = |s: &str| {
             s.trim_end_matches(char::is_numeric)
                 .trim_end_matches(char::is_numeric)
                 .trim_end_matches('#')
                 .to_string()
         };
-        let create_handler = |s: &str| FnHandler::from_handler_fn(source_path, parse_fn_name(s));
         for module_item in module.body {
             if let Some(module_decl) = module_item.module_decl() {
                 match module_decl {
                     ModuleDecl::ExportDecl(ExportDecl {
                         decl: Decl::Fn(fn_decl),
                         ..
-                    }) => handlers.push(create_handler(fn_decl.ident.as_ref())),
+                    }) => handlers.push(parse_fn_name(fn_decl.ident.as_ref())),
                     ModuleDecl::ExportDecl(ExportDecl {
                         decl: Decl::Var(var_decl),
                         ..
@@ -139,7 +137,7 @@ impl FnSourceParser for NodeFnSourceParser {
                         for var_declarator in var_decl.decls {
                             if let Some(expr) = var_declarator.init {
                                 if expr.as_arrow().is_some() || expr.as_fn_expr().is_some() {
-                                    handlers.push(create_handler(
+                                    handlers.push(parse_fn_name(
                                         var_declarator.name.ident().unwrap().as_ref(),
                                     ))
                                 }
@@ -169,7 +167,7 @@ impl FnSourceParser for NodeFnSourceParser {
         &self,
         project_dir: &Path,
         source_path: PathBuf,
-    ) -> FnParseResult<(FnSource, Vec<FnHandler>)> {
+    ) -> FnParseResult<(FnSource, Vec<String>)> {
         let handlers = self.collect_handlers(project_dir, &source_path)?;
         let source = self.parse_for_imports(project_dir, source_path)?;
         Ok((source, handlers))
