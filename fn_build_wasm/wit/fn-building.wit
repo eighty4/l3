@@ -1,6 +1,8 @@
 package l3:fn-build;
 
-world fn-building {
+interface build-spec {
+    use parse-spec.{runtime};
+
     record fn-build-spec {
         entrypoint: string,
         handler-fn-name: string,
@@ -21,18 +23,16 @@ world fn-building {
         dirname: string,
         use-build-mode: bool,
     }
+}
 
-    // todo remove fn-parsing duplicate
-    enum runtime {
-        node,
-        python,
-    }
+interface build-result {
+    use parse-result.{fn-dependencies, fn-source, module-import, dependency-import};
 
     record fn-build-manifest {
         checksums: list<source-checksum>,
         dependencies: fn-dependencies,
         entrypoint: string,
-        handler: fn-handler,
+        handler: string,
         output: fn-build-output,
         sources: list<fn-source>,
     }
@@ -42,73 +42,17 @@ world fn-building {
         path: string,
     }
 
-    // todo remove fn-parsing duplicate
-    // todo explicitly announce package dependencies in manifest
-    // todo achieve with variant fn-dependencies::packages(list<string>)
-    enum fn-dependencies {
-        // function build will require project's production dependencies
-        required,
-        // function build does not require dependencies
-        unused,
-    }
-
-    // todo remove fn-parsing duplicate
-    record fn-handler {
-        fn-name: string,
-        routing: fn-routing,
-    }
-
-    // todo remove fn-parsing duplicate
-    variant fn-routing {
-        http-route(http-route),
-        unsupported,
-    }
-
-    // todo remove fn-parsing duplicate
-    record http-route {
-        method: http-method,
-        path: string,
-    }
-
-    // todo remove fn-parsing duplicate
-    enum http-method {
-        get,
-        delete,
-        patch,
-        post,
-        put,
-    }
-
     record fn-build-output {
         archive-file: option<string>,
         build-dir: string,
         paths: list<tuple<string, string>>,
     }
+}
 
-    // todo remove fn-parsing duplicate
-    // a project source file
-    record fn-source {
-        // resolved and unresolved imports from a source file
-        imports: list<module-import>,
-        // relative source path from project-dir
-        path: string,
-    }
+// todo typed build error variant
+world fn-building {
+    use build-spec.{fn-build-spec};
+    use build-result.{fn-build-manifest};
 
-    // todo remove fn-parsing duplicate
-    variant module-import {
-        // import of a package's production dependency
-        package-dependency(dependency-import),
-        // path to a project source relative to project-dir
-        relative-source(string),
-        // an unresolved import and error condition for function builds
-        unknown(string),
-    }
-
-    // todo remove fn-parsing duplicate
-    record dependency-import {
-        %package: string,
-        subpath: option<string>,
-    }
-
-    export build-fn: func(spec: fn-build-spec) -> fn-build-manifest;
+    export build-fn: func(spec: fn-build-spec) -> result<fn-build-manifest, string>;
 }

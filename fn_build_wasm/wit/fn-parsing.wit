@@ -1,7 +1,6 @@
 package l3:fn-build;
 
-// todo parse result and parse error
-world fn-parsing {
+interface parse-spec {
     record fn-parse-spec {
         // relative source path from project-dir
         entrypoint: string,
@@ -23,7 +22,9 @@ world fn-parsing {
 //        module-type: bool,
 //        subpath-imports: 
 //    }
+}
 
+interface parse-result {
     record fn-parse-manifest {
         // package dependency requirements for 
         dependencies: fn-dependencies,
@@ -33,6 +34,14 @@ world fn-parsing {
         sources: list<fn-source>,
     }
 
+    // metadata of function entrypoint
+    record fn-entrypoint {
+        // exported handler functions
+        handlers: list<string>,
+        // relative path to entrypoint source file from project-dir
+        source: string,
+    }
+
     // todo explicitly announce package dependencies in manifest
     // todo achieve with variant fn-dependencies::packages(list<string>)
     enum fn-dependencies {
@@ -40,37 +49,6 @@ world fn-parsing {
         required,
         // function build does not require dependencies
         unused,
-    }
-
-    // metadata of function entrypoint
-    record fn-entrypoint {
-        // exported handler functions
-        handlers: list<fn-handler>,
-        // relative path to entrypoint source file from project-dir
-        path: string,
-    }
-
-    record fn-handler {
-        fn-name: string,
-        routing: fn-routing,
-    }
-
-    variant fn-routing {
-        http-route(http-route),
-        unsupported,
-    }
-
-    record http-route {
-        method: http-method,
-        path: string,
-    }
-
-    enum http-method {
-        get,
-        delete,
-        patch,
-        post,
-        put,
     }
 
     // a project source file
@@ -94,6 +72,12 @@ world fn-parsing {
         %package: string,
         subpath: option<string>,
     }
+}
+
+// todo typed parse error variant
+world fn-parsing {
+    use parse-spec.{fn-parse-spec, runtime};
+    use parse-result.{fn-parse-manifest, fn-dependencies, fn-entrypoint, fn-source, module-import, dependency-import};
 
     export parse-entrypoint: func(spec: fn-parse-spec) -> result<fn-entrypoint, string>;
 
