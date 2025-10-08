@@ -1203,6 +1203,22 @@ name = "l3_api_base"
 version = "0.0.5-alpha.1"
 
 [[package]]
+name = "l3_ast_parse"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "rustpython-parser",
+ "swc",
+ "swc_common",
+ "swc_ecma_ast",
+ "swc_ecma_parser",
+ "swc_ecma_visit",
+ "temp-dir",
+ "thiserror 2.0.17",
+ "tokio",
+]
+
+[[package]]
 name = "l3_cli"
 version = "0.0.5-alpha.1"
 dependencies = [

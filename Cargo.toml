@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "ast_parse",
     "fn_build",
     "fn_build_wasm",
     "fn_config",

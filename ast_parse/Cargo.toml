@@ -1,0 +1,26 @@
+[package]
+name = "l3_ast_parse"
+version = "0.0.0"
+description = "Lib for AST parsing"
+authors = { workspace = true }
+edition = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+
+[lib]
+name = "l3_ast_parse"
+path = "src/lib.rs"
+
+[dependencies]
+anyhow = { workspace = true }
+rustpython-parser = "0.4.0"
+swc = "41.0.0"
+swc_common = { version = "14.0.4", features = ["concurrent"] }
+swc_ecma_ast = "15.0.0"
+swc_ecma_parser = { version = "24.0.2", features = ["typescript"] }
+swc_ecma_visit = { version = "15.0.0" }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+temp-dir = { workspace = true }
+tokio = { workspace = true, features = ["macros", "rt", "rt-multi-thread", "sync", "test-util"] }
