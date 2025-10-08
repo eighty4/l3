@@ -1,0 +1,12 @@
+{
+    "type": "module",
+    "scripts": {
+        "codegen": "rm -rf gen && jco transpile ../../target/wasm32-wasip2/release/l3_fn_build.wasm -o gen"
+    },
+    "dependencies": {
+        "@bytecodealliance/preview2-shim": "0.17.4"
+    },
+    "devDependencies": {
+        "@bytecodealliance/jco": "1.15.0"
+    }
+}
