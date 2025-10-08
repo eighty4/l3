@@ -5,6 +5,9 @@ mod model;
 #[cfg(test)]
 mod lib_test;
 
+#[cfg(test)]
+mod model_test;
+
 use std::{
     collections::{HashMap, HashSet},
     fs,

@@ -8,11 +8,11 @@ license = { workspace = true }
 repository = { workspace = true }
 
 [dependencies]
+anyhow = { workspace = true }
 l3_fn_env = { path = "../fn_env", version = "0.0.2-alpha.1" }
 thiserror = { workspace = true }
 toml = { version = "0.8.20", features = ["parse"] }
 
 [dev-dependencies]
-anyhow = { workspace = true }
 serde_json = { workspace = true }
 temp-dir = { workspace = true }
